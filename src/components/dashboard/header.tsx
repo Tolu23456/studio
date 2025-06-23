@@ -8,7 +8,6 @@ import Image from "next/image";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
-import { generateAvatar } from "@/ai/flows/generate-avatar-flow";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from 'date-fns';
 import type { Notification } from '@/lib/types';
@@ -42,43 +41,9 @@ import {
 export default function DashboardHeader() {
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
-  const { user } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [loadingAvatar, setLoadingAvatar] = useState(true);
+  const { user, avatarUrl, loadingAvatar } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
-
-  useEffect(() => {
-    const fetchAvatar = async () => {
-      if (!user) {
-        setLoadingAvatar(false);
-        return;
-      }
-      
-      const storedAvatar = sessionStorage.getItem(`avatar_${user.uid}`);
-      if (storedAvatar) {
-        setAvatarUrl(storedAvatar);
-        setLoadingAvatar(false);
-        return;
-      }
-
-      setLoadingAvatar(true);
-      try {
-        const result = await generateAvatar();
-        setAvatarUrl(result.avatarDataUri);
-        sessionStorage.setItem(`avatar_${user.uid}`, result.avatarDataUri);
-      } catch (error) {
-        console.error("Failed to generate avatar:", error);
-        setAvatarUrl("https://placehold.co/36x36.png"); // fallback
-      } finally {
-        setLoadingAvatar(false);
-      }
-    };
-
-    if (user) {
-        fetchAvatar();
-    }
-  }, [user]);
 
   useEffect(() => {
     async function fetchNotifications() {

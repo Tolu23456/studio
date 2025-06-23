@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -6,11 +7,14 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { getUserProfile } from '@/services/user-data';
 import type { UserProfile } from '@/lib/types';
+import { generateAvatar } from '@/ai/flows/generate-avatar-flow';
 
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  avatarUrl: string | null;
+  loadingAvatar: boolean;
   refreshUserProfile: () => Promise<void>;
 }
 
@@ -18,6 +22,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   loading: true,
+  avatarUrl: null,
+  loadingAvatar: true,
   refreshUserProfile: async () => {},
 });
 
@@ -25,6 +31,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [loadingAvatar, setLoadingAvatar] = useState(true);
 
   const fetchUserProfile = useCallback(async (uid: string) => {
     try {
@@ -35,20 +43,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(null);
     }
   }, []);
+  
+  const fetchAvatar = useCallback(async (uid: string) => {
+    const storedAvatar = sessionStorage.getItem(`avatar_${uid}`);
+    if (storedAvatar) {
+      setAvatarUrl(storedAvatar);
+      setLoadingAvatar(false);
+      return;
+    }
+
+    setLoadingAvatar(true);
+    try {
+      const result = await generateAvatar();
+      setAvatarUrl(result.avatarDataUri);
+      sessionStorage.setItem(`avatar_${uid}`, result.avatarDataUri);
+    } catch (error) {
+      console.error("Failed to generate avatar:", error);
+      setAvatarUrl(null); // Explicitly set to null on error
+    } finally {
+      setLoadingAvatar(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        await fetchUserProfile(user.uid);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        setLoading(true); // Main loading state
+        await Promise.all([
+          fetchUserProfile(currentUser.uid),
+          fetchAvatar(currentUser.uid)
+        ]);
+        setLoading(false);
       } else {
         setUserProfile(null);
+        setAvatarUrl(null);
+        setLoading(false);
+        setLoadingAvatar(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile, fetchAvatar]);
 
   const refreshUserProfile = useCallback(async () => {
     if (user) {
@@ -56,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchUserProfile]);
 
-  const value = { user, userProfile, loading, refreshUserProfile };
+  const value = { user, userProfile, loading, avatarUrl, loadingAvatar, refreshUserProfile };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -7,45 +7,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { User, Mail, Zap, Award, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
-import { generateAvatar } from '@/ai/flows/generate-avatar-flow';
 
 export default function ProfilePage() {
-  const { user, userProfile, loading } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [loadingAvatar, setLoadingAvatar] = useState(true);
-
-  useEffect(() => {
-    const fetchAvatar = async () => {
-      if (!user) {
-        setLoadingAvatar(false);
-        return;
-      }
-      
-      const storedAvatar = sessionStorage.getItem(`avatar_${user.uid}`);
-      if (storedAvatar) {
-        setAvatarUrl(storedAvatar);
-        setLoadingAvatar(false);
-        return;
-      }
-
-      setLoadingAvatar(true);
-      try {
-        const result = await generateAvatar();
-        setAvatarUrl(result.avatarDataUri);
-        sessionStorage.setItem(`avatar_${user.uid}`, result.avatarDataUri);
-      } catch (error) {
-        console.error("Failed to generate avatar:", error);
-        setAvatarUrl("https://placehold.co/128x128.png"); // fallback
-      } finally {
-        setLoadingAvatar(false);
-      }
-    };
-
-    if (user) {
-        fetchAvatar();
-    }
-  }, [user]);
+  const { user, userProfile, loading, avatarUrl, loadingAvatar } = useAuth();
 
   if (loading) {
     return (
