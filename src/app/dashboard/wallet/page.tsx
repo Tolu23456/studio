@@ -17,7 +17,7 @@ export default function WalletPage() {
       <Card>
         <CardHeader>
           <CardDescription>Current Balance</CardDescription>
-          <CardTitle className="flex items-center text-4xl">
+          <CardTitle className="flex items-center text-3xl sm:text-4xl">
             {loading ? (
               <Skeleton className="w-48 h-10" />
             ) : (

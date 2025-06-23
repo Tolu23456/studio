@@ -101,12 +101,10 @@ export default function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-      <div className="flex items-center gap-2 sm:hidden">
-        <Link href="/dashboard" className="flex items-center gap-2 text-foreground">
-            <Zap className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg font-headline">AdBoost</span>
-        </Link>
-      </div>
+      <Link href="/dashboard" className="flex items-center gap-2 text-foreground sm:hidden">
+          <Zap className="h-6 w-6 text-primary" />
+          <span className="font-bold text-lg font-headline">AdBoost</span>
+      </Link>
       <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
           <BreadcrumbItem>

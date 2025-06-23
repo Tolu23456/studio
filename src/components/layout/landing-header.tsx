@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Zap } from "lucide-react";
 
 export default function LandingHeader() {
@@ -37,9 +37,11 @@ export default function LandingHeader() {
                 <span className="font-bold font-headline">AdBoost</span>
               </Link>
               <nav className="flex flex-col space-y-4">
-                <Link href="#features" className="text-muted-foreground hover:text-foreground">
-                  Features
-                </Link>
+                <SheetClose asChild>
+                  <Link href="#features" className="text-muted-foreground hover:text-foreground">
+                    Features
+                  </Link>
+                </SheetClose>
               </nav>
             </SheetContent>
           </Sheet>

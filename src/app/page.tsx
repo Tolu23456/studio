@@ -45,10 +45,10 @@ export default function Home() {
             <div className="grid gap-6 lg:grid-cols-[1fr_550px] lg:gap-12 xl:grid-cols-[1fr_650px]">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
-                  <h1 className="text-4xl font-bold tracking-tighter font-headline sm:text-5xl xl:text-6xl/none">
+                  <h1 className="text-3xl font-bold tracking-tighter font-headline sm:text-5xl xl:text-6xl/none">
                     Turn Your Time into Rewards with AdBoost
                   </h1>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
+                  <p className="max-w-[600px] text-base text-muted-foreground md:text-xl">
                     Watch ads, complete tasks, and play games to earn Cubes.
                     Redeem your Cubes for amazing prizes. It's that simple.
                   </p>
@@ -85,7 +85,7 @@ export default function Home() {
                 <h2 className="text-3xl font-bold tracking-tighter font-headline sm:text-5xl">
                   How You Can Earn
                 </h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                <p className="max-w-[900px] text-base text-muted-foreground md:text-xl/relaxed">
                   We provide a variety of ways for you to earn Cubes. Choose what you enjoy the most and start earning today.
                 </p>
               </div>
@@ -115,7 +115,7 @@ export default function Home() {
               <h2 className="text-3xl font-bold tracking-tighter font-headline md:text-4xl/tight">
                 Ready to Start Earning?
               </h2>
-              <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+              <p className="mx-auto max-w-[600px] text-base text-muted-foreground md:text-xl/relaxed">
                 Join thousands of users who are already earning rewards on AdBoost.
                 Sign up is quick, easy, and free!
               </p>
