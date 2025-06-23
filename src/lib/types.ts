@@ -34,3 +34,11 @@ export type Ad = {
   imageUrl: string;
   dataAiHint?: string;
 };
+
+export type Notification = {
+  id: string;
+  title: string;
+  description: string;
+  date: Date;
+  read: boolean;
+};

@@ -9,6 +9,9 @@ import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import { generateAvatar } from "@/ai/flows/generate-avatar-flow";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDistanceToNow } from 'date-fns';
+import type { Notification } from '@/lib/types';
+import { getNotifications } from '@/services/user-data';
 
 import {
   Breadcrumb,
@@ -29,6 +32,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
+  Bell,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -45,6 +49,8 @@ export default function DashboardHeader() {
   const { user } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loadingAvatar, setLoadingAvatar] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
 
   useEffect(() => {
     const fetchAvatar = async () => {
@@ -77,6 +83,26 @@ export default function DashboardHeader() {
         fetchAvatar();
     }
   }, [user]);
+
+  useEffect(() => {
+    async function fetchNotifications() {
+      if (!user) return;
+      setLoadingNotifications(true);
+      try {
+        const userNotifications = await getNotifications(user.uid);
+        setNotifications(userNotifications);
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      } finally {
+        setLoadingNotifications(false);
+      }
+    }
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+
+  const hasUnread = notifications.some(n => !n.read);
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -143,47 +169,99 @@ export default function DashboardHeader() {
           ))}
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="relative ml-auto flex-1 md:grow-0">
-        {/* Future Search Bar */}
-      </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            className="overflow-hidden rounded-full"
-          >
-            {loadingAvatar ? (
-              <Skeleton className="h-full w-full rounded-full" />
+      <div className="relative ml-auto flex items-center gap-2 md:grow-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" className="h-9 w-9 relative">
+              <Bell className="h-4 w-4" />
+              {hasUnread && <span className="absolute top-0.5 right-0.5 block h-2 w-2 rounded-full bg-primary ring-1 ring-background" />}
+              <span className="sr-only">Toggle notifications</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80 md:w-96">
+            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {loadingNotifications ? (
+              <div className="p-2 space-y-3">
+                <div className="flex items-start space-x-3">
+                  <Skeleton className="h-4 w-4 rounded-full mt-1" />
+                  <div className="space-y-1.5 flex-1">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                </div>
+                 <div className="flex items-start space-x-3">
+                  <Skeleton className="h-4 w-4 rounded-full mt-1" />
+                  <div className="space-y-1.5 flex-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              </div>
+            ) : notifications.length > 0 ? (
+                notifications.map((notification) => (
+                    <DropdownMenuItem key={notification.id} className="flex flex-col items-start gap-1 p-3 cursor-pointer">
+                        <div className="flex items-center justify-between w-full">
+                            <p className="font-medium text-sm">{notification.title}</p>
+                            {!notification.read && <span className="h-2 w-2 rounded-full bg-primary" />}
+                        </div>
+                        <p className="text-xs text-muted-foreground w-full">{notification.description}</p>
+                        <p className="text-xs text-muted-foreground/80 w-full pt-1">
+                            {formatDistanceToNow(notification.date, { addSuffix: true })}
+                        </p>
+                    </DropdownMenuItem>
+                ))
             ) : (
-              <Image
-                src={avatarUrl || "https://placehold.co/36x36.png"}
-                width={36}
-                height={36}
-                alt="Avatar"
-                className="overflow-hidden rounded-full object-cover"
-              />
+              <p className="p-4 text-center text-sm text-muted-foreground">No new notifications</p>
             )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <User className="mr-2 h-4 w-4" />
-            Profile
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => signOut(auth)}>
-               <LogOut className="mr-2 h-4 w-4" />
-               Logout
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="justify-center p-2">
+                <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+                    View all notifications
+                </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="overflow-hidden rounded-full"
+            >
+              {loadingAvatar ? (
+                <Skeleton className="h-full w-full rounded-full" />
+              ) : (
+                <Image
+                  src={avatarUrl || "https://placehold.co/36x36.png"}
+                  width={36}
+                  height={36}
+                  alt="Avatar"
+                  className="overflow-hidden rounded-full object-cover"
+                />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => signOut(auth)}>
+                 <LogOut className="mr-2 h-4 w-4" />
+                 Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </header>
   );
 }

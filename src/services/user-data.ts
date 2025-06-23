@@ -1,9 +1,9 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import type { Activity, Transaction, UserProfile } from '@/lib/types';
+import type { Activity, Notification, Transaction, UserProfile } from '@/lib/types';
 import type { User } from 'firebase/auth';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, addDoc, query, orderBy, getDocs, limit, increment } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, addDoc, query, orderBy, getDocs, limit, increment, WriteBatch } from 'firebase/firestore';
 import { isYesterday, startOfDay } from 'date-fns';
 
 // Helper to check for permission error
@@ -94,6 +94,40 @@ export async function getTransactions(uid: string, count: number = 8): Promise<T
   }
 }
 
+export async function getNotifications(uid: string, count: number = 5): Promise<Notification[]> {
+  try {
+    const notificationsRef = collection(db, 'users', uid, 'notifications');
+    const q = query(notificationsRef, orderBy('date', 'desc'), limit(count));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        date: (data.date as Timestamp).toDate(),
+      } as Notification;
+    });
+  } catch (error) {
+    if (isPermissionError(error)) {
+      console.warn(`Firestore permission denied for getNotifications. Returning []. Please fix security rules.`);
+      return []; // Suppress error and return empty state.
+    }
+    throw error;
+  }
+}
+
+// Add an internal helper to create notifications within a batch
+function _createNotification(batch: WriteBatch, uid: string, title: string, description: string) {
+    const notificationRef = doc(collection(db, 'users', uid, 'notifications'));
+    const newNotification = {
+        title,
+        description,
+        date: new Date(),
+        read: false,
+    };
+    batch.set(notificationRef, newNotification);
+}
+
 export async function claimAdReward(uid: string, reward: number, title: string): Promise<void> {
   const batch = writeBatch(db);
   const userRef = doc(db, 'users', uid);
@@ -126,6 +160,9 @@ export async function claimAdReward(uid: string, reward: number, title: string):
   };
   batch.set(transactionRef, newTransaction);
   
+  // 4. Create notification
+  _createNotification(batch, uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`);
+
   await batch.commit();
 }
 
@@ -159,10 +196,10 @@ export async function claimDailyReward(uid: string): Promise<{ success: boolean;
   let newStreak = 1;
   // If last claim was yesterday, increment streak. Otherwise, it's a new streak.
   if (lastClaimedDay && isYesterday(lastClaimedDay)) {
-    newStreak = (userProfile.loginStreak % 7) + 1; // Cycle streak from 1 to 7
+    newStreak = userProfile.loginStreak + 1;
   }
 
-  const reward = 5 + (newStreak * 5); // e.g. Day 1: 10, Day 2: 15, ..., Day 7: 40
+  const reward = 5 + (newStreak * 5); // e.g. Day 1: 10, Day 2: 15,...
   const now = new Date();
   
   const batch = writeBatch(db);
@@ -190,6 +227,8 @@ export async function claimDailyReward(uid: string): Promise<{ success: boolean;
     date: now,
     status: 'completed',
   });
+  
+  _createNotification(batch, uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`);
   
   await batch.commit();
 
