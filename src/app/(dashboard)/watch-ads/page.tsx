@@ -9,6 +9,7 @@ const ads: Ad[] = [
     duration: 30,
     reward: 15,
     imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "tech gadget"
   },
   {
     id: "2",
@@ -17,6 +18,7 @@ const ads: Ad[] = [
     duration: 25,
     reward: 12,
     imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "healthy food"
   },
   {
     id: "3",
@@ -25,6 +27,7 @@ const ads: Ad[] = [
     duration: 45,
     reward: 20,
     imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "travel vacation"
   },
    {
     id: "4",
@@ -33,6 +36,7 @@ const ads: Ad[] = [
     duration: 15,
     reward: 8,
     imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "mobile game"
   },
 ];
 
@@ -41,7 +45,7 @@ export default function WatchAdsPage() {
   return (
     <div>
         <h1 className="text-3xl font-bold tracking-tight font-headline mb-6">Watch Ads & Earn</h1>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {ads.map((ad) => (
                 <WatchAdCard key={ad.id} ad={ad} />
             ))}

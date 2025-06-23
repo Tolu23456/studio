@@ -88,7 +88,7 @@ export function DailyRewards() {
   
   if (authLoading) {
     return (
-      <Card className="sm:col-span-2">
+      <Card>
         <CardHeader className="pb-3">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-4 w-64" />
@@ -109,7 +109,7 @@ export function DailyRewards() {
   }
 
   return (
-    <Card className="sm:col-span-2">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle>Daily Login Rewards</CardTitle>
         <CardDescription>

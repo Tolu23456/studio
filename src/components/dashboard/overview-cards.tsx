@@ -14,7 +14,6 @@ export function OverviewCards() {
       getValue: (profile: any) => profile?.cubeBalance?.toLocaleString() ?? '0',
       icon: <Zap className="h-4 w-4 text-muted-foreground" />,
       description: "Your current spendable Cubes",
-      className: "sm:col-span-2",
     },
     {
       title: "Total Earned",
@@ -33,7 +32,7 @@ export function OverviewCards() {
   if (loading) {
     return (
       <>
-        <Card className="sm:col-span-2"><CardHeader className="pb-2"><Skeleton className="h-5 w-24" /></CardHeader><CardContent><Skeleton className="h-8 w-20" /></CardContent></Card>
+        <Card><CardHeader className="pb-2"><Skeleton className="h-5 w-24" /></CardHeader><CardContent><Skeleton className="h-8 w-20" /></CardContent></Card>
         <Card><CardHeader className="pb-2"><Skeleton className="h-5 w-24" /></CardHeader><CardContent><Skeleton className="h-8 w-20" /></CardContent></Card>
         <Card><CardHeader className="pb-2"><Skeleton className="h-5 w-24" /></CardHeader><CardContent><Skeleton className="h-8 w-20" /></CardContent></Card>
       </>
@@ -43,7 +42,7 @@ export function OverviewCards() {
   return (
     <>
       {stats.map((stat, index) => (
-        <Card key={index} className={stat.className}>
+        <Card key={index}>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
