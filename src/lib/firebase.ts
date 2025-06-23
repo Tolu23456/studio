@@ -11,6 +11,20 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Validate that all required Firebase config values are present
+const missingConfigKeys = Object.entries(firebaseConfig)
+  .filter(([key, value]) => !value)
+  .map(([key]) => key);
+
+if (missingConfigKeys.length > 0) {
+  throw new Error(
+    `Missing Firebase config keys: ${missingConfigKeys.join(
+      ", "
+    )}. Please make sure you have a .env file with all the required NEXT_PUBLIC_FIREBASE_ variables.`
+  );
+}
+
+
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
