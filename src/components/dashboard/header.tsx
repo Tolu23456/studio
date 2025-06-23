@@ -1,11 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { useAuth } from "@/context/auth-context";
+import { generateAvatar } from "@/ai/flows/generate-avatar-flow";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   Breadcrumb,
@@ -39,6 +42,41 @@ import {
 export default function DashboardHeader() {
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
+  const { user } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [loadingAvatar, setLoadingAvatar] = useState(true);
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      if (!user) {
+        setLoadingAvatar(false);
+        return;
+      }
+      
+      const storedAvatar = sessionStorage.getItem(`avatar_${user.uid}`);
+      if (storedAvatar) {
+        setAvatarUrl(storedAvatar);
+        setLoadingAvatar(false);
+        return;
+      }
+
+      setLoadingAvatar(true);
+      try {
+        const result = await generateAvatar();
+        setAvatarUrl(result.avatarDataUri);
+        sessionStorage.setItem(`avatar_${user.uid}`, result.avatarDataUri);
+      } catch (error) {
+        console.error("Failed to generate avatar:", error);
+        setAvatarUrl("https://placehold.co/36x36.png"); // fallback
+      } finally {
+        setLoadingAvatar(false);
+      }
+    };
+
+    if (user) {
+        fetchAvatar();
+    }
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -97,7 +135,7 @@ export default function DashboardHeader() {
                   <BreadcrumbPage className="capitalize">{segment.replace('-', ' ')}</BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
-                    <Link href={`/${pathSegments.slice(0, index + 2).join('/')}`} className="capitalize">{segment.replace('-', ' ')}</Link>
+                    <Link href={`/dashboard/${pathSegments.slice(1, index + 2).join('/')}`} className="capitalize">{segment.replace('-', ' ')}</Link>
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
@@ -115,14 +153,17 @@ export default function DashboardHeader() {
             size="icon"
             className="overflow-hidden rounded-full"
           >
-            <Image
-              src="https://placehold.co/36x36.png"
-              width={36}
-              height={36}
-              alt="Avatar"
-              className="overflow-hidden rounded-full"
-              data-ai-hint="user avatar"
-            />
+            {loadingAvatar ? (
+              <Skeleton className="h-full w-full rounded-full" />
+            ) : (
+              <Image
+                src={avatarUrl || "https://placehold.co/36x36.png"}
+                width={36}
+                height={36}
+                alt="Avatar"
+                className="overflow-hidden rounded-full object-cover"
+              />
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
