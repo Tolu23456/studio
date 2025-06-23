@@ -1,6 +1,12 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -29,8 +35,6 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
 
 export default function DashboardHeader() {
   const pathname = usePathname();
@@ -133,11 +137,9 @@ export default function DashboardHeader() {
             Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-             <Link href="/">
+          <DropdownMenuItem onClick={() => signOut(auth)}>
                <LogOut className="mr-2 h-4 w-4" />
                Logout
-             </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

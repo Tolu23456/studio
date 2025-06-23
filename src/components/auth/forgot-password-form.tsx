@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { sendPasswordResetEmail } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/lib/firebase";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -34,14 +36,22 @@ export function ForgotPasswordForm() {
         },
     });
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        // Mock password reset logic
-        console.log(values);
-        toast({
-            title: "Password Reset Email Sent",
-            description: "Please check your inbox for instructions.",
-        });
-        router.push("/login");
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        try {
+            await sendPasswordResetEmail(auth, values.email);
+            toast({
+                title: "Password Reset Email Sent",
+                description: "Please check your inbox for instructions.",
+            });
+            router.push("/login");
+        } catch (error: any) {
+            console.error("Password reset failed:", error);
+            toast({
+                variant: "destructive",
+                title: "Error Sending Email",
+                description: "Could not send password reset email. Please check the address and try again.",
+            });
+        }
     }
 
   return (
@@ -68,8 +78,8 @@ export function ForgotPasswordForm() {
                     </FormItem>
                 )}
                 />
-                <Button type="submit" className="w-full">
-                    Send Reset Link
+                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? 'Sending...' : 'Send Reset Link'}
                 </Button>
             </form>
         </Form>
