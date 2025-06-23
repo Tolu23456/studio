@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -21,7 +21,7 @@ export function PersonalizedTasks() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async () => {
     setLoading(true);
     try {
       // Mock user data
@@ -42,11 +42,11 @@ export function PersonalizedTasks() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchSuggestions();
-  }, []);
+  }, [fetchSuggestions]);
 
   return (
     <Card>

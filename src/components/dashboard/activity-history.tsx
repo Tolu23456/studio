@@ -53,7 +53,7 @@ export function ActivityHistory() {
                 <TableCell>
                   <Badge variant="outline">{activity.type}</Badge>
                 </TableCell>
-                <TableCell className="text-right text-green-600 font-semibold">+ {activity.cubes_earned}</TableCell>
+                <TableCell className="text-right text-accent font-semibold">+ {activity.cubes_earned}</TableCell>
               </TableRow>
             ))}
           </TableBody>

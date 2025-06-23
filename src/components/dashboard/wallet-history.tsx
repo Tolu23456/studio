@@ -71,7 +71,7 @@ export function WalletHistory() {
                 <TableCell className="hidden sm:table-cell">
                   <Badge variant={getStatusBadgeVariant(transaction.status)} className="capitalize">{transaction.status}</Badge>
                 </TableCell>
-                <TableCell className={cn("text-right font-semibold", transaction.amount > 0 ? "text-green-600" : "text-destructive")}>
+                <TableCell className={cn("text-right font-semibold", transaction.amount > 0 ? "text-accent" : "text-destructive")}>
                   {transaction.amount > 0 ? `+${transaction.amount.toLocaleString()}` : transaction.amount.toLocaleString()}
                 </TableCell>
               </TableRow>

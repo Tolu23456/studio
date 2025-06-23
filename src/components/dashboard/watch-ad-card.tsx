@@ -92,7 +92,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
           </Button>
         )}
         {isCompleted && (
-          <Button onClick={handleClaim} className="w-full bg-green-500 hover:bg-green-600 text-white">
+          <Button onClick={handleClaim} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
             <CheckCircle className="mr-2 h-4 w-4" />
             Claim {ad.reward} <Zap className="ml-1 h-4 w-4" />
           </Button>
