@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link";
@@ -16,6 +17,8 @@ import {
   Wallet,
   LogOut,
   Zap,
+  User,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,12 +30,16 @@ export default function DashboardSidebar() {
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/dashboard/watch-ads", icon: PlaySquare, label: "Watch Ads" },
     { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
+    { href: "/dashboard/profile", icon: User, label: "Profile" },
+    { href: "/dashboard/settings", icon: Settings, label: "Settings" },
   ];
 
   const isLinkActive = (href: string) => {
+    // Special case for the main dashboard page
     if (href === '/dashboard') {
       return pathname === href;
     }
+    // For all other pages, check if the path starts with the href
     return pathname.startsWith(href);
   };
 
@@ -87,13 +94,13 @@ export default function DashboardSidebar() {
       </aside>
 
       {/* Mobile Bottom Bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex justify-around border-t bg-background p-1 sm:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t bg-background p-1 sm:hidden">
           {navItems.map((item) => (
               <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                      "flex flex-1 flex-col items-center justify-center gap-1 rounded-md p-2 text-xs font-medium transition-colors",
+                      "flex flex-col items-center justify-center gap-1 rounded-md p-2 text-xs font-medium transition-colors",
                       isLinkActive(item.href)
                           ? "text-primary"
                           : "text-muted-foreground hover:bg-accent/80"
@@ -103,13 +110,6 @@ export default function DashboardSidebar() {
                   <span>{item.label}</span>
               </Link>
           ))}
-          <button
-              onClick={() => signOut(auth)}
-              className="flex flex-1 flex-col items-center justify-center gap-1 rounded-md p-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/80"
-          >
-              <LogOut className="h-5 w-5" />
-              <span>Logout</span>
-          </button>
       </nav>
     </>
   );

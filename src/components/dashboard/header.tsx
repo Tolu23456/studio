@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -112,20 +113,24 @@ export default function DashboardHeader() {
               <Link href="/dashboard">Dashboard</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
-          {pathSegments.slice(1).map((segment, index) => (
+          {pathSegments.slice(1).map((segment, index) => {
+            const isLast = index === pathSegments.length - 2;
+            const href = `/${pathSegments.slice(0, index + 2).join('/')}`;
+            return (
              <React.Fragment key={segment}>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                {index === pathSegments.length - 2 ? (
+                {isLast ? (
                   <BreadcrumbPage className="capitalize">{segment.replace('-', ' ')}</BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
-                    <Link href={`/dashboard/${pathSegments.slice(1, index + 2).join('/')}`} className="capitalize">{segment.replace('-', ' ')}</Link>
+                    <Link href={href} className="capitalize">{segment.replace('-', ' ')}</Link>
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
               </React.Fragment>
-          ))}
+            )
+          })}
         </BreadcrumbList>
       </Breadcrumb>
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
@@ -205,13 +210,17 @@ export default function DashboardHeader() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Profile
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/profile">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/settings">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => signOut(auth)}>
