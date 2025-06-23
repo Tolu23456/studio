@@ -4,6 +4,7 @@ import { db } from '@/lib/firebase';
 import type { Activity, Transaction, UserProfile } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, addDoc, query, orderBy, getDocs, limit, increment } from 'firebase/firestore';
+import { isYesterday, startOfDay } from 'date-fns';
 
 export async function createUserProfile(user: User): Promise<void> {
     const userRef = doc(db, 'users', user.uid);
@@ -13,6 +14,8 @@ export async function createUserProfile(user: User): Promise<void> {
         cubeBalance: 0,
         totalEarned: 0,
         referrals: 0,
+        loginStreak: 0,
+        lastClaimedDate: null,
     };
     await setDoc(userRef, newUserProfile);
 }
@@ -21,7 +24,16 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     const userRef = doc(db, 'users', uid);
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
-        return docSnap.data() as UserProfile;
+        const data = docSnap.data();
+        return {
+            uid: data.uid,
+            email: data.email,
+            cubeBalance: data.cubeBalance,
+            totalEarned: data.totalEarned,
+            referrals: data.referrals,
+            loginStreak: data.loginStreak || 0,
+            lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null
+        };
     }
     return null;
 }
@@ -87,4 +99,71 @@ export async function claimAdReward(uid: string, reward: number, title: string):
   batch.set(transactionRef, newTransaction);
   
   await batch.commit();
+}
+
+export async function claimDailyReward(uid: string): Promise<{ success: boolean; message: string }> {
+  const userRef = doc(db, 'users', uid);
+  const docSnap = await getDoc(userRef);
+
+  if (!docSnap.exists()) {
+    return { success: false, message: 'User not found.' };
+  }
+
+  // Manually construct profile to handle date conversion safely
+  const profileData = docSnap.data();
+  const userProfile: UserProfile = {
+      uid: profileData.uid,
+      email: profileData.email,
+      cubeBalance: profileData.cubeBalance,
+      totalEarned: profileData.totalEarned,
+      referrals: profileData.referrals,
+      loginStreak: profileData.loginStreak || 0,
+      lastClaimedDate: profileData.lastClaimedDate ? (profileData.lastClaimedDate as Timestamp).toDate() : null,
+  }
+
+  const today = startOfDay(new Date());
+  const lastClaimedDay = userProfile.lastClaimedDate ? startOfDay(userProfile.lastClaimedDate) : null;
+
+  if (lastClaimedDay && lastClaimedDay.getTime() === today.getTime()) {
+      return { success: false, message: 'You have already claimed your reward for today.' };
+  }
+  
+  let newStreak = 1;
+  // If last claim was yesterday, increment streak. Otherwise, it's a new streak.
+  if (lastClaimedDay && isYesterday(lastClaimedDay)) {
+    newStreak = (userProfile.loginStreak % 7) + 1; // Cycle streak from 1 to 7
+  }
+
+  const reward = 5 + (newStreak * 5); // e.g. Day 1: 10, Day 2: 15, ..., Day 7: 40
+  const now = new Date();
+  
+  const batch = writeBatch(db);
+  
+  batch.update(userRef, {
+    cubeBalance: increment(reward),
+    totalEarned: increment(reward),
+    loginStreak: newStreak,
+    lastClaimedDate: now,
+  });
+
+  const activityRef = doc(collection(db, 'users', uid, 'activities'));
+  batch.set(activityRef, {
+    type: 'Daily Login',
+    description: `Claimed Day ${newStreak} login bonus`,
+    cubes_earned: reward,
+    date: now,
+  });
+
+  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
+  batch.set(transactionRef, {
+    type: 'reward',
+    description: `Daily Login Bonus - Day ${newStreak}`,
+    amount: reward,
+    date: now,
+    status: 'completed',
+  });
+  
+  await batch.commit();
+
+  return { success: true, message: `You earned ${reward} Cubes!` };
 }

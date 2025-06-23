@@ -4,6 +4,8 @@ export type UserProfile = {
   cubeBalance: number;
   totalEarned: number;
   referrals: number;
+  loginStreak: number;
+  lastClaimedDate: Date | null;
 };
 
 export type Transaction = {
