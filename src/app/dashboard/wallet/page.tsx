@@ -1,11 +1,9 @@
-
 import { WalletHistory } from "@/components/dashboard/wallet-history";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Zap } from "lucide-react";
 
 export default function WalletPage() {
-  // Mock balance
   const currentBalance = 12530;
 
   return (
@@ -17,12 +15,10 @@ export default function WalletPage() {
           <CardTitle className="flex items-center text-4xl">
             <Zap className="w-8 h-8 mr-2 text-primary" />
             {currentBalance.toLocaleString()} Cubes
-          </Title>
+          </CardTitle>
         </CardHeader>
       </Card>
-      
       <Separator />
-
       <WalletHistory />
     </div>
   );
