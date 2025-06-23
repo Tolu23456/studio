@@ -19,6 +19,7 @@ import {
   Zap,
   User,
   Settings,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ export default function DashboardSidebar() {
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/dashboard/watch-ads", icon: PlaySquare, label: "Watch Ads" },
     { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
+    { href: "/dashboard/referrals", icon: Users, label: "Referrals" },
     { href: "/dashboard/profile", icon: User, label: "Profile" },
     { href: "/dashboard/settings", icon: Settings, label: "Settings" },
   ];
@@ -94,7 +96,7 @@ export default function DashboardSidebar() {
       </aside>
 
       {/* Mobile Bottom Bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t bg-background p-1 sm:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t bg-background p-1 sm:hidden">
           {navItems.map((item) => (
               <Link
                   key={item.href}
