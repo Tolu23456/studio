@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -10,6 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Check, Gift } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isToday, isYesterday, startOfDay } from 'date-fns';
@@ -94,12 +101,9 @@ export function DailyRewards() {
           <Skeleton className="h-4 w-64" />
         </CardHeader>
         <CardContent className="grid gap-4">
-          <div className="flex items-center justify-between space-x-2">
+          <div className="flex items-center justify-center space-x-2">
             {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center gap-1 text-center">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <Skeleton className="h-3 w-10" />
-                </div>
+              <Skeleton key={i} className="h-9 w-9 rounded-full" />
             ))}
           </div>
           <Skeleton className="h-10 w-full" />
@@ -117,26 +121,30 @@ export function DailyRewards() {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div className="overflow-x-auto -mx-6 px-6 pb-2">
-          <div className="flex items-center justify-start sm:justify-center space-x-4 min-w-max">
-            {rewards.map((reward) => (
-              <div key={reward.day} className="flex flex-col items-center gap-1 text-center shrink-0">
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
-                    reward.claimed
-                      ? "bg-primary/20 border-primary text-primary"
-                      : canClaim && reward.day === nextStreakDay
-                      ? "bg-accent/20 border-accent text-accent animate-pulse"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {reward.claimed ? <Check className="h-5 w-5" /> : <Gift className="h-5 w-5" />}
-                </div>
-                <span className="text-xs font-medium">Day {reward.day}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TooltipProvider>
+            <div className="flex items-center justify-center space-x-2">
+                {rewards.map((reward) => (
+                    <Tooltip key={reward.day}>
+                        <TooltipTrigger asChild>
+                            <div
+                            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all ${
+                                reward.claimed
+                                ? "bg-primary/20 border-primary text-primary"
+                                : canClaim && reward.day === nextStreakDay
+                                ? "bg-accent/20 border-accent text-accent animate-pulse"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                            >
+                            {reward.claimed ? <Check className="h-5 w-5" /> : <Gift className="h-5 w-5" />}
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Day {reward.day} {reward.claimed ? '(Claimed)' : ''}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                ))}
+            </div>
+        </TooltipProvider>
         <Button onClick={handleClaim} className="w-full" disabled={!canClaim || isClaiming}>
           {isClaiming ? "Claiming..." : canClaim ? `Claim Day ${nextStreakDay} Reward` : "Claimed Today"}
         </Button>
