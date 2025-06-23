@@ -67,7 +67,7 @@ export default function Home() {
                 width="650"
                 height="450"
                 alt="Hero"
-                data-ai-hint="digital currency rewards"
+                data-ai-hint="cartoon rewards"
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
               />
             </div>
