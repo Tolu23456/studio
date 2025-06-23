@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
@@ -27,7 +26,6 @@ const formSchema = z.object({
 });
 
 export function RegisterForm() {
-  const router = useRouter();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -41,11 +39,6 @@ export function RegisterForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       await createUserWithEmailAndPassword(auth, values.email, values.password);
-      toast({
-        title: "Registration Successful",
-        description: "Redirecting to your dashboard...",
-      });
-      router.push("/dashboard");
     } catch (error: any) {
       console.error("Registration failed:", error);
       let description = "An unknown error occurred.";
