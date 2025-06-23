@@ -117,23 +117,25 @@ export function DailyRewards() {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div className="flex items-center justify-between space-x-2">
-          {rewards.map((reward) => (
-            <div key={reward.day} className="flex flex-col items-center gap-1 text-center">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
-                  reward.claimed
-                    ? "bg-primary/20 border-primary text-primary"
-                    : canClaim && reward.day === nextStreakDay
-                    ? "bg-accent/20 border-accent text-accent animate-pulse"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {reward.claimed ? <Check className="h-5 w-5" /> : <Gift className="h-5 w-5" />}
+        <div className="overflow-x-auto -mx-6 px-6 pb-2">
+          <div className="flex items-center justify-start sm:justify-center space-x-4 min-w-max">
+            {rewards.map((reward) => (
+              <div key={reward.day} className="flex flex-col items-center gap-1 text-center shrink-0">
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
+                    reward.claimed
+                      ? "bg-primary/20 border-primary text-primary"
+                      : canClaim && reward.day === nextStreakDay
+                      ? "bg-accent/20 border-accent text-accent animate-pulse"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {reward.claimed ? <Check className="h-5 w-5" /> : <Gift className="h-5 w-5" />}
+                </div>
+                <span className="text-xs font-medium">Day {reward.day}</span>
               </div>
-              <span className="text-xs font-medium">Day {reward.day}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
         <Button onClick={handleClaim} className="w-full" disabled={!canClaim || isClaiming}>
           {isClaiming ? "Claiming..." : canClaim ? `Claim Day ${nextStreakDay} Reward` : "Claimed Today"}
