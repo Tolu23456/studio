@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -16,17 +19,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-const mockTransactions: Transaction[] = [
-    { id: "txn1", type: "reward", description: "Watched 'TechGadget Pro' ad", amount: 15, date: "2024-05-22", status: "completed" },
-    { id: "txn2", type: "reward", description: "Daily login bonus - Day 5", amount: 50, date: "2024-05-22", status: "completed" },
-    { id: "txn3", type: "withdrawal", description: "Redeemed for $5 Gift Card", amount: -5000, date: "2024-05-21", status: "completed" },
-    { id: "txn4", type: "reward", description: "Completed 'Quick Survey'", amount: 100, date: "2024-05-21", status: "completed" },
-    { id: "txn5", type: "reward", description: "Bonus for user@example.com", amount: 500, date: "2024-05-21", status: "completed" },
-    { id: "txn6", type: "purchase", description: "Entered 'Super Raffle'", amount: -50, date: "2024-05-20", status: "completed" },
-    { id: "txn7", type: "reward", description: "High score in 'Cube Runner'", amount: 25, date: "2024-05-20", status: "completed" },
-    { id: "txn8", type: "withdrawal", description: "Redeemed for $10 Gift Card", amount: -10000, date: "2024-05-19", status: "pending" },
-];
+import { useAuth } from "@/context/auth-context";
+import { getTransactions } from "@/services/user-data";
+import { Skeleton } from "../ui/skeleton";
 
 const getStatusBadgeVariant = (status: Transaction['status']) => {
     switch (status) {
@@ -40,6 +35,26 @@ const getStatusBadgeVariant = (status: Transaction['status']) => {
 }
 
 export function WalletHistory() {
+  const { user } = useAuth();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchTransactions() {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const userTransactions = await getTransactions(user.uid);
+        setTransactions(userTransactions);
+      } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTransactions();
+  }, [user]);
+
   return (
     <Card>
       <CardHeader>
@@ -59,23 +74,40 @@ export function WalletHistory() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockTransactions.map((transaction) => (
-              <TableRow key={transaction.id}>
-                <TableCell>
-                  <div className="font-medium">{transaction.description}</div>
-                  <div className="text-sm text-muted-foreground">{new Date(transaction.date).toLocaleDateString()}</div>
-                </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                  <Badge variant="outline" className="capitalize">{transaction.type}</Badge>
-                </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                  <Badge variant={getStatusBadgeVariant(transaction.status)} className="capitalize">{transaction.status}</Badge>
-                </TableCell>
-                <TableCell className={cn("text-right font-semibold", transaction.amount > 0 ? "text-accent" : "text-destructive")}>
-                  {transaction.amount > 0 ? `+${transaction.amount.toLocaleString()}` : transaction.amount.toLocaleString()}
-                </TableCell>
-              </TableRow>
-            ))}
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
+                </TableRow>
+              ))
+            ) : transactions.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        No transactions yet.
+                    </TableCell>
+                </TableRow>
+            ) : (
+              transactions.map((transaction) => (
+                <TableRow key={transaction.id}>
+                  <TableCell>
+                    <div className="font-medium">{transaction.description}</div>
+                    <div className="text-sm text-muted-foreground">{transaction.date.toLocaleDateString()}</div>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <Badge variant="outline" className="capitalize">{transaction.type}</Badge>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <Badge variant={getStatusBadgeVariant(transaction.status)} className="capitalize">{transaction.status}</Badge>
+                  </TableCell>
+                  <TableCell className={cn("text-right font-semibold", transaction.amount > 0 ? "text-green-600" : "text-destructive")}>
+                    {transaction.amount > 0 ? `+${transaction.amount.toLocaleString()}` : transaction.amount.toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>

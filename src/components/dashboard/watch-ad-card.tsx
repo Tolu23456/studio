@@ -15,6 +15,8 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import type { Ad } from "@/lib/types";
 import { PlayCircle, CheckCircle, Zap } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
+import { claimAdReward } from "@/services/user-data";
 
 type WatchAdCardProps = {
   ad: Ad;
@@ -24,7 +26,9 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
   const [isWatching, setIsWatching] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(ad.duration);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
   const { toast } = useToast();
+  const { user, refreshUserProfile } = useAuth();
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -35,22 +39,44 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
     } else if (isWatching && timeRemaining === 0) {
       setIsCompleted(true);
       setIsWatching(false);
+      // Prevent re-watching immediately
+      sessionStorage.setItem(`ad_watched_${ad.id}`, 'true');
     }
     return () => clearTimeout(timer);
-  }, [isWatching, timeRemaining]);
+  }, [isWatching, timeRemaining, ad.id]);
+  
+  useEffect(() => {
+    // Prevent watching an ad that has already been completed in this session
+    if (sessionStorage.getItem(`ad_watched_${ad.id}`)) {
+      setIsCompleted(true);
+    }
+  }, [ad.id]);
+
 
   const handleWatch = () => {
     setIsWatching(true);
   };
 
-  const handleClaim = () => {
-    toast({
-      title: "Reward Claimed!",
-      description: `You've earned ${ad.reward} Cubes.`,
-    });
-    // Here you would typically call an API to credit the user
-    setIsCompleted(false); // Reset for potential re-watch
-    setTimeRemaining(ad.duration);
+  const handleClaim = async () => {
+    if (!user) {
+        toast({ variant: "destructive", title: "You must be logged in to claim rewards." });
+        return;
+    }
+    setIsClaiming(true);
+    try {
+        await claimAdReward(user.uid, ad.reward, ad.title);
+        await refreshUserProfile();
+        toast({
+            title: "Reward Claimed!",
+            description: `You've earned ${ad.reward} Cubes.`,
+        });
+        setIsCompleted(true); // Keep it in claimed state
+    } catch (error) {
+        console.error("Failed to claim reward", error);
+        toast({ variant: "destructive", title: "Claiming failed", description: "Could not claim your reward. Please try again." });
+    } finally {
+        setIsClaiming(false);
+    }
   };
 
   const progress = ((ad.duration - timeRemaining) / ad.duration) * 100;
@@ -91,10 +117,15 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
             Watching...
           </Button>
         )}
-        {isCompleted && (
-          <Button onClick={handleClaim} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+        {isCompleted && !isClaiming &&(
+          <Button onClick={handleClaim} className="w-full bg-green-500 hover:bg-green-600 text-white">
             <CheckCircle className="mr-2 h-4 w-4" />
             Claim {ad.reward} <Zap className="ml-1 h-4 w-4" />
+          </Button>
+        )}
+        {isClaiming && (
+          <Button disabled className="w-full" variant="secondary">
+            Claiming...
           </Button>
         )}
       </CardFooter>

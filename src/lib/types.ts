@@ -1,9 +1,17 @@
+export type UserProfile = {
+  uid: string;
+  email: string | null;
+  cubeBalance: number;
+  totalEarned: number;
+  referrals: number;
+};
+
 export type Transaction = {
   id: string;
   type: 'deposit' | 'withdrawal' | 'reward' | 'purchase';
   description: string;
   amount: number;
-  date: string;
+  date: Date;
   status: 'completed' | 'pending' | 'failed';
 };
 
@@ -12,7 +20,7 @@ export type Activity = {
   type: 'Ad Watch' | 'Task Completion' | 'Game Play' | 'Referral Bonus' | 'Daily Login';
   description:string;
   cubes_earned: number;
-  date: string;
+  date: Date;
 };
 
 export type Ad = {

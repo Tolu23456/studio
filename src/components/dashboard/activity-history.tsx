@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -15,17 +18,31 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import type { Activity } from "@/lib/types";
-
-const mockActivities: Activity[] = [
-  { id: "1", type: "Ad Watch", description: "Watched 'TechGadget Pro' ad", cubes_earned: 15, date: "2024-05-22" },
-  { id: "2", type: "Daily Login", description: "Daily login bonus - Day 5", cubes_earned: 50, date: "2024-05-22" },
-  { id: "3", type: "Task Completion", description: "Completed 'Quick Survey'", cubes_earned: 100, date: "2024-05-21" },
-  { id: "4", type: "Referral Bonus", description: "Bonus for user@example.com", cubes_earned: 500, date: "2024-05-21" },
-  { id: "5", type: "Ad Watch", description: "Watched 'Healthy Snacks' ad", cubes_earned: 12, date: "2024-05-20" },
-  { id: "6", type: "Game Play", description: "High score in 'Cube Runner'", cubes_earned: 25, date: "2024-05-20" },
-];
+import { useAuth } from "@/context/auth-context";
+import { getActivities } from "@/services/user-data";
+import { Skeleton } from "../ui/skeleton";
 
 export function ActivityHistory() {
+  const { user } = useAuth();
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchActivities() {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const userActivities = await getActivities(user.uid);
+        setActivities(userActivities);
+      } catch (error) {
+        console.error("Failed to fetch activities:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchActivities();
+  }, [user]);
+
   return (
     <Card>
       <CardHeader>
@@ -44,18 +61,34 @@ export function ActivityHistory() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockActivities.map((activity) => (
-              <TableRow key={activity.id}>
-                <TableCell>
-                  <div className="font-medium">{activity.description}</div>
-                  <div className="text-sm text-muted-foreground">{new Date(activity.date).toLocaleDateString()}</div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{activity.type}</Badge>
-                </TableCell>
-                <TableCell className="text-right text-accent font-semibold">+ {activity.cubes_earned}</TableCell>
-              </TableRow>
-            ))}
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
+                </TableRow>
+              ))
+            ) : activities.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                        No recent activity.
+                    </TableCell>
+                </TableRow>
+            ) : (
+              activities.map((activity) => (
+                <TableRow key={activity.id}>
+                  <TableCell>
+                    <div className="font-medium">{activity.description}</div>
+                    <div className="text-sm text-muted-foreground">{activity.date.toLocaleDateString()}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{activity.type}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right text-green-600 font-semibold">+ {activity.cubes_earned}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>

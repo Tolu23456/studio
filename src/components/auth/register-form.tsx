@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
+import { createUserProfile } from "@/services/user-data";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -38,7 +39,12 @@ export function RegisterForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      await createUserProfile(userCredential.user);
+      toast({
+        title: "Registration Successful",
+        description: "Redirecting to your dashboard...",
+      });
     } catch (error: any) {
       console.error("Registration failed:", error);
       let description = "An unknown error occurred.";
