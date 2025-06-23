@@ -2,19 +2,22 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read and write their own profile data.
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
 
-      // Users can only access their own sub-collections.
-      match /activities/{activityId} {
-        allow read, write: if request.auth.uid == userId;
-      }
-      match /transactions/{transactionId} {
-        allow read, write: if request.auth.uid == userId;
-      }
-      match /notifications/{notificationId} {
-        allow read, write: if request.auth.uid == userId;
+    // Helper function to check if a user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Match any document in the 'users' collection
+    match /users/{userId} {
+      // Allow a user to read and write to their own document,
+      // and allow creation if they are signed in.
+      allow read, update, delete: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn();
+
+      // Allow users to read and write to their own subcollections
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
     }
   }

@@ -6,9 +6,6 @@ import type { User } from 'firebase/auth';
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, addDoc, query, orderBy, getDocs, limit, increment, WriteBatch } from 'firebase/firestore';
 import { isYesterday, startOfDay } from 'date-fns';
 
-// Helper to check for permission error
-const isPermissionError = (error: any) => error?.code === 'permission-denied';
-
 export async function createUserProfile(user: User): Promise<void> {
     const userRef = doc(db, 'users', user.uid);
     const newUserProfile: UserProfile = {
@@ -24,96 +21,63 @@ export async function createUserProfile(user: User): Promise<void> {
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-    try {
-        const userRef = doc(db, 'users', uid);
-        const docSnap = await getDoc(userRef);
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            return {
-                uid: data.uid,
-                email: data.email,
-                cubeBalance: data.cubeBalance,
-                totalEarned: data.totalEarned,
-                referrals: data.referrals,
-                loginStreak: data.loginStreak || 0,
-                lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null
-            };
-        }
-        return null;
-    } catch (error) {
-        if (isPermissionError(error)) {
-            console.warn(`Firestore permission denied for getUserProfile. Returning null. Please fix security rules.`);
-            return null; // Suppress error and return empty state.
-        }
-        // Re-throw other errors
-        throw error;
+    const userRef = doc(db, 'users', uid);
+    const docSnap = await getDoc(userRef);
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+            uid: data.uid,
+            email: data.email,
+            cubeBalance: data.cubeBalance,
+            totalEarned: data.totalEarned,
+            referrals: data.referrals,
+            loginStreak: data.loginStreak || 0,
+            lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null
+        };
     }
+    return null;
 }
 
 export async function getActivities(uid: string, count: number = 6): Promise<Activity[]> {
-  try {
-    const activitiesRef = collection(db, 'users', uid, 'activities');
-    const q = query(activitiesRef, orderBy('date', 'desc'), limit(count));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-        id: doc.id,
-        ...data,
-        date: (data.date as Timestamp).toDate(),
-        } as Activity;
-    });
-  } catch(error) {
-    if (isPermissionError(error)) {
-        console.warn(`Firestore permission denied for getActivities. Returning []. Please fix security rules.`);
-        return []; // Suppress error and return empty state.
-    }
-    throw error;
-  }
+  const activitiesRef = collection(db, 'users', uid, 'activities');
+  const q = query(activitiesRef, orderBy('date', 'desc'), limit(count));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+      id: doc.id,
+      ...data,
+      date: (data.date as Timestamp).toDate(),
+      } as Activity;
+  });
 }
 
 export async function getTransactions(uid: string, count: number = 8): Promise<Transaction[]> {
-  try {
-    const transactionsRef = collection(db, 'users', uid, 'transactions');
-    const q = query(transactionsRef, orderBy('date', 'desc'), limit(count));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-        id: doc.id,
-        ...data,
-        date: (data.date as Timestamp).toDate(),
-        } as Transaction;
-    });
-  } catch (error) {
-    if (isPermissionError(error)) {
-        console.warn(`Firestore permission denied for getTransactions. Returning []. Please fix security rules.`);
-        return []; // Suppress error and return empty state.
-    }
-    throw error;
-  }
+  const transactionsRef = collection(db, 'users', uid, 'transactions');
+  const q = query(transactionsRef, orderBy('date', 'desc'), limit(count));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+      id: doc.id,
+      ...data,
+      date: (data.date as Timestamp).toDate(),
+      } as Transaction;
+  });
 }
 
 export async function getNotifications(uid: string, count: number = 5): Promise<Notification[]> {
-  try {
-    const notificationsRef = collection(db, 'users', uid, 'notifications');
-    const q = query(notificationsRef, orderBy('date', 'desc'), limit(count));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        date: (data.date as Timestamp).toDate(),
-      } as Notification;
-    });
-  } catch (error) {
-    if (isPermissionError(error)) {
-      console.warn(`Firestore permission denied for getNotifications. Returning []. Please fix security rules.`);
-      return []; // Suppress error and return empty state.
-    }
-    throw error;
-  }
+  const notificationsRef = collection(db, 'users', uid, 'notifications');
+  const q = query(notificationsRef, orderBy('date', 'desc'), limit(count));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      date: (data.date as Timestamp).toDate(),
+    } as Notification;
+  });
 }
 
 // Add an internal helper to create notifications within a batch
