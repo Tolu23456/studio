@@ -1,12 +1,20 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // TEMPORARY DEBUGGING RULE:
-    // This rule allows any authenticated user to read and write all data.
-    // This is NOT secure for production, but will help us fix the permissions issue.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Users can only read and write to their own user profile document.
+    match /users/{userId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+
+    // Users can only read, write, and delete their own activities.
+    match /users/{userId}/activities/{activityId} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Users can only read, write, and delete their own transactions.
+    match /users/{userId}/transactions/{transactionId} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
