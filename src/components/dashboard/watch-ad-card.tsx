@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -17,6 +17,7 @@ import type { Ad } from "@/lib/types";
 import { PlayCircle, CheckCircle, Zap } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { claimAdReward } from "@/services/user-data";
+import { cn } from "@/lib/utils";
 
 type WatchAdCardProps = {
   ad: Ad;
@@ -90,7 +91,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
           width={600}
           height={400}
           className="object-cover aspect-video"
-          data-ai-hint="advertisement video"
+          data-ai-hint={ad.dataAiHint}
         />
       </CardHeader>
       <CardContent className="p-4">
@@ -118,7 +119,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
           </Button>
         )}
         {isCompleted && !isClaiming &&(
-          <Button onClick={handleClaim} className="w-full bg-green-500 hover:bg-green-600 text-white">
+          <Button onClick={handleClaim} className={cn(buttonVariants({}), "w-full bg-success hover:bg-success/90 text-success-foreground")}>
             <CheckCircle className="mr-2 h-4 w-4" />
             Claim {ad.reward} <Zap className="ml-1 h-4 w-4" />
           </Button>
