@@ -1,10 +1,9 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // This rule allows a logged-in user to read and write only their own data.
-    // It covers the user's profile document and all subcollections like activities and transactions.
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
