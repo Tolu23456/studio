@@ -29,6 +29,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
   const [timeRemaining, setTimeRemaining] = useState(ad.duration);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
+  const [isClaimed, setIsClaimed] = useState(false);
   const { toast } = useToast();
   const { user, refreshUserProfile } = useAuth();
 
@@ -47,7 +48,10 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
   }, [isWatching, timeRemaining, ad.id]);
   
   useEffect(() => {
-    if (sessionStorage.getItem(`ad_watched_${ad.id}`)) {
+    if (sessionStorage.getItem(`ad_claimed_${ad.id}`)) {
+      setIsCompleted(true);
+      setIsClaimed(true);
+    } else if (sessionStorage.getItem(`ad_watched_${ad.id}`)) {
       setIsCompleted(true);
     }
   }, [ad.id]);
@@ -70,7 +74,8 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
             title: "Reward Claimed!",
             description: `You've earned ${ad.reward} Cubes.`,
         });
-        setIsCompleted(true); 
+        setIsClaimed(true);
+        sessionStorage.setItem(`ad_claimed_${ad.id}`, 'true');
     } catch (error) {
         console.error("Failed to claim reward", error);
         toast({ variant: "destructive", title: "Claiming failed", description: "Could not claim your reward. Please try again." });
@@ -117,16 +122,21 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
             Watching...
           </Button>
         )}
-        {isCompleted && !isClaiming &&(
-          <Button onClick={handleClaim} className={cn(buttonVariants({}), "w-full bg-success hover:bg-success/90 text-success-foreground")}>
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Claim {ad.reward} <Zap className="ml-1 h-4 w-4" />
+        {isCompleted && !isClaimed && (
+          <Button onClick={handleClaim} disabled={isClaiming} className={cn(buttonVariants({}), "w-full bg-success hover:bg-success/90 text-success-foreground")}>
+            {isClaiming ? "Claiming..." : (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Claim {ad.reward} <Zap className="ml-1 h-4 w-4" />
+              </>
+            )}
           </Button>
         )}
-        {isClaiming && (
-          <Button disabled className="w-full" variant="secondary">
-            Claiming...
-          </Button>
+        {isCompleted && isClaimed && (
+            <Button disabled className="w-full" variant="outline">
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Reward Claimed
+            </Button>
         )}
       </CardFooter>
     </Card>
