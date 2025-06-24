@@ -6,12 +6,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from 'date-fns';
 import type { Notification } from '@/lib/types';
-import { getNotifications } from '@/services/user-data';
+import { collection, query, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore";
 
 import {
   Breadcrumb,
@@ -46,21 +46,32 @@ export default function DashboardHeader() {
   const [loadingNotifications, setLoadingNotifications] = useState(true);
 
   useEffect(() => {
-    async function fetchNotifications() {
-      if (!user) return;
-      setLoadingNotifications(true);
-      try {
-        const userNotifications = await getNotifications(user.uid);
-        setNotifications(userNotifications);
-      } catch (error) {
-        console.error("Failed to fetch notifications:", error);
-      } finally {
-        setLoadingNotifications(false);
-      }
+    if (!user) {
+      setLoadingNotifications(false);
+      return;
     }
-    if (user) {
-      fetchNotifications();
-    }
+
+    setLoadingNotifications(true);
+    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+    const q = query(notificationsRef, orderBy('date', 'desc'), limit(5));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const userNotifications = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          date: (data.date as Timestamp).toDate(),
+        } as Notification;
+      });
+      setNotifications(userNotifications);
+      setLoadingNotifications(false);
+    }, (error) => {
+      console.error("Error fetching real-time notifications: ", error);
+      setLoadingNotifications(false);
+    });
+    
+    return () => unsubscribe();
   }, [user]);
 
   const hasUnread = notifications.some(n => !n.read);

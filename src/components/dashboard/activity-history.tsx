@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,8 +20,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Activity } from "@/lib/types";
 import { useAuth } from "@/context/auth-context";
-import { getActivities } from "@/services/user-data";
 import { Skeleton } from "../ui/skeleton";
+import { db } from "@/lib/firebase";
+import { collection, query, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore";
 
 export function ActivityHistory() {
   const { user } = useAuth();
@@ -28,20 +30,34 @@ export function ActivityHistory() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchActivities() {
-      if (!user) return;
-      setLoading(true);
-      try {
-        const userActivities = await getActivities(user.uid);
-        setActivities(userActivities);
-      } catch (error) {
-        console.error("Failed to fetch activities:", error);
-      } finally {
-        setLoading(false);
-      }
+    if (!user) {
+      setLoading(false);
+      return;
     }
-    fetchActivities();
+
+    setLoading(true);
+    const activitiesRef = collection(db, 'users', user.uid, 'activities');
+    const q = query(activitiesRef, orderBy('date', 'desc'), limit(6));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const userActivities = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          date: (data.date as Timestamp).toDate(),
+        } as Activity;
+      });
+      setActivities(userActivities);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching real-time activities: ", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe(); // Cleanup listener on component unmount
   }, [user]);
+
 
   return (
     <Card>

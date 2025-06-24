@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,8 +21,10 @@ import { Badge } from "@/components/ui/badge";
 import type { Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
-import { getTransactions } from "@/services/user-data";
 import { Skeleton } from "../ui/skeleton";
+import { db } from "@/lib/firebase";
+import { collection, query, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore";
+
 
 const getStatusBadgeVariant = (status: Transaction['status']) => {
     switch (status) {
@@ -40,19 +43,32 @@ export function WalletHistory() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchTransactions() {
-      if (!user) return;
-      setLoading(true);
-      try {
-        const userTransactions = await getTransactions(user.uid);
-        setTransactions(userTransactions);
-      } catch (error) {
-        console.error("Failed to fetch transactions:", error);
-      } finally {
-        setLoading(false);
-      }
+    if (!user) {
+      setLoading(false);
+      return;
     }
-    fetchTransactions();
+
+    setLoading(true);
+    const transactionsRef = collection(db, 'users', user.uid, 'transactions');
+    const q = query(transactionsRef, orderBy('date', 'desc'), limit(8));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const userTransactions = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          date: (data.date as Timestamp).toDate(),
+        } as Transaction;
+      });
+      setTransactions(userTransactions);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching real-time transactions: ", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   return (
