@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Gift, PlayCircle, Star } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import LandingHeader from "@/components/layout/landing-header";
 import LandingFooter from "@/components/layout/landing-footer";
 
@@ -62,14 +61,68 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-              <Image
-                src="https://placehold.co/650x450.png"
+              <svg
                 width="650"
                 height="450"
-                alt="Hero"
-                data-ai-hint="digital earnings"
-                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
-              />
+                viewBox="0 0 650 450"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="mx-auto aspect-video w-full rounded-xl object-contain lg:order-last"
+                aria-labelledby="hero-illustration-title"
+              >
+                <title id="hero-illustration-title">An illustration of a mobile app interface showing graphs and floating reward cubes.</title>
+                <defs>
+                  <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="hsl(var(--primary) / 0.1)" />
+                    <stop offset="100%" stop-color="hsl(var(--primary) / 0.0)" />
+                  </linearGradient>
+                  <filter id="drop-shadow">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+                    <feOffset dx="5" dy="5" result="offsetblur"/>
+                    <feFlood flood-color="hsl(var(--foreground) / 0.1)"/>
+                    <feComposite in2="offsetblur" operator="in"/>
+                    <feMerge>
+                      <feMergeNode/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                <rect width="650" height="450" fill="url(#grad1)" />
+                <circle cx="50" cy="50" r="100" fill="hsl(var(--primary) / 0.05)" />
+                <circle cx="600" cy="400" r="120" fill="hsl(var(--accent) / 0.05)" />
+
+                <g style={{ filter: 'url(#drop-shadow)' }}>
+                  <rect x="175" y="50" width="300" height="350" rx="30" fill="hsl(var(--card))" stroke="hsl(var(--border))" stroke-width="1" />
+                  <rect x="195" y="70" width="260" height="40" rx="10" fill="hsl(var(--muted))" />
+                  
+                  <rect x="195" y="130" width="120" height="120" rx="10" fill="hsl(var(--primary) / 0.1)"/>
+                  <path d="M220 220L245 180L270 200L295 160" stroke="hsl(var(--primary))" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+                  
+                  <rect x="335" y="130" width="120" height="120" rx="10" fill="hsl(var(--muted))" />
+                  
+                  <rect x="195" y="270" width="260" height="60" rx="10" fill="hsl(var(--muted))" />
+                  <rect x="195" y="350" width="180" height="30" rx="10" fill="hsl(var(--muted))" />
+                </g>
+                
+                <g transform="translate(100, 150)" style={{ filter: 'url(#drop-shadow)' }}>
+                    <rect width="60" height="60" rx="10" fill="hsl(var(--primary))" transform="rotate(-15)"/>
+                    <text x="18" y="42" fontFamily="PT Sans, sans-serif" fontSize="32" fill="hsl(var(--primary-foreground))" fontWeight="bold">C</text>
+                </g>
+                
+                <g transform="translate(480, 250)" style={{ filter: 'url(#drop-shadow)' }}>
+                    <rect width="80" height="80" rx="15" fill="hsl(var(--accent))" transform="rotate(20)"/>
+                    <text x="25" y="55" fontFamily="PT Sans, sans-serif" fontSize="40" fill="hsl(var(--accent-foreground))" fontWeight="bold">C</text>
+                </g>
+                
+                <g transform="translate(500, 80) scale(0.8)" style={{ filter: 'url(#drop-shadow)' }}>
+                    <rect width="40" height="40" rx="8" fill="hsl(var(--primary) / 0.7)" transform="rotate(10)"/>
+                </g>
+                
+                <g transform="translate(120, 350)" style={{ filter: 'url(#drop-shadow)' }}>
+                    <rect width="50" height="50" rx="8" fill="hsl(var(--accent) / 0.6)" transform="rotate(-25)"/>
+                </g>
+              </svg>
             </div>
           </div>
         </section>
