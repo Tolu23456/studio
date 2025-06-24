@@ -9,7 +9,7 @@ const games: Game[] = [
     description: "Tap once to make a cube dash through rotating obstacles. Timing is everything.",
     imageUrl: "https://placehold.co/600x400.png",
     dataAiHint: "abstract obstacle",
-    rewardDescription: "Performance-based",
+    rewardDescription: "Higher score = more Cubes!",
   },
   {
     id: "g2",
@@ -17,7 +17,7 @@ const games: Game[] = [
     description: "Jump between moving platforms. One misstep = fall.",
     imageUrl: "https://placehold.co/600x400.png",
     dataAiHint: "platformer game",
-    rewardDescription: "Performance-based",
+    rewardDescription: "Longer survival = more Cubes!",
   },
   {
     id: "g3",
@@ -25,7 +25,7 @@ const games: Game[] = [
     description: "Navigate through a maze where only one path is safe. Red tiles = restart.",
     imageUrl: "https://placehold.co/600x400.png",
     dataAiHint: "maze puzzle",
-    rewardDescription: "Performance-based",
+    rewardDescription: "Faster completion = more Cubes!",
   },
    {
     id: "g4",
@@ -49,7 +49,7 @@ const games: Game[] = [
     description: "Tap a shrinking dot before it vanishes. Dot gets faster with each round.",
     imageUrl: "https://placehold.co/600x400.png",
     dataAiHint: "fast tap",
-    rewardDescription: "Performance-based",
+    rewardDescription: "Higher score = more Cubes!",
   },
   {
     id: "g7",
@@ -57,7 +57,7 @@ const games: Game[] = [
     description: "Stack falling blocks as perfectly as you can. One tiny misalignment shrinks your base.",
     imageUrl: "https://placehold.co/600x400.png",
     dataAiHint: "stacking game",
-    rewardDescription: "Performance-based",
+    rewardDescription: "Taller tower = more Cubes!",
   },
   {
     id: "g8",
@@ -65,7 +65,7 @@ const games: Game[] = [
     description: "Type short, random words before the time bar ends. Increases in difficulty.",
     imageUrl: "https://placehold.co/600x400.png",
     dataAiHint: "typing game",
-    rewardDescription: "Performance-based",
+    rewardDescription: "Higher WPM = more Cubes!",
   },
   {
     id: "g9",
@@ -73,7 +73,7 @@ const games: Game[] = [
     description: "Swipe in the opposite direction of the arrow. Your brain will betray you.",
     imageUrl: "https://placehold.co/600x400.png",
     dataAiHint: "brain teaser",
-    rewardDescription: "Performance-based",
+    rewardDescription: "More correct swipes = more Cubes!",
   },
   {
     id: "g10",
@@ -81,7 +81,7 @@ const games: Game[] = [
     description: "Tilt or swipe to move a ball through tight mazes with one wrong exit.",
     imageUrl: "https://placehold.co/600x400.png",
     dataAiHint: "maze ball",
-    rewardDescription: "Performance-based",
+    rewardDescription: "Faster completion = more Cubes!",
   },
 ];
 
