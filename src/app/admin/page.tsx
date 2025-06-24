@@ -1,8 +1,40 @@
 
+'use client';
+
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/auth-context";
+import { getAdminDashboardStats } from "@/services/user-data";
 import { Users, Zap, BarChart } from "lucide-react";
 
+type AdminStats = {
+  totalUsers: number;
+  totalCubesAwarded: number;
+};
+
 export default function AdminDashboardPage() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const idToken = await user.getIdToken();
+        const fetchedStats = await getAdminDashboardStats(idToken);
+        setStats(fetchedStats);
+      } catch (error) {
+        console.error("Failed to fetch admin stats:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, [user]);
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight font-headline">Admin Dashboard</h1>
@@ -13,8 +45,8 @@ export default function AdminDashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
-            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+            {loading ? <Skeleton className="h-8 w-20" /> : <div className="text-2xl font-bold">{stats?.totalUsers.toLocaleString() ?? 0}</div>}
+            <p className="text-xs text-muted-foreground">Total registered users</p>
           </CardContent>
         </Card>
         <Card>
@@ -23,7 +55,7 @@ export default function AdminDashboardPage() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5,420,123</div>
+            {loading ? <Skeleton className="h-8 w-36" /> : <div className="text-2xl font-bold">{stats?.totalCubesAwarded.toLocaleString() ?? 0}</div>}
             <p className="text-xs text-muted-foreground">Across all users</p>
           </CardContent>
         </Card>
@@ -33,8 +65,8 @@ export default function AdminDashboardPage() {
             <BarChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">573</div>
-            <p className="text-xs text-muted-foreground">+3 since yesterday</p>
+            <div className="text-2xl font-bold">Coming Soon</div>
+            <p className="text-xs text-muted-foreground">Feature in development</p>
           </CardContent>
         </Card>
       </div>

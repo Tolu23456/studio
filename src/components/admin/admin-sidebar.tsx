@@ -12,7 +12,6 @@ export default function AdminSidebar() {
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/users", label: "Users", icon: Users },
-    { href: "/admin/settings", label: "Settings", icon: Settings },
   ];
 
    const isLinkActive = (href: string) => {

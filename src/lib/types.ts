@@ -6,6 +6,7 @@ export type UserProfile = {
   referrals: number;
   loginStreak: number;
   lastClaimedDate: Date | null;
+  createdAt: Date;
 };
 
 export type Transaction = {

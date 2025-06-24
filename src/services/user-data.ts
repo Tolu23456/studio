@@ -3,14 +3,23 @@
 
 import { getAdminDb } from '@/lib/firebase-admin';
 import type { Activity, Notification, Transaction, UserProfile } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, WriteBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, WriteBatch, getDocs } from 'firebase/firestore';
 import { isYesterday, startOfDay } from 'date-fns';
 import { getAuthenticatedUid } from './auth';
 import { getAdminAuth } from '@/lib/firebase-admin';
 
+async function verifyAdmin(idToken: string): Promise<string> {
+    const adminAuth = getAdminAuth();
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    if (decodedToken.admin !== true) {
+        throw new Error('User does not have admin privileges.');
+    }
+    return decodedToken.uid;
+}
+
 export async function createUserProfile(idToken: string): Promise<void> {
     const adminDb = getAdminDb();
-    const { uid, email } = await getAdminAuth().verifyIdToken(idToken);
+    const { uid, email, metadata } = await getAdminAuth().verifyIdToken(idToken);
     const userRef = doc(adminDb, 'users', uid);
     const newUserProfile: UserProfile = {
         uid: uid,
@@ -20,6 +29,7 @@ export async function createUserProfile(idToken: string): Promise<void> {
         referrals: 0,
         loginStreak: 0,
         lastClaimedDate: null,
+        createdAt: new Date(metadata.creationTime),
     };
     await setDoc(userRef, newUserProfile);
 }
@@ -38,7 +48,8 @@ export async function getUserProfile(idToken: string): Promise<UserProfile | nul
             totalEarned: data.totalEarned,
             referrals: data.referrals,
             loginStreak: data.loginStreak || 0,
-            lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null
+            lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
+            createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(docSnap.createTime!.seconds * 1000),
         };
     }
     return null;
@@ -148,6 +159,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
       referrals: profileData.referrals,
       loginStreak: profileData.loginStreak || 0,
       lastClaimedDate: profileData.lastClaimedDate ? (profileData.lastClaimedDate as Timestamp).toDate() : null,
+      createdAt: profileData.createdAt ? (profileData.createdAt as Timestamp).toDate() : new Date(docSnap.createTime!.seconds * 1000),
   }
 
   const today = startOfDay(new Date());
@@ -196,4 +208,43 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
   await batch.commit();
 
   return { success: true, message: `You earned ${reward} Cubes!` };
+}
+
+// Admin functions
+export async function getAllUsers(idToken: string): Promise<UserProfile[]> {
+  await verifyAdmin(idToken);
+  const adminDb = getAdminDb();
+  const usersSnapshot = await getDocs(collection(adminDb, 'users'));
+  const users: UserProfile[] = [];
+  usersSnapshot.forEach((doc) => {
+    const data = doc.data();
+    users.push({
+      uid: data.uid,
+      email: data.email,
+      cubeBalance: data.cubeBalance,
+      totalEarned: data.totalEarned,
+      referrals: data.referrals,
+      loginStreak: data.loginStreak || 0,
+      lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
+      createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(doc.createTime.seconds * 1000),
+    });
+  });
+  return users;
+}
+
+export async function getAdminDashboardStats(idToken: string): Promise<{ totalUsers: number; totalCubesAwarded: number }> {
+    await verifyAdmin(idToken);
+    const adminDb = getAdminDb();
+    const usersSnapshot = await getDocs(collection(adminDb, 'users'));
+    
+    let totalCubesAwarded = 0;
+    usersSnapshot.forEach((doc) => {
+        const data = doc.data();
+        totalCubesAwarded += data.totalEarned || 0;
+    });
+
+    return {
+        totalUsers: usersSnapshot.size,
+        totalCubesAwarded: totalCubesAwarded,
+    };
 }
