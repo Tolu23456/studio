@@ -1,11 +1,12 @@
 
-import 'dotenv/config';
 import * as admin from 'firebase-admin';
 
-// This function ensures that Firebase Admin is initialized only once.
-function initializeAdminApp() {
+const getFirebaseAdmin = (): admin.app.App => {
   if (admin.apps.length > 0) {
-    return admin.app();
+    const app = admin.app();
+    if (app) {
+        return app;
+    }
   }
 
   const serviceAccount: admin.ServiceAccount = {
@@ -16,23 +17,23 @@ function initializeAdminApp() {
   };
 
   // Validate that all required environment variables are present
-  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+  if (!serviceAccount.projectId || !service.clientEmail || !serviceAccount.privateKey) {
     throw new Error(
-      `Firebase admin credentials are not set. Please make sure you have the correct environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).`
+      `Firebase admin credentials are not set. Please make sure you have the correct environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) in your .env file.`
     );
   }
 
   try {
+    // Initialize the app with the credentials.
     return admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
   } catch (error: any) {
     throw new Error(`Firebase admin initialization error: ${error.message}`);
   }
-}
+};
 
-// Initialize the app and export the services.
-// This code runs once when the module is first imported.
-const app = initializeAdminApp();
-export const adminAuth = app.auth();
-export const adminDb = app.firestore();
+// Export functions that retrieve the services from the initialized app.
+// This ensures initialization happens only when a service is first requested.
+export const getAdminAuth = (): admin.auth.Auth => getFirebaseAdmin().auth();
+export const getAdminDb = (): admin.firestore.Firestore => getFirebaseAdmin().firestore();

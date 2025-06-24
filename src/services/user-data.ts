@@ -6,10 +6,10 @@ import type { Activity, Notification, Transaction, UserProfile } from '@/lib/typ
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, addDoc, query, orderBy, getDocs, limit, increment, WriteBatch } from 'firebase/firestore';
 import { isYesterday, startOfDay } from 'date-fns';
 import { getAuthenticatedUid } from './auth';
-import { adminAuth } from '@/lib/firebase-admin';
+import { getAdminAuth } from '@/lib/firebase-admin';
 
 export async function createUserProfile(idToken: string): Promise<void> {
-    const { uid, email } = await adminAuth.verifyIdToken(idToken);
+    const { uid, email } = await getAdminAuth().verifyIdToken(idToken);
     const userRef = doc(db, 'users', uid);
     const newUserProfile: UserProfile = {
         uid: uid,
