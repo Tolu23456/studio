@@ -13,6 +13,11 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+// Diagnostic check to ensure environment variables are loaded on the client side.
+if (typeof window !== 'undefined' && !firebaseConfig.apiKey) {
+    throw new Error("CLIENT-SIDE ERROR: Firebase API Key is missing. Please check your .env file, ensure the variable is named NEXT_PUBLIC_FIREBASE_API_KEY, and RESTART your Next.js development server.");
+}
+
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
