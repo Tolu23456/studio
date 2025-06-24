@@ -26,7 +26,6 @@ import { useAuth } from "@/context/auth-context";
 import { claimGameReward } from "@/services/user-data";
 import { ReactionTimeGame } from "@/components/games/reaction-time-game";
 import { CubeRunnerGame } from "@/components/games/cube-runner-game";
-import { AdTriviaGame } from "@/components/games/ad-trivia-game";
 import { PuzzleBoxGame } from "@/components/games/puzzle-box-game";
 import { MemoryMatchGame } from "@/components/games/memory-match-game";
 
@@ -52,7 +51,6 @@ const ComingSoonGame = ({ onGameComplete }: { onGameComplete: () => void }) => (
 
 const GameComponentMap: { [key: string]: React.ElementType } = {
   'g1': CubeRunnerGame,
-  'g2': AdTriviaGame,
   'g3': PuzzleBoxGame,
   'g4': MemoryMatchGame,
   'g5': ComingSoonGame,

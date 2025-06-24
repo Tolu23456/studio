@@ -11,14 +11,6 @@ const games: Game[] = [
     dataAiHint: "abstract runner",
   },
   {
-    id: "g2",
-    title: "Ad Trivia",
-    description: "Test your knowledge of famous ads and brands. Answer correctly to win!",
-    reward: 30,
-    imageUrl: "https://placehold.co/600x400.png",
-    dataAiHint: "brand quiz",
-  },
-  {
     id: "g3",
     title: "Puzzle Box",
     description: "Solve intricate puzzles to unlock the box and claim your reward.",

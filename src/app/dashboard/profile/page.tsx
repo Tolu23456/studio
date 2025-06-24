@@ -9,7 +9,7 @@ import { User, Mail, Zap, Award, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function ProfilePage() {
-  const { user, userProfile, loading, avatarUrl, loadingAvatar } = useAuth();
+  const { user, userProfile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -48,14 +48,10 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            {loadingAvatar ? (
-                <Skeleton className="h-24 w-24 rounded-full" />
-            ) : (
-                <Avatar className="h-24 w-24">
-                <AvatarImage src={avatarUrl || "https://placehold.co/128x128.png"} alt="User Avatar" />
-                <AvatarFallback><User className="w-12 h-12" /></AvatarFallback>
-                </Avatar>
-            )}
+            <Avatar className="h-24 w-24">
+            <AvatarImage src={"https://placehold.co/128x128.png"} alt="User Avatar" />
+            <AvatarFallback><User className="w-12 h-12" /></AvatarFallback>
+            </Avatar>
 
             <div className="space-y-1 text-center sm:text-left">
               <h2 className="text-2xl font-semibold">{user.email}</h2>

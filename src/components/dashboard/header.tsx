@@ -41,7 +41,7 @@ import {
 export default function DashboardHeader() {
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
-  const { user, avatarUrl, loadingAvatar } = useAuth();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
 
@@ -166,17 +166,13 @@ export default function DashboardHeader() {
               size="icon"
               className="overflow-hidden rounded-full"
             >
-              {loadingAvatar ? (
-                <Skeleton className="h-full w-full rounded-full" />
-              ) : (
-                <Image
-                  src={avatarUrl || "https://placehold.co/36x36.png"}
-                  width={36}
-                  height={36}
-                  alt="Avatar"
-                  className="overflow-hidden rounded-full object-cover"
-                />
-              )}
+              <Image
+                src={"https://placehold.co/36x36.png"}
+                width={36}
+                height={36}
+                alt="Avatar"
+                className="overflow-hidden rounded-full object-cover"
+              />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

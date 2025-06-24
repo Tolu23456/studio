@@ -1,7 +1,6 @@
 import { OverviewCards } from "@/components/dashboard/overview-cards";
 import { ActivityHistory } from "@/components/dashboard/activity-history";
 import { DailyRewards } from "@/components/dashboard/daily-rewards";
-import { PersonalizedTasks } from "@/components/dashboard/personalized-tasks";
 
 export default function DashboardPage() {
   return (
@@ -10,14 +9,7 @@ export default function DashboardPage() {
         <OverviewCards />
         <DailyRewards />
       </div>
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-            <ActivityHistory />
-        </div>
-        <div>
-            <PersonalizedTasks />
-        </div>
-      </div>
+      <ActivityHistory />
     </div>
   );
 }
