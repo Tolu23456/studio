@@ -15,6 +15,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle as RadixDialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Game } from "@/lib/types";
@@ -127,6 +130,10 @@ export function GameCard({ game }: GameCardProps) {
 
       <Dialog open={isGameOpen} onOpenChange={setIsGameOpen}>
         <DialogContent className="max-w-md">
+           <DialogHeader className="sr-only">
+             <RadixDialogTitle>{game.title}</RadixDialogTitle>
+             <DialogDescription>{game.description}</DialogDescription>
+           </DialogHeader>
            <GameComponent onGameComplete={handleGameComplete} />
         </DialogContent>
       </Dialog>
