@@ -8,15 +8,14 @@ import { CheckCircle, Lightbulb } from 'lucide-react';
 
 type PuzzleBoxGameProps = {
   onGameComplete: () => void;
+  onGameWon: () => void;
 };
 
 const GRID_SIZE = 3;
 
 const createInitialBoard = () => {
-    // Start with a solved board and click random cells to create a puzzle
-    // This ensures the puzzle is always solvable.
     let board = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(false));
-    const clicks = Math.floor(Math.random() * 5) + 3; // 3 to 7 random clicks
+    const clicks = Math.floor(Math.random() * 5) + 3;
 
     const toggleLights = (b: boolean[][], r: number, c: number) => {
         const newBoard = b.map(row => [...row]);
@@ -37,28 +36,32 @@ const createInitialBoard = () => {
         board = toggleLights(board, r, c);
     }
     
-    // Ensure it's not already solved
     const allOff = board.every(row => row.every(cell => !cell));
     const allOn = board.every(row => row.every(cell => cell));
     if (allOff || allOn) {
-        return createInitialBoard(); // Recurse if we accidentally solved it
+        return createInitialBoard();
     }
 
     return board;
 }
 
-export function PuzzleBoxGame({ onGameComplete }: PuzzleBoxGameProps) {
+export function PuzzleBoxGame({ onGameComplete, onGameWon }: PuzzleBoxGameProps) {
     const [board, setBoard] = useState(createInitialBoard);
     const [moves, setMoves] = useState(0);
     const [isWon, setIsWon] = useState(false);
+    const [hasClaimed, setHasClaimed] = useState(false);
 
     const checkWinCondition = useCallback((currentBoard: boolean[][]) => {
         const allOff = currentBoard.every(row => row.every(cell => !cell));
         const allOn = currentBoard.every(row => row.every(cell => cell));
         if (allOff || allOn) {
             setIsWon(true);
+            if (!hasClaimed) {
+              onGameWon();
+              setHasClaimed(true);
+            }
         }
-    }, []);
+    }, [onGameWon, hasClaimed]);
 
     const handleTileClick = (row: number, col: number) => {
         if (isWon) return;
@@ -83,6 +86,7 @@ export function PuzzleBoxGame({ onGameComplete }: PuzzleBoxGameProps) {
         setBoard(createInitialBoard());
         setMoves(0);
         setIsWon(false);
+        setHasClaimed(false);
     }
 
     return (

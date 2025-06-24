@@ -44,11 +44,12 @@ const setGamePlays = (plays: any) => {
 
 
 // A placeholder for games that are not yet implemented.
-const ComingSoonGame = () => (
+const ComingSoonGame = ({ onGameComplete }: { onGameComplete: () => void }) => (
     <div className="p-6 text-center space-y-4">
         <Gamepad2 className="w-16 h-16 mx-auto text-muted-foreground/50" />
         <h3 className="text-xl font-bold font-headline">Coming Soon!</h3>
         <p className="text-muted-foreground">This exciting game is still under development. Please check back later to play.</p>
+        <Button onClick={onGameComplete}>Close</Button>
     </div>
 );
 
@@ -58,6 +59,7 @@ const GameComponentMap: { [key: string]: React.ElementType } = {
   'g2': AdTriviaGame,
   'g3': PuzzleBoxGame,
   'g4': MemoryMatchGame,
+  'g5': ComingSoonGame,
   'g6': ReactionTimeGame,
 };
 
@@ -94,6 +96,8 @@ export function GameCard({ game }: GameCardProps) {
             setPlayCount(0);
             setCooldownTime(0);
         }
+    } else {
+        setPlayCount(0);
     }
   }, [game.id]);
   
@@ -116,9 +120,7 @@ export function GameCard({ game }: GameCardProps) {
   }, [cooldownTime, game.id]);
 
 
-  const handleGameComplete = async () => {
-    setIsGameOpen(false);
-    
+  const handleGameWon = async () => {
     if (!user) {
         toast({ variant: "destructive", title: "You must be logged in to claim rewards." });
         return;
@@ -132,11 +134,10 @@ export function GameCard({ game }: GameCardProps) {
             description: `You've earned ${game.reward} Cubes for playing ${game.title}.`,
         });
 
-        // Update play count and cooldown
         const allPlays = getGamePlays();
         const currentCount = (allPlays[game.id]?.count || 0) + 1;
         
-        let newCooldownUntil = null;
+        let newCooldownUntil = allPlays[game.id]?.cooldownUntil || null;
         if (currentCount >= MAX_PLAYS) {
             newCooldownUntil = new Date().getTime() + COOLDOWN_HOURS * 60 * 60 * 1000;
             setCooldownTime(newCooldownUntil);
@@ -161,7 +162,10 @@ export function GameCard({ game }: GameCardProps) {
     }
   };
 
-  // Determine which game component to render. Fallback to ComingSoonGame.
+  const handleFinishGame = () => {
+    setIsGameOpen(false);
+  }
+
   const GameComponent = GameComponentMap[game.id] || ComingSoonGame;
   
   const formatTimeLeft = () => {
@@ -179,6 +183,7 @@ export function GameCard({ game }: GameCardProps) {
   };
   
   const onCooldown = cooldownTime > 0 && new Date().getTime() < cooldownTime;
+  const playsLeft = MAX_PLAYS - playCount;
 
   return (
     <>
@@ -198,19 +203,19 @@ export function GameCard({ game }: GameCardProps) {
           <CardDescription className="mt-1">{game.description}</CardDescription>
         </CardContent>
         <CardFooter className="p-4 bg-muted/50 flex justify-between items-center">
-          <div>
+          <div className="text-sm text-muted-foreground">
             <div className="flex items-center gap-1 font-bold text-primary">
               <Zap className="w-5 h-5" />
               <span>{game.reward}</span>
             </div>
             {!onCooldown && (
-              <div className="text-xs text-muted-foreground mt-1">
-                {MAX_PLAYS - playCount} {MAX_PLAYS - playCount === 1 ? 'play' : 'plays'} left
+              <div className="text-xs mt-1">
+                {playsLeft} {playsLeft === 1 ? 'play' : 'plays'} left
               </div>
             )}
           </div>
           
-          <Button onClick={() => setIsGameOpen(true)} disabled={onCooldown}>
+          <Button onClick={() => setIsGameOpen(true)} disabled={onCooldown || playsLeft <= 0}>
             {onCooldown ? (
                 <>
                     <Clock className="mr-2 h-4 w-4" />
@@ -232,7 +237,7 @@ export function GameCard({ game }: GameCardProps) {
              <RadixDialogTitle>{game.title}</RadixDialogTitle>
              <RadixDialogDescription>{game.description}</RadixDialogDescription>
            </DialogHeader>
-           <GameComponent onGameComplete={handleGameComplete} />
+           <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} />
         </DialogContent>
       </Dialog>
     </>

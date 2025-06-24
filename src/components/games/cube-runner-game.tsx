@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 
 type CubeRunnerGameProps = {
   onGameComplete: () => void;
+  onGameWon: () => void;
 };
 
 const GAME_WIDTH = 300;
@@ -22,12 +23,13 @@ type Entity = {
   y: number;
 };
 
-export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
+export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProps) {
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
   const [score, setScore] = useState(0);
   const [playerX, setPlayerX] = useState(GAME_WIDTH / 2 - PLAYER_SIZE / 2);
   const [obstacles, setObstacles] = useState<Entity[]>([]);
   const [cubes, setCubes] = useState<Entity[]>([]);
+  const [hasClaimed, setHasClaimed] = useState(false);
   
   const gameLoopRef = useRef<number>();
   const keysPressed = useRef<{ [key: string]: boolean }>({});
@@ -37,15 +39,13 @@ export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
     setObstacles([]);
     setCubes([]);
     setScore(0);
+    setHasClaimed(false);
     setGameState('playing');
   }, []);
   
   const gameTick = useCallback(() => {
-    // This is scoped to the component, it won't be re-created on every tick
-    // because it is inside a useCallback with a dependency array.
     if (gameState !== 'playing') return;
 
-    // Move player
     setPlayerX((currentX) => {
         if (keysPressed.current['ArrowLeft'] && currentX > 0) {
             return Math.max(0, currentX - PLAYER_SPEED);
@@ -56,29 +56,24 @@ export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
         return currentX;
     });
     
-    // Move obstacles and cubes down
     setObstacles((prev) => prev.map(o => ({...o, y: o.y + ENTITY_SPEED})).filter(o => o.y < GAME_HEIGHT));
     setCubes((prev) => prev.map(c => ({...c, y: c.y + ENTITY_SPEED})).filter(c => c.y < GAME_HEIGHT));
 
-    // Spawn new entities
     if (Math.random() < 0.03) {
       setObstacles((prev) => [...prev, { id: Date.now() + Math.random(), x: Math.random() * (GAME_WIDTH - OBSTACLE_SIZE), y: -OBSTACLE_SIZE }]);
     }
      if (Math.random() < 0.02) {
       setCubes((prev) => [...prev, { id: Date.now() + Math.random(), x: Math.random() * (GAME_WIDTH - CUBE_SIZE), y: -CUBE_SIZE }]);
     }
-
-    // Collision detection is performed in a separate effect to avoid stale state issues.
     
     gameLoopRef.current = requestAnimationFrame(gameTick);
-  }, [gameState]); // Only depends on gameState to start/stop the loop
+  }, [gameState]);
   
   useEffect(() => {
       if (gameState !== 'playing') return;
 
       const playerRect = { x: playerX, y: GAME_HEIGHT - PLAYER_SIZE - 10, width: PLAYER_SIZE, height: PLAYER_SIZE };
       
-      // Obstacle collision
       for (const obstacle of obstacles) {
         const obstacleRect = { x: obstacle.x, y: obstacle.y, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE };
         if (
@@ -92,7 +87,6 @@ export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
         }
       }
       
-      // Cube collection
       const newCubes = cubes.filter(cube => {
          const cubeRect = { x: cube.x, y: cube.y, width: CUBE_SIZE, height: CUBE_SIZE };
           if (
@@ -102,7 +96,7 @@ export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
               playerRect.y + playerRect.height > cubeRect.y
           ) {
               setScore(s => s + 1);
-              return false; // remove cube
+              return false;
           }
           return true;
       });
@@ -112,6 +106,13 @@ export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
       }
 
   }, [playerX, obstacles, cubes, gameState])
+
+  useEffect(() => {
+    if (gameState === 'gameover' && !hasClaimed) {
+      onGameWon();
+      setHasClaimed(true);
+    }
+  }, [gameState, onGameWon, hasClaimed]);
 
   useEffect(() => {
     if (gameState === 'playing') {
@@ -169,7 +170,6 @@ export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
 
         {gameState === 'playing' && (
             <>
-                {/* Player */}
                 <div 
                     className="absolute bg-primary rounded-md"
                     style={{ 
@@ -179,8 +179,6 @@ export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
                         bottom: 10
                     }}
                 />
-
-                {/* Obstacles */}
                 {obstacles.map(o => (
                     <div 
                         key={o.id}
@@ -193,8 +191,6 @@ export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
                         }}
                     />
                 ))}
-                
-                {/* Collectible Cubes */}
                 {cubes.map(c => (
                     <div 
                         key={c.id}

@@ -7,27 +7,24 @@ import { cn } from '@/lib/utils';
 
 type ReactionTimeGameProps = {
   onGameComplete: () => void;
+  onGameWon: () => void;
 };
 
-// 'idle': Initial state, ready to start.
-// 'waiting': The game has started, user must wait for the color change.
-// 'active': The color has changed, user must click.
-// 'result': User clicked, showing the reaction time.
-// 'too_soon': User clicked before the color change.
 type GameState = 'idle' | 'waiting' | 'active' | 'result' | 'too_soon';
 
-export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
+export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGameProps) {
   const [gameState, setGameState] = useState<GameState>('idle');
   const [startTime, setStartTime] = useState(0);
   const [reactionTime, setReactionTime] = useState(0);
+  const [hasClaimed, setHasClaimed] = useState(false);
 
-  // Use a ref for the timeout to easily clear it.
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const startGame = useCallback(() => {
     setGameState('waiting');
     setReactionTime(0);
-    const delay = Math.random() * 3000 + 2000; // 2-5 second delay
+    setHasClaimed(false);
+    const delay = Math.random() * 3000 + 2000;
 
     timeoutRef.current = setTimeout(() => {
       setGameState('active');
@@ -45,10 +42,13 @@ export function ReactionTimeGame({ onGameComplete }: ReactionTimeGameProps) {
       const endTime = Date.now();
       setReactionTime(endTime - startTime);
       setGameState('result');
+      if (!hasClaimed) {
+        onGameWon();
+        setHasClaimed(true);
+      }
     }
   };
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {

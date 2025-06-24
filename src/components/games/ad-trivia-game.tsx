@@ -12,16 +12,16 @@ import { useToast } from '@/hooks/use-toast';
 
 type AdTriviaGameProps = {
   onGameComplete: () => void;
+  onGameWon: () => void;
 };
 
 type GameStatus = 'loading' | 'playing' | 'feedback';
 
-export function AdTriviaGame({ onGameComplete }: AdTriviaGameProps) {
+export function AdTriviaGame({ onGameComplete, onGameWon }: AdTriviaGameProps) {
   const [status, setStatus] = useState<GameStatus>('loading');
   const [questionData, setQuestionData] = useState<AdTriviaQuestionOutput | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [score, setScore] = useState(0);
   const { toast } = useToast();
 
   const fetchQuestion = useCallback(async () => {
@@ -38,7 +38,6 @@ export function AdTriviaGame({ onGameComplete }: AdTriviaGameProps) {
         title: 'Oh no!',
         description: 'Could not load a new question. Please try again.',
       });
-      // In a real app, you might want a better error state in the UI
       onGameComplete(); 
     }
   }, [toast, onGameComplete]);
@@ -52,10 +51,13 @@ export function AdTriviaGame({ onGameComplete }: AdTriviaGameProps) {
     setSelectedAnswer(answer);
     const correct = answer === questionData?.correctAnswer;
     setIsCorrect(correct);
-    if (correct) {
-      setScore(s => s + 10);
-    }
     setStatus('feedback');
+  };
+
+  const handleFinish = () => {
+    // A "win" in trivia is completing a session, so we call onGameWon here.
+    onGameWon();
+    onGameComplete();
   };
 
   const getButtonVariant = (answer: string) => {
@@ -128,7 +130,7 @@ export function AdTriviaGame({ onGameComplete }: AdTriviaGameProps) {
               <RotateCw className="mr-2 h-4 w-4" />
               Next Question
             </Button>
-            <Button onClick={onGameComplete} className="flex-1">
+            <Button onClick={handleFinish} className="flex-1">
               Finish Game
             </Button>
           </div>

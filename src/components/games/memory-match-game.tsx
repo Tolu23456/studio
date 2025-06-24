@@ -8,6 +8,7 @@ import { Apple, Banana, Carrot, Grape, Pizza, Sandwich, CheckCircle, BrainCircui
 
 type MemoryMatchGameProps = {
   onGameComplete: () => void;
+  onGameWon: () => void;
 };
 
 const ICONS = [Apple, Banana, Carrot, Grape, Pizza, Sandwich];
@@ -32,12 +33,13 @@ const createShuffledBoard = (): CardType[] => {
     }));
 };
 
-export function MemoryMatchGame({ onGameComplete }: MemoryMatchGameProps) {
+export function MemoryMatchGame({ onGameComplete, onGameWon }: MemoryMatchGameProps) {
   const [cards, setCards] = useState<CardType[]>(createShuffledBoard);
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [isWon, setIsWon] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [hasClaimed, setHasClaimed] = useState(false);
 
   useEffect(() => {
     if (flippedIndices.length !== 2) return;
@@ -48,7 +50,6 @@ export function MemoryMatchGame({ onGameComplete }: MemoryMatchGameProps) {
     setMoves(m => m + 1);
 
     if (cards[firstIndex].Icon === cards[secondIndex].Icon) {
-      // It's a match
       setCards(prevCards =>
         prevCards.map((card, index) =>
           index === firstIndex || index === secondIndex
@@ -59,7 +60,6 @@ export function MemoryMatchGame({ onGameComplete }: MemoryMatchGameProps) {
       setFlippedIndices([]);
       setIsChecking(false);
     } else {
-      // Not a match, flip back after a delay
       const timeoutId = setTimeout(() => {
         setCards(prevCards =>
           prevCards.map((card, index) =>
@@ -76,10 +76,15 @@ export function MemoryMatchGame({ onGameComplete }: MemoryMatchGameProps) {
   }, [flippedIndices, cards]);
 
   useEffect(() => {
-    if (cards.length > 0 && cards.every(card => card.isMatched)) {
+    const gameWon = cards.length > 0 && cards.every(card => card.isMatched);
+    if (gameWon) {
       setIsWon(true);
+      if (!hasClaimed) {
+        onGameWon();
+        setHasClaimed(true);
+      }
     }
-  }, [cards]);
+  }, [cards, onGameWon, hasClaimed]);
 
   const handleCardClick = (index: number) => {
     if (isWon || isChecking || cards[index].isFlipped || cards[index].isMatched) {
@@ -103,6 +108,7 @@ export function MemoryMatchGame({ onGameComplete }: MemoryMatchGameProps) {
     setMoves(0);
     setIsWon(false);
     setIsChecking(false);
+    setHasClaimed(false);
   };
 
   return (
