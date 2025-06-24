@@ -98,7 +98,7 @@ export function DailyRewards() {
         <CardContent className="grid gap-4">
           <div className="flex items-center justify-center space-x-2">
             {Array.from({ length: 7 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-9 rounded-full" />
+              <Skeleton key={i} className="h-8 w-8 rounded-full" />
             ))}
           </div>
           <Skeleton className="h-10 w-full" />
@@ -117,12 +117,12 @@ export function DailyRewards() {
       </CardHeader>
       <CardContent className="grid gap-4">
         <TooltipProvider>
-            <div className="flex items-center justify-center space-x-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
                 {rewards.map((reward) => (
                     <Tooltip key={reward.day}>
                         <TooltipTrigger asChild>
                             <div
-                            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all ${
+                            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all ${
                                 reward.claimed
                                 ? "bg-primary/20 border-primary text-primary"
                                 : canClaim && reward.day === nextStreakDay
@@ -130,7 +130,7 @@ export function DailyRewards() {
                                 : "bg-muted text-muted-foreground"
                             }`}
                             >
-                            {reward.claimed ? <Check className="h-5 w-5" /> : <Gift className="h-5 w-5" />}
+                            {reward.claimed ? <Check className="h-4 w-4" /> : <Gift className="h-4 w-4" />}
                             </div>
                         </TooltipTrigger>
                         <TooltipContent>
