@@ -35,6 +35,15 @@ export type Ad = {
   dataAiHint?: string;
 };
 
+export type Game = {
+  id: string;
+  title: string;
+  description: string;
+  reward: number;
+  imageUrl: string;
+  dataAiHint?: string;
+};
+
 export type Notification = {
   id: string;
   title: string;

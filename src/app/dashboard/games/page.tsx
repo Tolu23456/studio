@@ -1,24 +1,67 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Gamepad2 } from "lucide-react";
+import { GameCard } from "@/components/dashboard/game-card";
+import type { Game } from "@/lib/types";
+
+const games: Game[] = [
+  {
+    id: "g1",
+    title: "Cube Runner",
+    description: "Navigate the endless tunnel and collect cubes. How far can you go?",
+    reward: 50,
+    imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "abstract runner",
+  },
+  {
+    id: "g2",
+    title: "Ad Trivia",
+    description: "Test your knowledge of famous ads and brands. Answer correctly to win!",
+    reward: 30,
+    imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "quiz trivia",
+  },
+  {
+    id: "g3",
+    title: "Puzzle Box",
+    description: "Solve intricate puzzles to unlock the box and claim your reward.",
+    reward: 75,
+    imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "puzzle box",
+  },
+  {
+    id: "g4",
+    title: "Memory Match",
+    description: "Match pairs of brand logos against the clock. A classic test of memory.",
+    reward: 25,
+    imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "memory game",
+  },
+   {
+    id: "g5",
+    title: "Word Finder",
+    description: "Find hidden words related to marketing and advertising in a grid of letters.",
+    reward: 40,
+    imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "word search",
+  },
+   {
+    id: "g6",
+    title: "Reaction Time",
+    description: "Click the target as soon as it appears. Test your reflexes for cubes!",
+    reward: 20,
+    imageUrl: "https://placehold.co/600x400.png",
+    dataAiHint: "reaction test",
+  },
+];
+
 
 export default function GamesPage() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight font-headline">Play Games & Earn</h1>
-      <Card>
-        <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-                <Gamepad2 className="w-6 h-6 text-primary" />
-                Games Coming Soon!
-            </CardTitle>
-            <CardDescription>
-                Get ready for a new way to boost your Cube balance.
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <p className="text-muted-foreground">We're working hard to bring you a collection of fun and rewarding games. Check back soon to play and earn more Cubes!</p>
-        </CardContent>
-      </Card>
+    <div>
+        <h1 className="text-3xl font-bold tracking-tight font-headline mb-6">Play Games & Earn</h1>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {games.map((game) => (
+                <GameCard key={game.id} game={game} />
+            ))}
+        </div>
     </div>
   );
 }
