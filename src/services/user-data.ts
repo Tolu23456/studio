@@ -7,12 +7,12 @@ import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
 
-const getCurrentUid = (): string => {
+const getCurrentUser = (): User => {
     const user = auth.currentUser;
     if (!user) {
         throw new Error('User is not authenticated.');
     }
-    return user.uid;
+    return user;
 };
 
 export async function createUserProfile(user: User, referralCode?: string): Promise<void> {
@@ -142,9 +142,15 @@ function _createNotification(batch: any, uid: string, title: string, description
 }
 
 export async function claimAdReward(reward: number, title: string): Promise<void> {
-  const uid = getCurrentUid();
+  const user = getCurrentUser();
+  const userRef = doc(db, 'users', user.uid);
+
+  const docSnap = await getDoc(userRef);
+  if (!docSnap.exists()) {
+    await createUserProfile(user);
+  }
+
   const batch = writeBatch(db);
-  const userRef = doc(db, 'users', uid);
   const now = new Date();
 
   batch.update(userRef, {
@@ -152,7 +158,7 @@ export async function claimAdReward(reward: number, title: string): Promise<void
     totalEarned: increment(reward),
   });
 
-  const activityRef = doc(collection(db, 'users', uid, 'activities'));
+  const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
   const newActivity: Omit<Activity, 'id'> = {
     type: 'Ad Watch',
     description: `Watched '${title}' ad`,
@@ -161,7 +167,7 @@ export async function claimAdReward(reward: number, title: string): Promise<void
   };
   batch.set(activityRef, newActivity);
 
-  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
   const newTransaction: Omit<Transaction, 'id'> = {
       type: 'reward',
       description: `Watched '${title}' ad`,
@@ -171,15 +177,21 @@ export async function claimAdReward(reward: number, title: string): Promise<void
   };
   batch.set(transactionRef, newTransaction);
   
-  _createNotification(batch, uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`);
+  _createNotification(batch, user.uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`);
 
   await batch.commit();
 }
 
 export async function claimGameReward(reward: number, gameTitle: string): Promise<void> {
-  const uid = getCurrentUid();
+  const user = getCurrentUser();
+  const userRef = doc(db, 'users', user.uid);
+  
+  const docSnap = await getDoc(userRef);
+  if (!docSnap.exists()) {
+    await createUserProfile(user);
+  }
+
   const batch = writeBatch(db);
-  const userRef = doc(db, 'users', uid);
   const now = new Date();
 
   batch.update(userRef, {
@@ -187,7 +199,7 @@ export async function claimGameReward(reward: number, gameTitle: string): Promis
     totalEarned: increment(reward),
   });
 
-  const activityRef = doc(collection(db, 'users', uid, 'activities'));
+  const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
   const newActivity: Omit<Activity, 'id'> = {
     type: 'Game Play',
     description: `Played '${gameTitle}'`,
@@ -196,7 +208,7 @@ export async function claimGameReward(reward: number, gameTitle: string): Promis
   };
   batch.set(activityRef, newActivity);
 
-  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
   const newTransaction: Omit<Transaction, 'id'> = {
     type: 'reward',
     description: `Reward from '${gameTitle}'`,
@@ -206,19 +218,21 @@ export async function claimGameReward(reward: number, gameTitle: string): Promis
   };
   batch.set(transactionRef, newTransaction);
 
-  _createNotification(batch, uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`);
+  _createNotification(batch, user.uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`);
 
   await batch.commit();
 }
 
 
 export async function claimDailyReward(): Promise<{ success: boolean; message: string }> {
-  const uid = getCurrentUid();
-  const userRef = doc(db, 'users', uid);
+  const user = getCurrentUser();
+  const userRef = doc(db, 'users', user.uid);
   const docSnap = await getDoc(userRef);
 
   if (!docSnap.exists()) {
-    return { success: false, message: 'User not found.' };
+    await createUserProfile(user);
+    // After creating, refetch the document to get the default values before proceeding
+    return claimDailyReward();
   }
 
   const profileData = docSnap.data();
@@ -257,7 +271,7 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
     lastClaimedDate: now,
   });
 
-  const activityRef = doc(collection(db, 'users', uid, 'activities'));
+  const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
   batch.set(activityRef, {
     type: 'Daily Login',
     description: `Claimed Day ${newStreak} login bonus`,
@@ -265,7 +279,7 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
     date: now,
   });
 
-  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
   batch.set(transactionRef, {
     type: 'reward',
     description: `Daily Login Bonus - Day ${newStreak}`,
@@ -274,7 +288,7 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
     status: 'completed',
   });
   
-  _createNotification(batch, uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`);
+  _createNotification(batch, user.uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`);
   
   await batch.commit();
 
