@@ -143,7 +143,10 @@ export async function uploadProfilePicture(file: File): Promise<string> {
     await uploadBytes(storageRef, file);
     
     // Get the download URL
-    const photoURL = await getDownloadURL(storageRef);
+    const downloadURL = await getDownloadURL(storageRef);
+
+    // Add a unique query parameter to bust the browser's cache.
+    const photoURL = `${downloadURL}&_v=${new Date().getTime()}`;
 
     // Update the user's profile in Firestore
     const userRef = doc(db, 'users', user.uid);
