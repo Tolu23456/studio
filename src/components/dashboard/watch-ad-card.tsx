@@ -40,14 +40,12 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
     } else if (isWatching && timeRemaining === 0) {
       setIsCompleted(true);
       setIsWatching(false);
-      // Prevent re-watching immediately
       sessionStorage.setItem(`ad_watched_${ad.id}`, 'true');
     }
     return () => clearTimeout(timer);
   }, [isWatching, timeRemaining, ad.id]);
   
   useEffect(() => {
-    // Prevent watching an ad that has already been completed in this session
     if (sessionStorage.getItem(`ad_watched_${ad.id}`)) {
       setIsCompleted(true);
     }
@@ -65,13 +63,14 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
     }
     setIsClaiming(true);
     try {
-        await claimAdReward(user.uid, ad.reward, ad.title);
+        const idToken = await user.getIdToken();
+        await claimAdReward(idToken, ad.reward, ad.title);
         await refreshUserProfile();
         toast({
             title: "Reward Claimed!",
             description: `You've earned ${ad.reward} Cubes.`,
         });
-        setIsCompleted(true); // Keep it in claimed state
+        setIsCompleted(true); 
     } catch (error) {
         console.error("Failed to claim reward", error);
         toast({ variant: "destructive", title: "Claiming failed", description: "Could not claim your reward. Please try again." });

@@ -34,9 +34,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loadingAvatar, setLoadingAvatar] = useState(true);
 
-  const fetchUserProfile = useCallback(async (uid: string) => {
+  const fetchUserProfile = useCallback(async (currentUser: User) => {
     try {
-      const profile = await getUserProfile(uid);
+      const idToken = await currentUser.getIdToken();
+      const profile = await getUserProfile(idToken);
       setUserProfile(profile);
     } catch (error) {
       console.error("Failed to fetch user profile:", error);
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.setItem(`avatar_${uid}`, result.avatarDataUri);
     } catch (error) {
       console.error("Failed to generate avatar:", error);
-      setAvatarUrl(null); // Explicitly set to null on error
+      setAvatarUrl(null); 
     } finally {
       setLoadingAvatar(false);
     }
@@ -69,9 +70,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        setLoading(true); // Main loading state
+        setLoading(true); 
         await Promise.all([
-          fetchUserProfile(currentUser.uid),
+          fetchUserProfile(currentUser),
           fetchAvatar(currentUser.uid)
         ]);
         setLoading(false);
@@ -88,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUserProfile = useCallback(async () => {
     if (user) {
-      await fetchUserProfile(user.uid);
+      await fetchUserProfile(user);
     }
   }, [user, fetchUserProfile]);
 

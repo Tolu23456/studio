@@ -35,20 +35,16 @@ export function DailyRewards() {
       const lastClaimedDate = userProfile.lastClaimedDate ? startOfDay(userProfile.lastClaimedDate) : null;
       
       if (!lastClaimedDate) {
-        // Never claimed before
         setCanClaim(true);
         setStreak(0);
       } else {
         if (isToday(lastClaimedDate)) {
-          // Claimed today
           setCanClaim(false);
           setStreak(userProfile.loginStreak);
         } else if (isYesterday(lastClaimedDate)) {
-          // Didn't claim today, but did yesterday, streak continues
           setCanClaim(true);
           setStreak(userProfile.loginStreak);
         } else {
-          // Missed a day, streak resets
           setCanClaim(true);
           setStreak(0);
         }
@@ -67,7 +63,8 @@ export function DailyRewards() {
     if (!user) return;
     setIsClaiming(true);
     try {
-        const result = await claimDailyReward(user.uid);
+        const idToken = await user.getIdToken();
+        const result = await claimDailyReward(idToken);
         if (result.success) {
             toast({
                 title: "Reward Claimed!",

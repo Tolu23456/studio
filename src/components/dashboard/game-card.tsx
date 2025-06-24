@@ -30,7 +30,6 @@ import { AdTriviaGame } from "@/components/games/ad-trivia-game";
 import { PuzzleBoxGame } from "@/components/games/puzzle-box-game";
 import { MemoryMatchGame } from "@/components/games/memory-match-game";
 
-// Local storage helpers
 const getGamePlays = () => {
     if (typeof window === 'undefined') return {};
     const data = localStorage.getItem('game_plays');
@@ -42,8 +41,6 @@ const setGamePlays = (plays: any) => {
     localStorage.setItem('game_plays', JSON.stringify(plays));
 };
 
-
-// A placeholder for games that are not yet implemented.
 const ComingSoonGame = ({ onGameComplete }: { onGameComplete: () => void }) => (
     <div className="p-6 text-center space-y-4">
         <Gamepad2 className="w-16 h-16 mx-auto text-muted-foreground/50" />
@@ -53,7 +50,6 @@ const ComingSoonGame = ({ onGameComplete }: { onGameComplete: () => void }) => (
     </div>
 );
 
-// Map game IDs to their respective components.
 const GameComponentMap: { [key: string]: React.ElementType } = {
   'g1': CubeRunnerGame,
   'g2': AdTriviaGame,
@@ -89,7 +85,6 @@ export function GameCard({ game }: GameCardProps) {
         if (gameData.cooldownUntil && now < gameData.cooldownUntil) {
             setCooldownTime(gameData.cooldownUntil);
         } else if (gameData.cooldownUntil && now >= gameData.cooldownUntil) {
-            // Cooldown expired, reset plays
             const newPlays = { ...allPlays };
             delete newPlays[game.id];
             setGamePlays(newPlays);
@@ -127,7 +122,8 @@ export function GameCard({ game }: GameCardProps) {
     }
 
     try {
-        await claimGameReward(user.uid, game.reward, game.title);
+        const idToken = await user.getIdToken();
+        await claimGameReward(idToken, game.reward, game.title);
         await refreshUserProfile();
         toast({
             title: "Reward Claimed!",

@@ -40,7 +40,8 @@ export function RegisterForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      await createUserProfile(userCredential.user);
+      const idToken = await userCredential.user.getIdToken();
+      await createUserProfile(idToken);
       toast({
         title: "Registration Successful",
         description: "Redirecting to your dashboard...",
