@@ -12,12 +12,31 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Game } from "@/lib/types";
-import { Gamepad2, Zap, CheckCircle, Hourglass } from "lucide-react";
+import { Gamepad2, Zap, CheckCircle } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { claimGameReward } from "@/services/user-data";
 import { cn } from "@/lib/utils";
+import { ReactionTimeGame } from "@/components/games/reaction-time-game";
+
+// A placeholder for games that are not yet implemented.
+const ComingSoonGame = () => (
+    <div className="p-6 text-center space-y-4">
+        <Gamepad2 className="w-16 h-16 mx-auto text-muted-foreground/50" />
+        <h3 className="text-xl font-bold font-headline">Coming Soon!</h3>
+        <p className="text-muted-foreground">This exciting game is still under development. Please check back later to play.</p>
+    </div>
+);
+
+// Map game IDs to their respective components.
+const GameComponentMap: { [key: string]: React.ElementType } = {
+  'g6': ReactionTimeGame, // Reaction Time game is implemented
+};
 
 
 type GameCardProps = {
@@ -25,8 +44,9 @@ type GameCardProps = {
 };
 
 export function GameCard({ game }: GameCardProps) {
-  const [gameState, setGameState] = useState<'idle' | 'playing' | 'completed' | 'claimed'>('idle');
+  const [gameState, setGameState] = useState<'idle' | 'completed' | 'claimed'>('idle');
   const [isClaiming, setIsClaiming] = useState(false);
+  const [isGameOpen, setIsGameOpen] = useState(false);
   const { toast } = useToast();
   const { user, refreshUserProfile } = useAuth();
 
@@ -36,13 +56,11 @@ export function GameCard({ game }: GameCardProps) {
     }
   }, [game.id]);
   
-  const handlePlay = () => {
-    setGameState('playing');
-    setTimeout(() => {
-      setGameState('completed');
-    }, 3000);
-  };
-  
+  const handleGameComplete = () => {
+    setIsGameOpen(false);
+    setGameState('completed');
+  }
+
   const handleClaim = async () => {
     if (!user) {
         toast({ variant: "destructive", title: "You must be logged in to claim rewards." });
@@ -66,64 +84,62 @@ export function GameCard({ game }: GameCardProps) {
     }
   };
 
+  // Determine which game component to render. Fallback to ComingSoonGame.
+  const GameComponent = GameComponentMap[game.id] || ComingSoonGame;
 
   return (
-    <Card className="overflow-hidden flex flex-col">
-      <CardHeader className="p-0 relative">
-        <Image
-          src={game.imageUrl}
-          alt={game.title}
-          width={600}
-          height={400}
-          className={cn("object-cover aspect-video transition-opacity", (gameState === 'playing' || gameState === 'claimed') && 'opacity-50')}
-          data-ai-hint={game.dataAiHint}
-        />
-        {gameState === 'playing' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
-                <Hourglass className="w-12 h-12 animate-spin" />
-                <p className="mt-4 text-lg font-semibold">Playing...</p>
-            </div>
-        )}
-      </CardHeader>
-      <CardContent className="p-4 flex-grow">
-        <CardTitle className="font-headline text-lg">{game.title}</CardTitle>
-        <CardDescription className="mt-1">{game.description}</CardDescription>
-      </CardContent>
-      <CardFooter className="p-4 bg-muted/50 flex justify-between items-center">
-        <div className="flex items-center gap-1 font-bold text-primary">
-            <Zap className="w-5 h-5" />
-            <span>{game.reward}</span>
-        </div>
-        
-        {gameState === 'idle' && (
-            <Button onClick={handlePlay}>
-              <Gamepad2 className="mr-2 h-4 w-4" />
-              Play Now
-            </Button>
-        )}
-        {gameState === 'playing' && (
-            <Button disabled variant="secondary" className="w-36">
-                <Hourglass className="mr-2 h-4 w-4 animate-spin" />
-                Playing...
-            </Button>
-        )}
-        {gameState === 'completed' && (
-            <Button onClick={handleClaim} disabled={isClaiming} className={cn(buttonVariants({}), "bg-success hover:bg-success/90 text-success-foreground w-36")}>
-                {isClaiming ? 'Claiming...' : (
-                    <>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Claim Reward
-                    </>
-                )}
-            </Button>
-        )}
-        {gameState === 'claimed' && (
-             <Button disabled variant="outline" className="w-36">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Played
-            </Button>
-        )}
-      </CardFooter>
-    </Card>
+    <>
+      <Card className="overflow-hidden flex flex-col">
+        <CardHeader className="p-0 relative">
+          <Image
+            src={game.imageUrl}
+            alt={game.title}
+            width={600}
+            height={400}
+            className={cn("object-cover aspect-video transition-opacity", (gameState === 'claimed') && 'opacity-50')}
+            data-ai-hint={game.dataAiHint}
+          />
+        </CardHeader>
+        <CardContent className="p-4 flex-grow">
+          <CardTitle className="font-headline text-lg">{game.title}</CardTitle>
+          <CardDescription className="mt-1">{game.description}</CardDescription>
+        </CardContent>
+        <CardFooter className="p-4 bg-muted/50 flex justify-between items-center">
+          <div className="flex items-center gap-1 font-bold text-primary">
+              <Zap className="w-5 h-5" />
+              <span>{game.reward}</span>
+          </div>
+          
+          {gameState === 'idle' && (
+              <Button onClick={() => setIsGameOpen(true)}>
+                <Gamepad2 className="mr-2 h-4 w-4" />
+                Play Now
+              </Button>
+          )}
+          {gameState === 'completed' && (
+              <Button onClick={handleClaim} disabled={isClaiming} className={cn(buttonVariants({}), "bg-success hover:bg-success/90 text-success-foreground w-36")}>
+                  {isClaiming ? 'Claiming...' : (
+                      <>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Claim Reward
+                      </>
+                  )}
+              </Button>
+          )}
+          {gameState === 'claimed' && (
+               <Button disabled variant="outline" className="w-36">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Played
+              </Button>
+          )}
+        </CardFooter>
+      </Card>
+
+      <Dialog open={isGameOpen} onOpenChange={setIsGameOpen}>
+        <DialogContent className="max-w-md">
+           <GameComponent onGameComplete={handleGameComplete} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
