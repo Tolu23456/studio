@@ -1,16 +1,17 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
+import { getAdminDb } from '@/lib/firebase-admin';
 import type { Activity, Notification, Transaction, UserProfile } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, addDoc, query, orderBy, getDocs, limit, increment, WriteBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, WriteBatch } from 'firebase/firestore';
 import { isYesterday, startOfDay } from 'date-fns';
 import { getAuthenticatedUid } from './auth';
 import { getAdminAuth } from '@/lib/firebase-admin';
 
 export async function createUserProfile(idToken: string): Promise<void> {
+    const adminDb = getAdminDb();
     const { uid, email } = await getAdminAuth().verifyIdToken(idToken);
-    const userRef = doc(db, 'users', uid);
+    const userRef = doc(adminDb, 'users', uid);
     const newUserProfile: UserProfile = {
         uid: uid,
         email: email || null,
@@ -24,8 +25,9 @@ export async function createUserProfile(idToken: string): Promise<void> {
 }
 
 export async function getUserProfile(idToken: string): Promise<UserProfile | null> {
+    const adminDb = getAdminDb();
     const uid = await getAuthenticatedUid(idToken);
-    const userRef = doc(db, 'users', uid);
+    const userRef = doc(adminDb, 'users', uid);
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
         const data = docSnap.data();
@@ -42,50 +44,9 @@ export async function getUserProfile(idToken: string): Promise<UserProfile | nul
     return null;
 }
 
-export async function getActivities(uid: string, count: number = 6): Promise<Activity[]> {
-  const activitiesRef = collection(db, 'users', uid, 'activities');
-  const q = query(activitiesRef, orderBy('date', 'desc'), limit(count));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-      id: doc.id,
-      ...data,
-      date: (data.date as Timestamp).toDate(),
-      } as Activity;
-  });
-}
-
-export async function getTransactions(uid: string, count: number = 8): Promise<Transaction[]> {
-  const transactionsRef = collection(db, 'users', uid, 'transactions');
-  const q = query(transactionsRef, orderBy('date', 'desc'), limit(count));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-      id: doc.id,
-      ...data,
-      date: (data.date as Timestamp).toDate(),
-      } as Transaction;
-  });
-}
-
-export async function getNotifications(uid: string, count: number = 5): Promise<Notification[]> {
-  const notificationsRef = collection(db, 'users', uid, 'notifications');
-  const q = query(notificationsRef, orderBy('date', 'desc'), limit(count));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      ...data,
-      date: (data.date as Timestamp).toDate(),
-    } as Notification;
-  });
-}
-
 function _createNotification(batch: WriteBatch, uid: string, title: string, description: string) {
-    const notificationRef = doc(collection(db, 'users', uid, 'notifications'));
+    const adminDb = getAdminDb();
+    const notificationRef = doc(collection(adminDb, 'users', uid, 'notifications'));
     const newNotification = {
         title,
         description,
@@ -96,9 +57,10 @@ function _createNotification(batch: WriteBatch, uid: string, title: string, desc
 }
 
 export async function claimAdReward(idToken: string, reward: number, title: string): Promise<void> {
+  const adminDb = getAdminDb();
   const uid = await getAuthenticatedUid(idToken);
-  const batch = writeBatch(db);
-  const userRef = doc(db, 'users', uid);
+  const batch = writeBatch(adminDb);
+  const userRef = doc(adminDb, 'users', uid);
   const now = new Date();
 
   batch.update(userRef, {
@@ -106,7 +68,7 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
     totalEarned: increment(reward),
   });
 
-  const activityRef = doc(collection(db, 'users', uid, 'activities'));
+  const activityRef = doc(collection(adminDb, 'users', uid, 'activities'));
   const newActivity = {
     type: 'Ad Watch',
     description: `Watched '${title}' ad`,
@@ -115,7 +77,7 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
   };
   batch.set(activityRef, newActivity);
 
-  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(adminDb, 'users', uid, 'transactions'));
   const newTransaction = {
       type: 'reward',
       description: `Watched '${title}' ad`,
@@ -131,9 +93,10 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
 }
 
 export async function claimGameReward(idToken: string, reward: number, gameTitle: string): Promise<void> {
+  const adminDb = getAdminDb();
   const uid = await getAuthenticatedUid(idToken);
-  const batch = writeBatch(db);
-  const userRef = doc(db, 'users', uid);
+  const batch = writeBatch(adminDb);
+  const userRef = doc(adminDb, 'users', uid);
   const now = new Date();
 
   batch.update(userRef, {
@@ -141,7 +104,7 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
     totalEarned: increment(reward),
   });
 
-  const activityRef = doc(collection(db, 'users', uid, 'activities'));
+  const activityRef = doc(collection(adminDb, 'users', uid, 'activities'));
   const newActivity = {
     type: 'Game Play',
     description: `Played '${gameTitle}'`,
@@ -150,7 +113,7 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
   };
   batch.set(activityRef, newActivity);
 
-  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(adminDb, 'users', uid, 'transactions'));
   const newTransaction = {
     type: 'reward',
     description: `Reward from '${gameTitle}'`,
@@ -167,8 +130,9 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
 
 
 export async function claimDailyReward(idToken: string): Promise<{ success: boolean; message: string }> {
+  const adminDb = getAdminDb();
   const uid = await getAuthenticatedUid(idToken);
-  const userRef = doc(db, 'users', uid);
+  const userRef = doc(adminDb, 'users', uid);
   const docSnap = await getDoc(userRef);
 
   if (!docSnap.exists()) {
@@ -201,7 +165,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
   const reward = 5 + (newStreak * 5);
   const now = new Date();
   
-  const batch = writeBatch(db);
+  const batch = writeBatch(adminDb);
   
   batch.update(userRef, {
     cubeBalance: increment(reward),
@@ -210,7 +174,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
     lastClaimedDate: now,
   });
 
-  const activityRef = doc(collection(db, 'users', uid, 'activities'));
+  const activityRef = doc(collection(adminDb, 'users', uid, 'activities'));
   batch.set(activityRef, {
     type: 'Daily Login',
     description: `Claimed Day ${newStreak} login bonus`,
@@ -218,7 +182,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
     date: now,
   });
 
-  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(adminDb, 'users', uid, 'transactions'));
   batch.set(transactionRef, {
     type: 'reward',
     description: `Daily Login Bonus - Day ${newStreak}`,
