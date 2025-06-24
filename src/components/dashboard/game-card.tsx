@@ -180,7 +180,7 @@ export function GameCard({ game }: GameCardProps) {
 
   return (
     <>
-      <Card className="overflow-hidden flex flex-col">
+      <Card className="overflow-hidden flex flex-col transition-all duration-200 ease-in-out hover:shadow-xl hover:-translate-y-1.5">
         <CardHeader className="p-0 relative">
           <Image
             src={game.imageUrl}

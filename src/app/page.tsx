@@ -145,7 +145,7 @@ export default function Home() {
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:max-w-none lg:grid-cols-4 mt-12">
               {features.map((feature) => (
-                <Card key={feature.title} className="text-center hover:shadow-lg transition-shadow">
+                <Card key={feature.title} className="text-center hover:shadow-xl hover:-translate-y-1 transition-all duration-200">
                   <CardHeader>
                     <div className="mx-auto flex items-center justify-center bg-primary/10 rounded-full w-16 h-16 mb-4">
                       {feature.icon}

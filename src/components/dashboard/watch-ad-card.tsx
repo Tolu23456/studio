@@ -82,7 +82,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
   const progress = ((ad.duration - timeRemaining) / ad.duration) * 100;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden transition-all duration-200 ease-in-out hover:shadow-xl hover:-translate-y-1.5">
       <CardHeader className="p-0">
         <Image
           src={ad.imageUrl}

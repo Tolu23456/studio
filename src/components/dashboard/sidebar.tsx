@@ -65,7 +65,7 @@ export default function DashboardSidebar() {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg transition-colors md:h-8 md:w-8",
+                      "flex h-9 w-9 items-center justify-center rounded-lg transition-all hover:scale-110 md:h-8 md:w-8",
                       isLinkActive(item.href)
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground hover:text-foreground"
@@ -84,7 +84,7 @@ export default function DashboardSidebar() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => signOut(auth)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-110 hover:text-foreground md:h-8 md:w-8"
                 >
                   <LogOut className="h-5 w-5" />
                   <span className="sr-only">Logout</span>
@@ -103,9 +103,9 @@ export default function DashboardSidebar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                      "flex flex-col items-center justify-center gap-1 rounded-md p-2 text-xs font-medium transition-colors",
+                      "flex flex-col items-center justify-center gap-1 rounded-lg p-2 text-xs font-medium transition-colors active:scale-95",
                       isLinkActive(item.href)
-                          ? "text-primary"
+                          ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground hover:bg-accent/80"
                   )}
               >
