@@ -22,22 +22,21 @@ import { cn } from "@/lib/utils";
 
 type WatchAdCardProps = {
   ad: Ad;
+  onAdClaimed: (adId: string) => void;
 };
 
-export function WatchAdCard({ ad }: WatchAdCardProps) {
+export function WatchAdCard({ ad, onAdClaimed }: WatchAdCardProps) {
   const [isWatching, setIsWatching] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(ad.duration);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
-  const [isClaimed, setIsClaimed] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
   useEffect(() => {
-    if (sessionStorage.getItem(`ad_claimed_${ad.id}`)) {
-      setIsCompleted(true);
-      setIsClaimed(true);
-    } else if (sessionStorage.getItem(`ad_watched_${ad.id}`)) {
+    // This check is for ads that were watched but the user navigated away
+    // before claiming. When they come back, the ad should be claimable.
+    if (sessionStorage.getItem(`ad_watched_${ad.id}`)) {
       setIsCompleted(true);
     }
   }, [ad.id]);
@@ -79,8 +78,8 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
             title: "Reward Claimed!",
             description: `You've earned ${ad.reward} Cubes.`,
         });
-        setIsClaimed(true);
         sessionStorage.setItem(`ad_claimed_${ad.id}`, 'true');
+        onAdClaimed(ad.id);
     } catch (error) {
         console.error("Failed to claim reward", error);
         toast({ variant: "destructive", title: "Claiming failed", description: "Could not claim your reward. Please try again." });
@@ -92,7 +91,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
   const progress = ((ad.duration - timeRemaining) / ad.duration) * 100;
 
   return (
-    <Card className="overflow-hidden transition-all duration-200 ease-in-out hover:shadow-xl hover:-translate-y-1.5">
+    <Card className="overflow-hidden transition-all duration-200 ease-in-out hover:shadow-xl hover:-translate-y-1.5 flex flex-col">
       <CardHeader className="p-0">
         <Image
           src={ad.imageUrl}
@@ -103,7 +102,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
           data-ai-hint={ad.dataAiHint}
         />
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-4 flex-grow">
         <CardTitle className="font-headline text-lg">{ad.title}</CardTitle>
         <CardDescription className="mt-1">{ad.description}</CardDescription>
         {isWatching && (
@@ -115,7 +114,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
           </div>
         )}
       </CardContent>
-      <CardFooter className="p-4 bg-muted/50">
+      <CardFooter className="p-4 bg-muted/50 mt-auto">
         {!isWatching && !isCompleted && (
           <Button onClick={handleWatch} className="w-full">
             <PlayCircle className="mr-2 h-4 w-4" />
@@ -127,7 +126,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
             Watching...
           </Button>
         )}
-        {isCompleted && !isClaimed && (
+        {isCompleted && (
           <Button onClick={handleClaim} disabled={isClaiming} className={cn(buttonVariants({}), "w-full bg-success hover:bg-success/90 text-success-foreground")}>
             {isClaiming ? "Claiming..." : (
               <>
@@ -136,12 +135,6 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
               </>
             )}
           </Button>
-        )}
-        {isCompleted && isClaimed && (
-            <Button disabled className="w-full" variant="outline">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Reward Claimed
-            </Button>
         )}
       </CardFooter>
     </Card>
