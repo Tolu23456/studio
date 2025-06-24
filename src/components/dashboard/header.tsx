@@ -37,11 +37,12 @@ import {
   User,
   Zap,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export default function DashboardHeader() {
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
 
@@ -77,7 +78,7 @@ export default function DashboardHeader() {
   const hasUnread = notifications.some(n => !n.read);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 transition-all sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
       <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -164,15 +165,14 @@ export default function DashboardHeader() {
             <Button
               variant="outline"
               size="icon"
-              className="overflow-hidden rounded-full"
+              className="overflow-hidden rounded-full h-9 w-9"
             >
-              <Image
-                src={"https://placehold.co/36x36.png"}
-                width={36}
-                height={36}
-                alt="Avatar"
-                className="overflow-hidden rounded-full object-cover"
-              />
+              <Avatar className="h-full w-full">
+                  <AvatarImage src={userProfile?.photoURL || undefined} alt="Avatar" />
+                  <AvatarFallback>
+                    <User className="h-5 w-5" />
+                  </AvatarFallback>
+              </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

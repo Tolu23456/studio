@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const profile: UserProfile = {
               uid: data.uid,
               email: data.email,
+              photoURL: data.photoURL || '',
               cubeBalance: data.cubeBalance,
               totalEarned: data.totalEarned,
               referrals: data.referrals,

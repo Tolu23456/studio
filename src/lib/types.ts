@@ -1,6 +1,7 @@
 export type UserProfile = {
   uid: string;
   email: string | null;
+  photoURL?: string;
   cubeBalance: number;
   totalEarned: number;
   referrals: number;

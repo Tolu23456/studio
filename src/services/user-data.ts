@@ -2,10 +2,11 @@
 'use client';
 
 import type { Activity, Notification, Transaction, UserProfile } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay } from 'date-fns';
-import { db, auth } from '@/lib/firebase';
+import { db, auth, storage } from '@/lib/firebase';
 
 const getCurrentUser = (): User => {
     const user = auth.currentUser;
@@ -73,6 +74,7 @@ export async function createUserProfile(user: User, referralCode?: string): Prom
     const newUserProfile: UserProfile = {
         uid: user.uid,
         email: user.email,
+        photoURL: user.photoURL || '',
         cubeBalance: startingBalance,
         totalEarned: startingBalance,
         referrals: 0,
@@ -119,6 +121,7 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
         return {
             uid: data.uid,
             email: data.email,
+            photoURL: data.photoURL,
             cubeBalance: data.cubeBalance,
             totalEarned: data.totalEarned,
             referrals: data.referrals,
@@ -128,6 +131,25 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
         };
     }
     return null;
+}
+
+export async function uploadProfilePicture(file: File): Promise<string> {
+    const user = getCurrentUser();
+    // A standard path for all profile pictures for simplicity. This will overwrite the previous image.
+    const filePath = `profile-pictures/${user.uid}/profile.jpg`;
+    const storageRef = ref(storage, filePath);
+
+    // Upload the file to Firebase Storage
+    await uploadBytes(storageRef, file);
+    
+    // Get the download URL
+    const photoURL = await getDownloadURL(storageRef);
+
+    // Update the user's profile in Firestore
+    const userRef = doc(db, 'users', user.uid);
+    await updateDoc(userRef, { photoURL });
+    
+    return photoURL;
 }
 
 function _createNotification(batch: any, uid: string, title: string, description: string) {
