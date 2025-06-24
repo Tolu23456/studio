@@ -54,3 +54,9 @@ export type Notification = {
   date: Date;
   read: boolean;
 };
+
+export type ReferredUser = {
+  id: string; // The UID of the referred user
+  displayName: string;
+  createdAt: Date;
+};

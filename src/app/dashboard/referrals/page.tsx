@@ -1,21 +1,59 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Copy, Check, Users, Gift } from 'lucide-react';
+import { Copy, Check, Users, Gift, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { type ReferredUser } from '@/lib/types';
+import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
 
 export default function ReferralsPage() {
   const { user, userProfile, loading } = useAuth();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [referredUsers, setReferredUsers] = useState<ReferredUser[]>([]);
+  const [listLoading, setListLoading] = useState(true);
 
   const referralCode = userProfile?.adsenerId;
+
+  useEffect(() => {
+    if (!user) {
+        setListLoading(false);
+        return;
+    };
+    setListLoading(true);
+    const referredUsersRef = collection(db, 'users', user.uid, 'referredUsers');
+    const q = query(referredUsersRef, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const users = snapshot.docs.map(doc => ({
+            id: doc.id,
+            displayName: doc.data().displayName,
+            createdAt: (doc.data().createdAt as Timestamp).toDate(),
+        } as ReferredUser));
+        setReferredUsers(users);
+        setListLoading(false);
+    }, (error) => {
+        console.error("Error fetching referred users:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not fetch your referral list.",
+        });
+        setListLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, toast]);
+
 
   const handleCopy = () => {
     if (!referralCode) return;
@@ -105,6 +143,48 @@ export default function ReferralsPage() {
             </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+            <CardTitle>Your Invited Friends</CardTitle>
+            <CardDescription>A list of friends who have successfully joined using your code.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="text-right">Date Joined</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {listLoading ? (
+                        <>
+                            <TableRow><TableCell colSpan={2}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
+                            <TableRow><TableCell colSpan={2}><Skeleton className="h-5 w-full" /></TableCell></TableRow>
+                        </>
+                    ) : referredUsers.length > 0 ? (
+                        referredUsers.map((referredUser) => (
+                            <TableRow key={referredUser.id}>
+                                <TableCell className="font-medium">{referredUser.displayName}</TableCell>
+                                <TableCell className="text-right text-muted-foreground">{format(referredUser.createdAt, 'PP')}</TableCell>
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={2} className="h-24 text-center">
+                                <div className='flex flex-col items-center gap-2 text-muted-foreground'>
+                                    <UserPlus className="w-8 h-8" />
+                                    <span>You haven't referred anyone yet.</span>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </CardContent>
+      </Card>
+
 
        <Card>
         <CardHeader>

@@ -82,6 +82,13 @@ export async function createUserProfile(user: User, displayName: string, referra
                     
                     // Add notification for referrer
                     _createNotification(batch, referrerDoc.id, "Referral Success!", `You earned ${referrerReward} Cubes for referring ${displayName}!`);
+
+                    // Add the new user to the referrer's 'referredUsers' subcollection
+                    const referredUserDocRef = doc(db, 'users', referrerDoc.id, 'referredUsers', user.uid);
+                    batch.set(referredUserDocRef, {
+                        displayName: displayName,
+                        createdAt: now,
+                    });
                 }
             }
         } catch (error) {
