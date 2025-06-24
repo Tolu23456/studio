@@ -24,7 +24,7 @@ import { claimDailyReward } from "@/services/user-data";
 import { useToast } from "@/hooks/use-toast";
 
 export function DailyRewards() {
-  const { user, userProfile, loading: authLoading, refreshUserProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const [canClaim, setCanClaim] = useState(false);
   const [streak, setStreak] = useState(0);
   const [isClaiming, setIsClaiming] = useState(false);
@@ -69,7 +69,6 @@ export function DailyRewards() {
                 title: "Reward Claimed!",
                 description: result.message,
             });
-            await refreshUserProfile();
         } else {
             toast({
                 variant: "destructive",

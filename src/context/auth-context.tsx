@@ -1,11 +1,10 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { getUserProfile } from '@/services/user-data';
 import type { UserProfile } from '@/lib/types';
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
 
@@ -13,14 +12,12 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   loading: true,
-  refreshUserProfile: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -86,16 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const refreshUserProfile = useCallback(async () => {
-    // This function is now less critical due to onSnapshot, but can be kept
-    // for components that explicitly want to 'await' a refresh.
-    if (user) {
-      const profile = await getUserProfile(user);
-      setUserProfile(profile);
-    }
-  }, [user]);
-
-  const value = { user, userProfile, loading, refreshUserProfile };
+  const value = { user, userProfile, loading };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

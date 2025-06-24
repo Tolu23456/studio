@@ -68,7 +68,7 @@ export function GameCard({ game }: GameCardProps) {
   const [playCount, setPlayCount] = useState(0);
 
   const { toast } = useToast();
-  const { user, refreshUserProfile } = useAuth();
+  const { user } = useAuth();
   
   const MAX_PLAYS = 5;
   const COOLDOWN_HOURS = 1;
@@ -129,7 +129,6 @@ export function GameCard({ game }: GameCardProps) {
 
     try {
         await claimGameReward(earnedReward, game.title);
-        await refreshUserProfile();
         toast({
             title: "Reward Claimed!",
             description: `You've earned ${earnedReward} Cubes for playing ${game.title}.`,

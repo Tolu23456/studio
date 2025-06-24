@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadProfilePicture } from '@/services/user-data';
 
 export default function ProfilePage() {
-  const { user, userProfile, loading, refreshUserProfile } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();

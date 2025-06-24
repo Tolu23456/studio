@@ -31,7 +31,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
   const [isClaiming, setIsClaiming] = useState(false);
   const [isClaimed, setIsClaimed] = useState(false);
   const { toast } = useToast();
-  const { user, refreshUserProfile } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (sessionStorage.getItem(`ad_claimed_${ad.id}`)) {
@@ -75,7 +75,6 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
     setIsClaiming(true);
     try {
         await claimAdReward(ad.reward, ad.title);
-        await refreshUserProfile();
         toast({
             title: "Reward Claimed!",
             description: `You've earned ${ad.reward} Cubes.`,
