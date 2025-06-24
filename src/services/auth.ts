@@ -12,23 +12,21 @@ async function verifyToken(idToken: string): Promise<DecodedIdToken> {
     const { adminAuth } = getFirebaseAdmin();
     return await adminAuth.verifyIdToken(idToken);
   } catch (error: any) {
-    console.error('Full error object during token verification:', JSON.stringify(error, null, 2));
-
-    let errorMessage = 'User is not authenticated. An unknown error occurred during token verification.';
-    if (error.code) {
-        errorMessage = `User is not authenticated. Firebase error code: ${error.code}.`;
-        if (error.code === 'auth/id-token-expired') {
-            errorMessage += ' The user token has expired.';
-        } else if (error.code === 'auth/argument-error') {
-            errorMessage += ' The token is malformed or invalid. This can happen if the client and server Firebase projects are different.';
-        } else if (error.code === 'auth/project-not-found') {
-            errorMessage += ' The Firebase project associated with the service account could not be found.';
-        }
-    } else if (error.message) {
-        errorMessage = `User is not authenticated. Original error: ${error.message}`;
+    // If the error is from initialization, it's already well-formatted. Let's just throw it.
+    if (error.message.startsWith('Failed to initialize Firebase Admin SDK')) {
+      console.error("Firebase Admin SDK Initialization Error:", error.message);
+      throw error;
     }
     
-    throw new Error(errorMessage);
+    // If it's a token verification error from Firebase, it will have a 'code'.
+    if (error.code) { 
+      console.error('Firebase token verification error:', error.code, error.message);
+      throw new Error(`User is not authenticated. Reason: ${error.code}`);
+    }
+
+    // For any other unexpected errors.
+    console.error('An unexpected error occurred during token verification:', error);
+    throw new Error('An unexpected error occurred during authentication.');
   }
 }
 
