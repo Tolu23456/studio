@@ -1,17 +1,15 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
 import { signOut } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from 'date-fns';
 import type { Notification } from '@/lib/types';
-import { collection, query, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore";
 
 import {
   Breadcrumb,
@@ -35,46 +33,15 @@ import {
   LogOut,
   Settings,
   User,
-  Zap,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export default function DashboardHeader() {
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
-  const { user, userProfile } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loadingNotifications, setLoadingNotifications] = useState(true);
-
-  useEffect(() => {
-    if (!user) {
-      setLoadingNotifications(false);
-      return;
-    }
-
-    setLoadingNotifications(true);
-    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
-    const q = query(notificationsRef, orderBy('date', 'desc'), limit(5));
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const userNotifications = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          date: (data.date as Timestamp).toDate(),
-        } as Notification;
-      });
-      setNotifications(userNotifications);
-      setLoadingNotifications(false);
-    }, (error) => {
-      console.error("Error fetching real-time notifications: ", error);
-      setLoadingNotifications(false);
-    });
-    
-    return () => unsubscribe();
-  }, [user]);
-
+  const { userProfile, notifications, loading: authLoading } = useAuth();
+  
+  const loadingNotifications = authLoading;
   const hasUnread = notifications.some(n => !n.read);
 
   return (
@@ -136,7 +103,7 @@ export default function DashboardHeader() {
                 </div>
               </div>
             ) : notifications.length > 0 ? (
-                notifications.map((notification) => (
+                notifications.slice(0, 5).map((notification) => (
                     <DropdownMenuItem key={notification.id} className="flex flex-col items-start gap-1 p-3 cursor-pointer">
                         <div className="flex items-center justify-between w-full">
                             <p className="font-medium text-sm">{notification.title}</p>

@@ -5,32 +5,36 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import type { UserProfile } from '@/lib/types';
-import { doc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
+import type { UserProfile, Notification } from '@/lib/types';
+import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit } from 'firebase/firestore';
 import { generateAdsenerId } from '@/services/user-data';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  notifications: Notification[];
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   loading: true,
+  notifications: [],
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     let profileUnsubscribe: (() => void) | undefined;
 
     const authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // Clean up previous profile listener if user changes (e.g., logout/login)
       if (profileUnsubscribe) {
         profileUnsubscribe();
       }
@@ -40,28 +44,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentUser) {
         const userRef = doc(db, 'users', currentUser.uid);
         
-        // Set up a real-time listener for the user's profile
         profileUnsubscribe = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
-
             const updates: { [key: string]: any } = {};
 
-            // Lazily generate Adsener ID for existing users who don't have one.
             if (!data.adsenerId) {
                 updates.adsenerId = generateAdsenerId();
             }
-
-            // Lazily generate displayName for existing users who don't have one.
             if (!data.displayName) {
                 updates.displayName = currentUser.email?.split('@')[0] || `user_${currentUser.uid.substring(0, 5)}`;
             }
 
             if (Object.keys(updates).length > 0) {
-                // This is a fire-and-forget update. onSnapshot will be triggered again
-                // by this update, but the `if` conditions will prevent an infinite loop.
                 updateDoc(userRef, updates);
-                // Exit early, the listener will re-run with the updated data.
                 return;
             }
 
@@ -80,8 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
             setUserProfile(profile);
           } else {
-            // User exists in Auth, but not in Firestore.
-            // This can happen briefly during sign-up or if profile creation fails.
             setUserProfile(null);
           }
           setLoading(false);
@@ -91,13 +85,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         });
       } else {
-        // User is logged out
         setUserProfile(null);
         setLoading(false);
       }
     });
 
-    // Cleanup function for when the AuthProvider unmounts
     return () => {
       authUnsubscribe();
       if (profileUnsubscribe) {
@@ -106,7 +98,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const value = { user, userProfile, loading };
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
+    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+    const q = query(notificationsRef, orderBy('date', 'desc'), limit(10));
+    
+    let isInitialLoad = true;
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const newNotifications = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          date: (data.date as Timestamp).toDate(),
+        } as Notification;
+      });
+
+      if (isInitialLoad) {
+        setNotifications(newNotifications);
+        isInitialLoad = false;
+        return;
+      }
+      
+      setNotifications(currentNotifications => {
+        const latestNew = newNotifications.length ? newNotifications[0] : null;
+        const latestOld = currentNotifications.length ? currentNotifications[0] : null;
+
+        if (latestNew && (!latestOld || latestNew.id !== latestOld.id)) {
+          toast({
+            title: `🔔 ${latestNew.title}`,
+            description: latestNew.description,
+          });
+        }
+        return newNotifications;
+      });
+    }, (error) => {
+      console.error("Error fetching real-time notifications: ", error);
+    });
+
+    return () => unsubscribe();
+  }, [user, toast]);
+
+  const value = { user, userProfile, loading, notifications };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
