@@ -256,12 +256,22 @@ export async function claimAdReward(adId: string): Promise<void> {
 
 const calculateGameReward = (gameId: string, scorePayload: number): number => {
     switch (gameId) {
+        case 'g1': // One Tap Dash (Cube Runner)
+        case 'g2': // Shadow Jump (Cube Runner)
+        case 'g7': // Stack Tower (Cube Runner)
+            return scorePayload; // score is cubes collected, a direct reward
+        case 'g3': // Don’t Touch the Red (Puzzle Box)
+        case 'g8': // Speed Type (Puzzle Box)
+        case 'g9': // Reverse Swipe (Puzzle Box)
+        case 'g10': // Tilt Maze (Puzzle Box)
+            return Math.max(5, 50 - scorePayload); // scorePayload is moves, less is better
         case 'g4': // Quick Flip (Memory Match)
-            return Math.max(5, 40 - scorePayload); // scorePayload is moves
+            return Math.max(5, 40 - scorePayload); // scorePayload is moves, less is better
         case 'g5': // Laser Reflex (Reaction Time)
+        case 'g6': // Tiny Tapper (Reaction Time)
             return Math.max(1, 30 - Math.floor(scorePayload / 100)); // scorePayload is reactionTime in ms
         default:
-            return 0; // No reward for unknown or "coming soon" games
+            return 0; // No reward for unknown or unmapped games
     }
 };
 

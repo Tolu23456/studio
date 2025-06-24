@@ -95,6 +95,9 @@ export default function GamesPage() {
                 <GameCard key={game.id} game={game} />
             ))}
         </div>
+        <div className="text-center text-muted-foreground mt-8 py-4">
+            More games coming soon!
+        </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 type CubeRunnerGameProps = {
   onGameComplete: () => void;
   onGameWon: (reward: number) => void;
+  playsLeft: number;
 };
 
 const GAME_WIDTH = 300;
@@ -23,7 +24,7 @@ type Entity = {
   y: number;
 };
 
-export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProps) {
+export function CubeRunnerGame({ onGameComplete, onGameWon, playsLeft }: CubeRunnerGameProps) {
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
   const [score, setScore] = useState(0);
   const [playerX, setPlayerX] = useState(GAME_WIDTH / 2 - PLAYER_SIZE / 2);
@@ -182,12 +183,15 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
           </div>
         )}
         {gameState === 'gameover' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/70 text-white">
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/70 text-white p-4 text-center">
             <h4 className="text-3xl font-bold">Game Over</h4>
             <p className="text-lg mt-2">Your Score: {score}</p>
              <p className="text-lg mt-1">Cubes Earned: {score}</p>
-            <div className="flex gap-4 mt-6">
-                <Button onClick={resetGame} variant="secondary">Play Again</Button>
+            {playsLeft <= 0 && (
+                <p className="text-sm text-destructive font-semibold mt-4">No more plays left.</p>
+            )}
+            <div className="flex gap-4 mt-4">
+                <Button onClick={resetGame} variant="secondary" disabled={playsLeft <= 0}>Play Again</Button>
                 <Button onClick={onGameComplete}>Finish Game</Button>
             </div>
           </div>

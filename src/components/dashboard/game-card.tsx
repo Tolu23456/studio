@@ -26,6 +26,8 @@ import { useAuth } from "@/context/auth-context";
 import { claimGameReward } from "@/services/user-data";
 import { ReactionTimeGame } from "@/components/games/reaction-time-game";
 import { MemoryMatchGame } from "@/components/games/memory-match-game";
+import { CubeRunnerGame } from "@/components/games/cube-runner-game";
+import { PuzzleBoxGame } from "@/components/games/puzzle-box-game";
 
 const getGamePlays = () => {
     if (typeof window === 'undefined') return {};
@@ -38,26 +40,17 @@ const setGamePlays = (plays: any) => {
     localStorage.setItem('game_plays', JSON.stringify(plays));
 };
 
-const ComingSoonGame = ({ onGameComplete }: { onGameComplete: () => void; onGameWon?: (score: number) => void; playsLeft?: number; }) => (
-    <div className="p-6 text-center space-y-4">
-        <Gamepad2 className="w-16 h-16 mx-auto text-muted-foreground/50" />
-        <h3 className="text-xl font-bold font-headline">Coming Soon!</h3>
-        <p className="text-muted-foreground">This exciting game is still under development. Please check back later to play.</p>
-        <Button onClick={onGameComplete}>Close</Button>
-    </div>
-);
-
 const GameComponentMap: { [key: string]: React.ElementType } = {
-  'g1': ComingSoonGame,    // One Tap Dash
-  'g2': ComingSoonGame,    // Shadow Jump
-  'g3': ComingSoonGame,    // Don’t Touch the Red
+  'g1': CubeRunnerGame,    // One Tap Dash
+  'g2': CubeRunnerGame,    // Shadow Jump
+  'g3': PuzzleBoxGame,    // Don’t Touch the Red
   'g4': MemoryMatchGame,   // Quick Flip
   'g5': ReactionTimeGame,  // Laser Reflex
-  'g6': ComingSoonGame,    // Tiny Tapper
-  'g7': ComingSoonGame,    // Stack Tower
-  'g8': ComingSoonGame,    // Speed Type
-  'g9': ComingSoonGame,    // Reverse Swipe
-  'g10': ComingSoonGame,   // Tilt Maze
+  'g6': ReactionTimeGame,    // Tiny Tapper
+  'g7': CubeRunnerGame,    // Stack Tower
+  'g8': PuzzleBoxGame,    // Speed Type
+  'g9': PuzzleBoxGame,    // Reverse Swipe
+  'g10': PuzzleBoxGame,   // Tilt Maze
 };
 
 
@@ -169,7 +162,7 @@ export function GameCard({ game }: GameCardProps) {
     setIsGameOpen(false);
   }
 
-  const GameComponent = GameComponentMap[game.id] || ComingSoonGame;
+  const GameComponent = GameComponentMap[game.id];
   
   const formatTimeLeft = () => {
     if (cooldownTime <= 0) return '';
