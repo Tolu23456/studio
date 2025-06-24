@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -46,18 +46,12 @@ type GameCardProps = {
 };
 
 export function GameCard({ game }: GameCardProps) {
-  const [gameState, setGameState] = useState<'idle' | 'completed' | 'claimed'>('idle');
+  const [gameState, setGameState] = useState<'idle' | 'completed'>('idle');
   const [isClaiming, setIsClaiming] = useState(false);
   const [isGameOpen, setIsGameOpen] = useState(false);
   const { toast } = useToast();
   const { user, refreshUserProfile } = useAuth();
 
-  useEffect(() => {
-    if (sessionStorage.getItem(`game_played_${game.id}`)) {
-      setGameState('claimed');
-    }
-  }, [game.id]);
-  
   const handleGameComplete = () => {
     setIsGameOpen(false);
     setGameState('completed');
@@ -76,8 +70,8 @@ export function GameCard({ game }: GameCardProps) {
             title: "Reward Claimed!",
             description: `You've earned ${game.reward} Cubes.`,
         });
-        setGameState('claimed');
-        sessionStorage.setItem(`game_played_${game.id}`, 'true');
+        // Reset state to allow playing again
+        setGameState('idle');
     } catch (error) {
         console.error("Failed to claim game reward", error);
         toast({ variant: "destructive", title: "Claiming failed", description: "Could not claim your reward. Please try again." });
@@ -98,7 +92,7 @@ export function GameCard({ game }: GameCardProps) {
             alt={game.title}
             width={600}
             height={400}
-            className={cn("object-cover aspect-video transition-opacity", (gameState === 'claimed') && 'opacity-50')}
+            className="object-cover aspect-video"
             data-ai-hint={game.dataAiHint}
           />
         </CardHeader>
@@ -126,12 +120,6 @@ export function GameCard({ game }: GameCardProps) {
                           Claim Reward
                       </>
                   )}
-              </Button>
-          )}
-          {gameState === 'claimed' && (
-               <Button disabled variant="outline" className="w-36">
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Played
               </Button>
           )}
         </CardFooter>
