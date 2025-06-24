@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -23,7 +23,7 @@ import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "../ui/skeleton";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore";
-import { format } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { FileText } from "lucide-react";
@@ -40,9 +40,11 @@ const getStatusBadgeVariant = (status: Transaction['status']) => {
     }
 }
 
+type GroupedTransactions = { [key: string]: Transaction[] };
+
 export function WalletHistory() {
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [groupedTransactions, setGroupedTransactions] = useState<GroupedTransactions>({});
   const [loading, setLoading] = useState(true);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -66,7 +68,25 @@ export function WalletHistory() {
           date: (data.date as Timestamp).toDate(),
         } as Transaction;
       });
-      setTransactions(userTransactions);
+
+      const grouped = userTransactions.reduce((acc: GroupedTransactions, transaction) => {
+        const date = transaction.date;
+        let groupTitle = format(date, 'EEEE, MMMM d, yyyy'); // Default format
+        if (isToday(date)) {
+          groupTitle = 'Today';
+        } else if (isYesterday(date)) {
+          groupTitle = 'Yesterday';
+        }
+        
+        if (!acc[groupTitle]) {
+          acc[groupTitle] = [];
+        }
+        acc[groupTitle].push(transaction);
+
+        return acc;
+      }, {});
+
+      setGroupedTransactions(grouped);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching real-time transactions: ", error);
@@ -119,38 +139,47 @@ export function WalletHistory() {
                     <TableCell className="text-right hidden sm:table-cell"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : transactions.length === 0 ? (
+              ) : Object.keys(groupedTransactions).length === 0 ? (
                   <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground h-24">
                           No transactions yet.
                       </TableCell>
                   </TableRow>
               ) : (
-                transactions.map((transaction) => (
-                  <TableRow 
-                    key={transaction.id}
-                    onClick={() => handleRowClick(transaction)}
-                    className="sm:cursor-auto cursor-pointer"
-                  >
-                    <TableCell>
-                      <div className="font-medium">{transaction.description}</div>
-                      <div className="text-sm text-muted-foreground">{format(transaction.date, 'Pp')}</div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge variant="outline" className="capitalize">{transaction.type}</Badge>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge variant={getStatusBadgeVariant(transaction.status)} className="capitalize">{transaction.status}</Badge>
-                    </TableCell>
-                    <TableCell className={cn("font-semibold", transaction.amount > 0 ? "text-success" : "text-destructive")}>
-                      {transaction.amount > 0 ? `+${transaction.amount.toLocaleString()}` : transaction.amount.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right hidden sm:table-cell">
-                      <Button variant="ghost" size="icon" onClick={() => handleViewReceipt(transaction)} aria-label="View Receipt">
-                        <FileText className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                Object.entries(groupedTransactions).map(([date, transactionsInGroup]) => (
+                  <React.Fragment key={date}>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50 pointer-events-none">
+                      <TableCell colSpan={5} className="py-2 px-4 font-semibold text-sm">
+                        {date}
+                      </TableCell>
+                    </TableRow>
+                    {transactionsInGroup.map((transaction) => (
+                      <TableRow 
+                        key={transaction.id}
+                        onClick={() => handleRowClick(transaction)}
+                        className="sm:cursor-auto cursor-pointer"
+                      >
+                        <TableCell>
+                          <div className="font-medium">{transaction.description}</div>
+                          <div className="text-sm text-muted-foreground">{format(transaction.date, 'p')}</div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="outline" className="capitalize">{transaction.type}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant={getStatusBadgeVariant(transaction.status)} className="capitalize">{transaction.status}</Badge>
+                        </TableCell>
+                        <TableCell className={cn("font-semibold", transaction.amount > 0 ? "text-success" : "text-destructive")}>
+                          {transaction.amount > 0 ? `+${transaction.amount.toLocaleString()}` : transaction.amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right hidden sm:table-cell">
+                          <Button variant="ghost" size="icon" onClick={() => handleViewReceipt(transaction)} aria-label="View Receipt">
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </React.Fragment>
                 ))
               )}
             </TableBody>
