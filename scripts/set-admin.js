@@ -1,6 +1,7 @@
 
+// Load environment variables from .env file
+require('dotenv').config();
 const admin = require('firebase-admin');
-const fs = require('fs');
 const readline = require('readline');
 
 const rl = readline.createInterface({
@@ -14,51 +15,19 @@ function askQuestion(query) {
 
 async function setAdminClaim() {
   try {
-    console.log("👋 Welcome to the Admin User setup script.");
-    console.log("This script will give a user admin privileges in your app.");
-    console.log("\n------------------------------------------------------------------");
-    console.log("STEP 1: Get your Firebase Service Account JSON file");
-    console.log("------------------------------------------------------------------");
-    console.log("1. Go to your Firebase project console: https://console.firebase.google.com/");
-    console.log("2. Select your project ('adsener-app').");
-    console.log("3. Click the gear icon ⚙️ next to 'Project Overview' and select 'Project settings'.");
-    console.log("4. Go to the 'Service accounts' tab.");
-    console.log("5. Click the 'Generate new private key' button. A JSON file will be downloaded.");
-    console.log("   This file contains secret credentials. Keep it safe!");
-    console.log("6. The file is likely in your 'Downloads' folder.\n");
-
-
-    const email = await askQuestion("Enter the email address of the user you want to make an admin: ");
-    if (!email) {
-      console.error("\n❌ Email is required. Please restart the script.");
-      return;
-    }
-
-    console.log("\n------------------------------------------------------------------");
-    console.log("STEP 2: Provide the path to the downloaded file");
-    console.log("------------------------------------------------------------------");
-    console.log("The 'path' is the full location of the file on your computer.");
-    console.log("Examples:");
-    console.log("  - on macOS/Linux: /Users/your-name/Downloads/your-project-id-firebase-adminsdk.json");
-    console.log("  - on Windows:      C:\\Users\\your-name\\Downloads\\your-project-id-firebase-adminsdk.json\n");
+    // Initialize Firebase Admin SDK from environment variables
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+    };
     
-    const serviceAccountPath = await askQuestion("Now, please enter the full path to your service account JSON file: ");
-    if (!serviceAccountPath) {
-      console.error("\n❌ Path to service account file is required. Please restart the script.");
-      return;
-    }
-    
-    let serviceAccount;
-    try {
-        serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-    } catch (e) {
-        console.error("\n❌ Error reading or parsing the service account file.");
-        console.error(`   Details: ${e.message}`);
-        console.error("\n   Hint: Please double-check that the path you entered is correct and that the file is not corrupted.");
+    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+        console.error("\n❌ Firebase admin credentials are not set in your .env file.");
+        console.error("   Please ensure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set.");
         return;
     }
 
-    // Initialize Firebase Admin SDK
     try {
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
@@ -67,6 +36,13 @@ async function setAdminClaim() {
         if (error.code !== 'app/duplicate-app') {
             throw error;
         }
+    }
+
+    console.log("👋 Welcome to the Admin User setup script.");
+    const email = await askQuestion("Enter the email address of the user you want to make an admin: ");
+    if (!email) {
+      console.error("\n❌ Email is required. Please restart the script.");
+      return;
     }
 
     const user = await admin.auth().getUserByEmail(email);
@@ -78,6 +54,7 @@ async function setAdminClaim() {
   } catch (error) {
     console.error("\n❌ An error occurred:");
     if (error.code === 'auth/user-not-found') {
+        const email = error.customData?.email || 'the one you entered';
         console.error(`   Could not find a user with the email: "${email}"`);
         console.error("   Hint: Make sure the user has already signed up in your application.");
     } else {
