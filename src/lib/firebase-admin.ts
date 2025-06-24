@@ -17,7 +17,7 @@ const getFirebaseAdmin = (): admin.app.App => {
   };
 
   // Validate that all required environment variables are present
-  if (!serviceAccount.projectId || !service.clientEmail || !serviceAccount.privateKey) {
+  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
     throw new Error(
       `Firebase admin credentials are not set. Please make sure you have the correct environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) in your .env file.`
     );
