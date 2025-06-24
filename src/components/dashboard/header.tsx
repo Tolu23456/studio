@@ -33,6 +33,7 @@ import {
   LogOut,
   Settings,
   User,
+  Zap
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
@@ -45,7 +46,14 @@ export default function DashboardHeader() {
   const hasUnread = notifications.some(n => !n.read);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 transition-all sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
+      <Link
+        href="/dashboard"
+        className="flex items-center gap-2 text-lg font-semibold md:hidden"
+      >
+        <Zap className="h-6 w-6 text-primary" />
+        <span className="font-bold">Adsener</span>
+      </Link>
       <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
           <BreadcrumbItem>
