@@ -146,7 +146,7 @@ export function WalletHistory() {
         </CardContent>
       </Card>
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl p-6 overflow-y-auto">
           <DialogHeader className="mb-4">
             <DialogTitle>Transaction Receipt</DialogTitle>
             {selectedTransaction && <DialogDescription>

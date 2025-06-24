@@ -58,7 +58,7 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
 
   return (
     <div>
-        <div ref={receiptRef} className="bg-white p-8 rounded-lg text-black shadow-md">
+        <div ref={receiptRef} className="bg-white p-6 sm:p-8 rounded-lg text-black shadow-md">
             <div className="flex justify-between items-center border-b-2 border-gray-200 pb-4 mb-6">
                 <h2 className="text-2xl font-bold text-gray-800 font-headline">Transaction Receipt</h2>
                 <div className="text-right">
@@ -67,12 +67,12 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 mb-8 text-sm">
                 <div>
                     <p className="text-gray-500 font-semibold mb-1">Transaction ID</p>
-                    <p className="font-mono text-xs text-gray-800">{transaction.id}</p>
+                    <p className="font-mono text-xs text-gray-800 break-all">{transaction.id}</p>
                 </div>
-                <div className="text-right">
+                <div className="sm:text-right">
                     <p className="text-gray-500 font-semibold mb-1">Date & Time</p>
                     <p className="text-gray-800">{format(transaction.date, 'Pp')}</p>
                 </div>
@@ -80,7 +80,7 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
                     <p className="text-gray-500 font-semibold mb-1">Transaction Type</p>
                     <p className="text-gray-800 capitalize">{transaction.type}</p>
                 </div>
-                <div className="text-right">
+                <div className="sm:text-right">
                     <p className="text-gray-500 font-semibold mb-1">Status</p>
                     <p>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(transaction.status)}`}>
@@ -88,7 +88,7 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
                         </span>
                     </p>
                 </div>
-                 <div className="col-span-2">
+                 <div className="col-span-1 sm:col-span-2">
                     <p className="text-gray-500 font-semibold mb-1">Description</p>
                     <p className="text-gray-800">{transaction.description}</p>
                 </div>
