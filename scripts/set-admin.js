@@ -13,7 +13,7 @@ const admin = require('firebase-admin');
 
 // --- CONFIGURATION ---
 // IMPORTANT: Replace this with the email of the user you want to make an admin.
-const USER_EMAIL_TO_MAKE_ADMIN = "your-email@example.com";
+const USER_EMAIL_TO_MAKE_ADMIN = "t85491005@gmail.com";
 // -------------------
 
 
