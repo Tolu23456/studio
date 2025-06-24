@@ -5,22 +5,13 @@ import type { Activity, Notification, Transaction, UserProfile } from '@/lib/typ
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, WriteBatch, getDocs, query, where } from 'firebase/firestore';
 import type { Firestore } from 'firebase-admin/firestore';
 import { isYesterday, startOfDay, startOfToday, subDays, format } from 'date-fns';
-import { getAuthenticatedUid } from './auth';
+import { getAuthenticatedUid, verifyAdminAndGetUid, verifyTokenAndGetEmail } from './auth';
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
 
 
-async function verifyAdmin(idToken: string): Promise<string> {
-    const { adminAuth } = getFirebaseAdmin();
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    if (decodedToken.admin !== true) {
-        throw new Error('User does not have admin privileges.');
-    }
-    return decodedToken.uid;
-}
-
 export async function createUserProfile(idToken: string): Promise<void> {
     const { adminAuth, adminDb } = getFirebaseAdmin();
-    const { uid, email } = await adminAuth.verifyIdToken(idToken);
+    const { uid, email } = await verifyTokenAndGetEmail(idToken);
     const userRecord = await adminAuth.getUser(uid);
     const userRef = doc(adminDb, 'users', uid);
     const newUserProfile: UserProfile = {
@@ -213,7 +204,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
 
 // Admin functions
 export async function getAllUsers(idToken: string): Promise<UserProfile[]> {
-  await verifyAdmin(idToken);
+  await verifyAdminAndGetUid(idToken);
   const { adminDb } = getFirebaseAdmin();
   const usersSnapshot = await getDocs(collection(adminDb, 'users'));
   const users: UserProfile[] = [];
@@ -234,7 +225,7 @@ export async function getAllUsers(idToken: string): Promise<UserProfile[]> {
 }
 
 export async function getAdminDashboardStats(idToken: string): Promise<{ totalUsers: number; totalCubesAwarded: number }> {
-    await verifyAdmin(idToken);
+    await verifyAdminAndGetUid(idToken);
     const { adminDb } = getFirebaseAdmin();
     const usersSnapshot = await getDocs(collection(adminDb, 'users'));
     
@@ -251,7 +242,7 @@ export async function getAdminDashboardStats(idToken: string): Promise<{ totalUs
 }
 
 export async function getUserGrowthStats(idToken: string): Promise<{ date: string; "New Users": number }[]> {
-    await verifyAdmin(idToken);
+    await verifyAdminAndGetUid(idToken);
     const { adminDb } = getFirebaseAdmin();
     
     const today = startOfToday();
@@ -284,7 +275,7 @@ export async function getUserGrowthStats(idToken: string): Promise<{ date: strin
 }
 
 export async function sendNotificationToAllUsers(idToken: string, title: string, description: string): Promise<{ success: boolean; message: string }> {
-    await verifyAdmin(idToken);
+    await verifyAdminAndGetUid(idToken);
     const { adminDb } = getFirebaseAdmin();
     const usersSnapshot = await getDocs(collection(adminDb, 'users'));
 
