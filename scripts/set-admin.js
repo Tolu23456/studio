@@ -1,14 +1,14 @@
 
 // This is a one-time use script to grant admin privileges to a user.
 // 1. Make sure your .env file at the root of the project is populated
-//    with your Firebase Admin credentials.
+//    with your Firebase Admin credentials. The Next.js app needs to be restarted
+//    to pick up changes to the .env file.
 // 2. Replace the placeholder email below with the email of the user
 //    you want to make an admin.
 // 3. Run this script from your terminal: `node scripts/set-admin.js`
 // 4. After the script confirms success, the user must log out and log back in
 //    to the application for the admin role to take effect.
 
-require('dotenv').config();
 const admin = require('firebase-admin');
 
 // --- CONFIGURATION ---
