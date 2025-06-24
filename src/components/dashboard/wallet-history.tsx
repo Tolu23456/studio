@@ -51,7 +51,7 @@ export function WalletHistory() {
 
     setLoading(true);
     const transactionsRef = collection(db, 'users', user.uid, 'transactions');
-    const q = query(transactionsRef, orderBy('date', 'desc'), limit(8));
+    const q = query(transactionsRef, orderBy('date', 'desc'), limit(50));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const userTransactions = querySnapshot.docs.map(doc => {
@@ -75,7 +75,6 @@ export function WalletHistory() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Transaction History</CardTitle>
         <CardDescription>
           A complete record of your Cube earnings and spending.
         </CardDescription>
@@ -92,7 +91,7 @@ export function WalletHistory() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
+              Array.from({ length: 10 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                   <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
