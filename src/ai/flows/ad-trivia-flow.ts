@@ -38,6 +38,9 @@ const prompt = ai.definePrompt({
   
   Generate a new, random question each time.
   `,
+  config: {
+    temperature: 0.9,
+  },
 });
 
 const adTriviaFlow = ai.defineFlow(
