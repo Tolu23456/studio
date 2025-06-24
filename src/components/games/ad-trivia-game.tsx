@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -128,7 +129,7 @@ export function AdTriviaGame({ onGameComplete }: AdTriviaGameProps) {
               Next Question
             </Button>
             <Button onClick={onGameComplete} className="flex-1">
-              Finish & Claim
+              Finish Game
             </Button>
           </div>
         </div>

@@ -162,7 +162,7 @@ export function CubeRunnerGame({ onGameComplete }: CubeRunnerGameProps) {
             <p className="text-lg mt-2">Your Score: {score}</p>
             <div className="flex gap-4 mt-6">
                 <Button onClick={resetGame} variant="secondary">Play Again</Button>
-                <Button onClick={onGameComplete}>Finish & Claim</Button>
+                <Button onClick={onGameComplete}>Finish Game</Button>
             </div>
           </div>
         )}

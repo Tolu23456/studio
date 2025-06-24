@@ -143,7 +143,7 @@ export function MemoryMatchGame({ onGameComplete }: MemoryMatchGameProps) {
           </div>
           <div className='flex flex-col sm:flex-row gap-2 justify-center w-full'>
             <Button onClick={resetGame} variant="secondary">Play Again</Button>
-            <Button onClick={onGameComplete}>Finish & Claim</Button>
+            <Button onClick={onGameComplete}>Finish Game</Button>
           </div>
         </div>
       )}
