@@ -144,16 +144,40 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
     };
   }, []);
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const touchX = e.touches[0].clientX;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midPoint = rect.left + rect.width / 2;
+    
+    // Clear previous touch states
+    keysPressed.current['ArrowLeft'] = false;
+    keysPressed.current['ArrowRight'] = false;
+
+    if (touchX < midPoint) {
+      keysPressed.current['ArrowLeft'] = true;
+    } else {
+      keysPressed.current['ArrowRight'] = true;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    keysPressed.current['ArrowLeft'] = false;
+    keysPressed.current['ArrowRight'] = false;
+  };
+
   return (
     <div className="flex flex-col items-center p-4 space-y-4">
       <h3 className="text-xl font-bold font-headline">Cube Runner</h3>
       <div 
-        className="relative bg-secondary overflow-hidden border-2 border-primary/20 rounded-lg" 
+        className="relative bg-secondary overflow-hidden border-2 border-primary/20 rounded-lg touch-none" 
         style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchStart} // Handle dragging between sides
+        onTouchEnd={handleTouchEnd}
       >
         {gameState === 'idle' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/50">
-            <p className="text-white text-lg font-bold mb-4">Use Arrow Keys to Move</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/50 p-4 text-center">
+            <p className="text-white text-lg font-bold mb-4">Use Arrow Keys or Tap Left/Right to Move</p>
             <Button onClick={resetGame}>Start Game</Button>
           </div>
         )}
