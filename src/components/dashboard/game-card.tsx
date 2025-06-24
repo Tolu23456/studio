@@ -205,11 +205,11 @@ export function GameCard({ game }: GameCardProps) {
           <CardTitle className="font-headline text-lg">{game.title}</CardTitle>
           <CardDescription className="mt-1">{game.description}</CardDescription>
         </CardContent>
-        <CardFooter className="p-4 bg-muted/50 flex justify-between items-center">
-          <div className="text-sm text-muted-foreground">
+        <CardFooter className="p-4 bg-muted/50 flex justify-between items-center gap-2">
+          <div className="text-sm text-muted-foreground flex-shrink min-w-0">
             <div className="flex items-center gap-1 font-bold text-primary">
-              <Zap className="w-5 h-5" />
-              <span>{game.rewardDescription || "Performance-based"}</span>
+              <Zap className="w-5 h-5 flex-shrink-0" />
+              <span className="truncate">{game.rewardDescription || "Performance-based"}</span>
             </div>
             {!onCooldown && (
               <div className="text-xs mt-1">
@@ -218,7 +218,7 @@ export function GameCard({ game }: GameCardProps) {
             )}
           </div>
           
-          <Button onClick={() => setIsGameOpen(true)} disabled={onCooldown || playsLeft <= 0}>
+          <Button onClick={() => setIsGameOpen(true)} disabled={onCooldown || playsLeft <= 0} className="flex-shrink-0">
             {onCooldown ? (
                 <>
                     <Clock className="mr-2 h-4 w-4" />
