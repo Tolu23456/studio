@@ -16,7 +16,7 @@ const games: Game[] = [
     description: "Test your knowledge of famous ads and brands. Answer correctly to win!",
     reward: 30,
     imageUrl: "https://placehold.co/600x400.png",
-    dataAiHint: "quiz trivia",
+    dataAiHint: "brand quiz",
   },
   {
     id: "g3",
