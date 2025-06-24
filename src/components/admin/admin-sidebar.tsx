@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shield, LayoutDashboard, Users, Settings, Home } from "lucide-react";
+import { Shield, LayoutDashboard, Users, Settings, Home, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function AdminSidebar() {
@@ -12,6 +12,7 @@ export default function AdminSidebar() {
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/users", label: "Users", icon: Users },
+    { href: "/admin/notifications", label: "Notifications", icon: Bell },
   ];
 
    const isLinkActive = (href: string) => {
