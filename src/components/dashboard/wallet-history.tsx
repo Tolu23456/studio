@@ -27,6 +27,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { FileText } from "lucide-react";
+import { TransactionReceipt } from "./transaction-receipt";
 
 const getStatusBadgeVariant = (status: Transaction['status']) => {
     switch (status) {
@@ -45,7 +46,6 @@ export function WalletHistory() {
   const [loading, setLoading] = useState(true);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [receiptContent, setReceiptContent] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -76,33 +76,8 @@ export function WalletHistory() {
     return () => unsubscribe();
   }, [user]);
 
-  const formatReceipt = (transaction: Transaction): string => {
-    const formattedDate = format(transaction.date, 'Pp');
-    const formattedAmount = `${transaction.amount > 0 ? '+' : ''}${transaction.amount.toLocaleString()} Cubes`;
-
-    return `----------------------------------------
-       Adsener Transaction Receipt
-----------------------------------------
-
-Transaction ID: ${transaction.id}
-Date & Time:    ${formattedDate}
-
-Details:
-  Description: ${transaction.description}
-  Type:        ${transaction.type}
-  Status:      ${transaction.status}
-
-Amount:      ${formattedAmount}
-
-----------------------------------------
-     Thank you for using Adsener!
-----------------------------------------`;
-  };
-
   const handleViewReceipt = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
-    const receiptText = formatReceipt(transaction);
-    setReceiptContent(receiptText);
     setIsReceiptOpen(true);
   };
 
@@ -171,18 +146,14 @@ Amount:      ${formattedAmount}
         </CardContent>
       </Card>
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader className="mb-4">
             <DialogTitle>Transaction Receipt</DialogTitle>
             {selectedTransaction && <DialogDescription>
               Official receipt for transaction ID: {selectedTransaction.id}
             </DialogDescription>}
           </DialogHeader>
-          <div className="mt-4">
-              <pre className="text-sm bg-muted p-4 rounded-md overflow-x-auto font-mono whitespace-pre-wrap border">
-                {receiptContent}
-              </pre>
-          </div>
+          <TransactionReceipt transaction={selectedTransaction} />
         </DialogContent>
       </Dialog>
     </>
