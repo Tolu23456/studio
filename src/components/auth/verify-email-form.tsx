@@ -24,6 +24,23 @@ export function VerifyEmailForm() {
         }
     }, [cooldown]);
 
+    useEffect(() => {
+        if (user && !user.emailVerified) {
+            const intervalId = setInterval(async () => {
+                // The `user` object from context might be stale, so we reload the currentUser from the auth SDK.
+                if (auth.currentUser) {
+                    await auth.currentUser.reload();
+                    // onAuthStateChanged in AuthContext will detect the change and handle the redirect.
+                    if (auth.currentUser.emailVerified) {
+                        clearInterval(intervalId);
+                    }
+                }
+            }, 3000); // Check every 3 seconds
+
+            return () => clearInterval(intervalId);
+        }
+    }, [user]);
+
     const handleResendEmail = async () => {
         if (!user || isSending || cooldown > 0) return;
         
@@ -69,7 +86,7 @@ export function VerifyEmailForm() {
                     {isSending ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Verification Email'}
                 </Button>
                 <p className="text-center text-xs text-muted-foreground">
-                    Clicked the link? You can try to <Link href="/dashboard" className="underline font-semibold">continue to the dashboard</Link> or refresh the page.
+                    Once you've verified your email, you will be redirected automatically.
                 </p>
                 <div className="mt-4 text-center text-sm">
                    Wrong account?{" "}
