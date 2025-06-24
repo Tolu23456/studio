@@ -34,20 +34,6 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
   const { user, refreshUserProfile } = useAuth();
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isWatching && timeRemaining > 0) {
-      timer = setTimeout(() => {
-        setTimeRemaining(timeRemaining - 1);
-      }, 1000);
-    } else if (isWatching && timeRemaining === 0) {
-      setIsCompleted(true);
-      setIsWatching(false);
-      sessionStorage.setItem(`ad_watched_${ad.id}`, 'true');
-    }
-    return () => clearTimeout(timer);
-  }, [isWatching, timeRemaining, ad.id]);
-  
-  useEffect(() => {
     if (sessionStorage.getItem(`ad_claimed_${ad.id}`)) {
       setIsCompleted(true);
       setIsClaimed(true);
@@ -56,8 +42,28 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
     }
   }, [ad.id]);
 
+  useEffect(() => {
+    if (!isWatching) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(timer);
+          setIsWatching(false);
+          setIsCompleted(true);
+          sessionStorage.setItem(`ad_watched_${ad.id}`, "true");
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isWatching, ad.id]);
+
 
   const handleWatch = () => {
+    setTimeRemaining(ad.duration);
     setIsWatching(true);
   };
 
