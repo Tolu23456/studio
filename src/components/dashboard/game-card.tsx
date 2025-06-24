@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { ReactionTimeGame } from "@/components/games/reaction-time-game";
 import { CubeRunnerGame } from "@/components/games/cube-runner-game";
 import { AdTriviaGame } from "@/components/games/ad-trivia-game";
+import { PuzzleBoxGame } from "@/components/games/puzzle-box-game";
 
 // A placeholder for games that are not yet implemented.
 const ComingSoonGame = () => (
@@ -42,6 +43,7 @@ const ComingSoonGame = () => (
 const GameComponentMap: { [key: string]: React.ElementType } = {
   'g1': CubeRunnerGame,
   'g2': AdTriviaGame,
+  'g3': PuzzleBoxGame,
   'g6': ReactionTimeGame, // Reaction Time game is implemented
 };
 
