@@ -54,7 +54,7 @@ export default function WatchAdsPage() {
 
   useEffect(() => {
     // This is safe because it only runs on the client after hydration
-    const unclaimedAds = allAds.filter(ad => !sessionStorage.getItem(`ad_claimed_${ad.id}`));
+    const unclaimedAds = allAds.filter(ad => !localStorage.getItem(`ad_claimed_${ad.id}`));
     setAds(unclaimedAds);
     setLoading(false);
   }, []);

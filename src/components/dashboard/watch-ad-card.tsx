@@ -36,7 +36,7 @@ export function WatchAdCard({ ad, onAdClaimed }: WatchAdCardProps) {
   useEffect(() => {
     // This check is for ads that were watched but the user navigated away
     // before claiming. When they come back, the ad should be claimable.
-    if (sessionStorage.getItem(`ad_watched_${ad.id}`)) {
+    if (localStorage.getItem(`ad_watched_${ad.id}`)) {
       setIsCompleted(true);
     }
   }, [ad.id]);
@@ -50,7 +50,14 @@ export function WatchAdCard({ ad, onAdClaimed }: WatchAdCardProps) {
           clearInterval(timer);
           setIsWatching(false);
           setIsCompleted(true);
-          sessionStorage.setItem(`ad_watched_${ad.id}`, "true");
+          localStorage.setItem(`ad_watched_${ad.id}`, "true");
+          // Clear the lock when finished watching
+          if (localStorage.getItem('adsener_ad_lock')) {
+              const lock = JSON.parse(localStorage.getItem('adsener_ad_lock')!);
+              if (lock.id === ad.id) {
+                  localStorage.removeItem('adsener_ad_lock');
+              }
+          }
           return 0;
         }
         return prevTime - 1;
@@ -60,8 +67,40 @@ export function WatchAdCard({ ad, onAdClaimed }: WatchAdCardProps) {
     return () => clearInterval(timer);
   }, [isWatching, ad.id]);
 
+  // Clean up the ad lock if the component unmounts (e.g., page navigation)
+  useEffect(() => {
+    return () => {
+        if (localStorage.getItem('adsener_ad_lock')) {
+            const lock = JSON.parse(localStorage.getItem('adsener_ad_lock')!);
+            if (lock.id === ad.id) {
+                localStorage.removeItem('adsener_ad_lock');
+            }
+        }
+    };
+  }, [ad.id]);
+
 
   const handleWatch = () => {
+    // Check for an existing lock
+    const lockData = localStorage.getItem('adsener_ad_lock');
+    if (lockData) {
+        const lock = JSON.parse(lockData);
+        const isStale = Date.now() > lock.startTime + (lock.duration * 1000) + 5000; // 5-sec buffer
+
+        if (lock.id !== ad.id && !isStale) {
+            toast({
+                variant: 'destructive',
+                title: 'Cannot Start Ad',
+                description: 'Another ad is currently being watched. Please complete or wait for it to finish.',
+            });
+            return;
+        }
+    }
+    
+    // Set a new lock
+    const newLock = { id: ad.id, startTime: Date.now(), duration: ad.duration };
+    localStorage.setItem('adsener_ad_lock', JSON.stringify(newLock));
+    
     setTimeRemaining(ad.duration);
     setIsWatching(true);
   };
@@ -78,7 +117,7 @@ export function WatchAdCard({ ad, onAdClaimed }: WatchAdCardProps) {
             title: "Reward Claimed!",
             description: `You've earned ${ad.reward} Cubes.`,
         });
-        sessionStorage.setItem(`ad_claimed_${ad.id}`, 'true');
+        localStorage.setItem(`ad_claimed_${ad.id}`, 'true');
         onAdClaimed(ad.id);
     } catch (error) {
         console.error("Failed to claim reward", error);
