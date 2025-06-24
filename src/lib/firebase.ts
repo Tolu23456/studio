@@ -12,17 +12,6 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Add a diagnostic log to help debug environment variable loading on the client.
-if (typeof window !== 'undefined' && !firebaseConfig.apiKey) {
-    console.error(
-        '********************************************************************************\n' +
-        'Firebase API Key is missing.\n' +
-        'Please make sure NEXT_PUBLIC_FIREBASE_API_KEY is set in your .env file.\n' +
-        'You may need to restart your development server for the changes to take effect.\n' +
-        '********************************************************************************'
-    );
-}
-
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
