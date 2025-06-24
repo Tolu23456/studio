@@ -18,7 +18,7 @@ const getCurrentUser = (): User => {
 
 // In a production app, you would want to ensure this ID is unique by checking the database.
 // For this prototype, we'll assume collisions are unlikely.
-function generateAdsenerId(): string {
+export function generateAdsenerId(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const numbers = '0123456789';
     let result = 'AC-';

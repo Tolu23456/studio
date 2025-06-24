@@ -6,7 +6,8 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
-import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { doc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
+import { generateAdsenerId } from '@/services/user-data';
 
 interface AuthContextType {
   user: User | null;
@@ -43,6 +44,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profileUnsubscribe = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
+
+            // Lazily generate Adsener ID for existing users who don't have one.
+            if (!data.adsenerId) {
+                const newId = generateAdsenerId();
+                // This is a fire-and-forget update. onSnapshot will be triggered again
+                // by this update, but the `if` condition will prevent an infinite loop.
+                updateDoc(userRef, { adsenerId: newId });
+            }
+
             const profile: UserProfile = {
               uid: data.uid,
               adsenerId: data.adsenerId || '',
