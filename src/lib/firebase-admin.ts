@@ -5,23 +5,20 @@ function getAdminApp() {
     if (admin.apps.length > 0) {
         return admin.app();
     }
-    
-    const serviceAccount: admin.ServiceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-    };
-    
-    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey || serviceAccount.privateKey === '\n') {
-        throw new Error("Firebase admin credentials are not set in your .env file. Please check your configuration.");
+
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (!serviceAccountJson) {
+        throw new Error("The FIREBASE_SERVICE_ACCOUNT_JSON environment variable is not set. Please check your configuration.");
     }
-    
+
     try {
+        const serviceAccount = JSON.parse(serviceAccountJson);
+        
         return admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
         });
     } catch (error: any) {
-        throw new Error(`Failed to initialize Firebase Admin SDK: ${error.message}`);
+        throw new Error(`Failed to initialize Firebase Admin SDK from service account JSON: ${error.message}`);
     }
 }
 
