@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,9 +46,11 @@ export function RegisterForm() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       await createUserProfile(userCredential.user, values.displayName, values.referralCode);
+      await sendEmailVerification(userCredential.user);
+      
       toast({
         title: "Registration Successful",
-        description: "Redirecting to your dashboard...",
+        description: "A verification email has been sent. Please check your inbox.",
       });
     } catch (error: any) {
       console.error("Registration failed:", error);

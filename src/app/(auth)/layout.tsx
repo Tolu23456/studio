@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Zap } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
@@ -13,14 +14,19 @@ export default function AuthLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard");
+      if (user.emailVerified) {
+        router.push("/dashboard");
+      } else if (pathname !== '/please-verify' && pathname !== '/forgot-password') {
+        router.push('/please-verify');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
-  if (loading || user) {
+  if (loading || (user && user.emailVerified)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-secondary/50">
         <Zap className="h-8 w-8 animate-pulse text-primary" />

@@ -18,12 +18,16 @@ export default function DashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
+    if (!loading) {
+      if (!user) {
+        router.push("/login");
+      } else if (!user.emailVerified) {
+        router.push("/please-verify");
+      }
     }
   }, [user, loading, router]);
 
-  if (loading || !user) {
+  if (loading || !user || !user.emailVerified) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-muted/40">
         <Zap className="h-8 w-8 animate-pulse text-primary" />
