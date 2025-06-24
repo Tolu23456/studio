@@ -13,6 +13,7 @@ async function verifyToken(idToken: string): Promise<DecodedIdToken> {
     return await adminAuth.verifyIdToken(idToken);
   } catch (error: any) {
     // Re-throw the original error to provide more specific details
+    console.error("Error verifying auth token:", error);
     throw error;
   }
 }

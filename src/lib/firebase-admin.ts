@@ -15,37 +15,26 @@ function getAdminApp(): App {
   }
 
   try {
-    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    // Construct the service account object from individual environment variables
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'), // Replace escaped newlines
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    };
 
-    if (!serviceAccountJson) {
-      throw new Error(
-        'The FIREBASE_SERVICE_ACCOUNT_JSON environment variable is not set. Please check your .env file.'
-      );
+    if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
+      throw new Error('Firebase Admin SDK credentials are not fully set in environment variables. Please check FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, and FIREBASE_CLIENT_EMAIL in your .env file.');
     }
     
-    const serviceAccount = JSON.parse(serviceAccountJson);
-
-    // This line is crucial for environments that don't handle multiline secrets well.
-    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-
-    if (process.env.NODE_ENV === 'development' && serviceAccount.project_id !== process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-        console.warn("\n\n[Firebase Admin Warning] Server-side and client-side Firebase project IDs do not match. This can cause authentication errors. Check your .env file.\n\n");
-    }
-
     adminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
     });
+
     return adminApp;
 
   } catch (error: any) {
-    let errorMessage = 'Failed to initialize Firebase Admin SDK. Please check your service account credentials.';
-    if (error instanceof SyntaxError) {
-        errorMessage += ' The service account JSON appears to be malformed or is missing.';
-    } else {
-        errorMessage += ` Original error: ${error.message}`;
-    }
     console.error("Firebase Admin SDK initialization error:", error);
-    throw new Error(errorMessage);
+    throw new Error(`Failed to initialize Firebase Admin SDK. Please check your service account credentials. Error: ${error.message}`);
   }
 };
 
