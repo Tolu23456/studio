@@ -8,7 +8,7 @@
 // 4. After the script confirms success, the user must log out and log back in
 //    to the application for the admin role to take effect.
 
-require('dotenv').config({ path: './.env' });
+require('dotenv').config();
 const admin = require('firebase-admin');
 
 // --- CONFIGURATION ---
