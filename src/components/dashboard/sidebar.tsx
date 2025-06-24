@@ -17,9 +17,9 @@ import {
   Wallet,
   LogOut,
   Zap,
-  User,
   Settings,
   Users,
+  Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,9 +30,9 @@ export default function DashboardSidebar() {
   const navItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/dashboard/watch-ads", icon: PlaySquare, label: "Watch Ads" },
+    { href: "/dashboard/games", icon: Gamepad2, label: "Games" },
     { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
     { href: "/dashboard/referrals", icon: Users, label: "Referrals" },
-    { href: "/dashboard/profile", icon: User, label: "Profile" },
     { href: "/dashboard/settings", icon: Settings, label: "Settings" },
   ];
 
