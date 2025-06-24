@@ -23,6 +23,7 @@ import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "../ui/skeleton";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore";
+import { format } from "date-fns";
 
 export function ActivityHistory() {
   const { user } = useAuth();
@@ -96,7 +97,7 @@ export function ActivityHistory() {
                 <TableRow key={activity.id}>
                   <TableCell>
                     <div className="font-medium">{activity.description}</div>
-                    <div className="text-sm text-muted-foreground">{activity.date.toLocaleString()}</div>
+                    <div className="text-sm text-muted-foreground">{format(activity.date, 'Pp')}</div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge variant="outline">{activity.type}</Badge>

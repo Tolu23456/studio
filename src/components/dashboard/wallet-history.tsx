@@ -24,6 +24,7 @@ import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "../ui/skeleton";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore";
+import { format } from "date-fns";
 
 
 const getStatusBadgeVariant = (status: Transaction['status']) => {
@@ -110,7 +111,7 @@ export function WalletHistory() {
                 <TableRow key={transaction.id}>
                   <TableCell>
                     <div className="font-medium">{transaction.description}</div>
-                    <div className="text-sm text-muted-foreground">{transaction.date.toLocaleString()}</div>
+                    <div className="text-sm text-muted-foreground">{format(transaction.date, 'Pp')}</div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge variant="outline" className="capitalize">{transaction.type}</Badge>
