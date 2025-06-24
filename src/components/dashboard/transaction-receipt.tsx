@@ -1,37 +1,54 @@
 
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { type Transaction } from '@/lib/types';
-import { format } from 'date-fns';
 import { Download, Image as ImageIcon } from 'lucide-react';
+import { generateReceipt } from '@/ai/flows/generate-receipt-flow';
+import { Skeleton } from '../ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 interface TransactionReceiptProps {
   transaction: Transaction | null;
 }
 
-const getStatusBadgeClass = (status: Transaction['status']) => {
-    switch (status) {
-        case "completed":
-            return "bg-green-100 text-green-800";
-        case "pending":
-            return "bg-yellow-100 text-yellow-800";
-        case "failed":
-            return "bg-red-100 text-red-800";
-    }
-}
-
 export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
+  const [receiptText, setReceiptText] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (transaction) {
+      setIsLoading(true);
+      generateReceipt(transaction)
+        .then(output => {
+          setReceiptText(output.receiptText);
+        })
+        .catch(error => {
+          console.error("Failed to generate receipt:", error);
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not generate AI receipt. Please try again.'
+          });
+          setReceiptText("Error: Could not generate receipt.");
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  }, [transaction, toast]);
+
 
   if (!transaction) return null;
   
   const handleDownloadImage = () => {
     if (!receiptRef.current) return;
-    html2canvas(receiptRef.current, { scale: 2 }).then((canvas) => {
+    html2canvas(receiptRef.current, { scale: 2, backgroundColor: '#ffffff' }).then((canvas) => {
       const image = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = image;
@@ -42,7 +59,7 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
 
   const handleDownloadPdf = () => {
     if (!receiptRef.current) return;
-    html2canvas(receiptRef.current, { scale: 2 }).then((canvas) => {
+    html2canvas(receiptRef.current, { scale: 2, backgroundColor: '#ffffff' }).then((canvas) => {
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -53,65 +70,27 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
       pdf.save(`receipt-${transaction.id}.pdf`);
     });
   };
-  
-  const formattedAmount = `${transaction.amount > 0 ? '+' : ''}${transaction.amount.toLocaleString()} Cubes`;
 
   return (
     <div>
-        <div ref={receiptRef} className="bg-white p-6 sm:p-8 rounded-lg text-black shadow-md">
-            <div className="flex justify-between items-center border-b-2 border-gray-200 pb-4 mb-6">
-                <h2 className="text-2xl font-bold text-gray-800 font-headline">Transaction Receipt</h2>
-                <div className="text-right">
-                    <p className="font-bold text-primary text-xl">Adsener</p>
-                    <p className="text-xs text-gray-500">Your Time, Rewarded</p>
+        <div ref={receiptRef} className="bg-white p-6 sm:p-8 rounded-lg text-black shadow-md font-mono">
+            {isLoading ? (
+                <div className="space-y-2">
+                    {Array.from({ length: 15 }).map((_, i) => (
+                        <Skeleton key={i} className="h-4 bg-gray-200" style={{ width: `${Math.random() * 50 + 50}%`}} />
+                    ))}
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 mb-8 text-sm">
-                <div>
-                    <p className="text-gray-500 font-semibold mb-1">Transaction ID</p>
-                    <p className="font-mono text-xs text-gray-800 break-all">{transaction.id}</p>
-                </div>
-                <div className="sm:text-right">
-                    <p className="text-gray-500 font-semibold mb-1">Date & Time</p>
-                    <p className="text-gray-800">{format(transaction.date, 'Pp')}</p>
-                </div>
-                 <div>
-                    <p className="text-gray-500 font-semibold mb-1">Transaction Type</p>
-                    <p className="text-gray-800 capitalize">{transaction.type}</p>
-                </div>
-                <div className="sm:text-right">
-                    <p className="text-gray-500 font-semibold mb-1">Status</p>
-                    <p>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(transaction.status)}`}>
-                            {transaction.status}
-                        </span>
-                    </p>
-                </div>
-                 <div className="col-span-1 sm:col-span-2">
-                    <p className="text-gray-500 font-semibold mb-1">Description</p>
-                    <p className="text-gray-800">{transaction.description}</p>
-                </div>
-            </div>
-
-            <div className="border-t-2 border-dashed border-gray-300 pt-6 mt-6">
-                <div className="flex justify-between items-center text-lg font-bold">
-                    <span className="text-gray-600">Amount</span>
-                     <span className={transaction.amount > 0 ? "text-green-600" : "text-red-600"}>{formattedAmount}</span>
-                </div>
-            </div>
-
-             <div className="text-center text-xs text-gray-400 mt-10">
-                Thank you for using Adsener!
-            </div>
+            ) : (
+                <pre className="whitespace-pre-wrap break-words">{receiptText}</pre>
+            )}
         </div>
 
         <div className="mt-6 flex flex-col sm:flex-row gap-2 justify-center">
-            <Button onClick={handleDownloadImage} variant="outline">
+            <Button onClick={handleDownloadImage} variant="outline" disabled={isLoading}>
                 <ImageIcon className="mr-2 h-4 w-4" />
                 Download as Image
             </Button>
-            <Button onClick={handleDownloadPdf}>
+            <Button onClick={handleDownloadPdf} disabled={isLoading}>
                 <Download className="mr-2 h-4 w-4" />
                 Download as PDF
             </Button>
