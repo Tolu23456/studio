@@ -125,7 +125,8 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-1 text-center sm:text-left">
-              <h2 className="text-2xl font-semibold">{user.email}</h2>
+              <h2 className="text-2xl font-semibold">{userProfile.displayName}</h2>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
               <p className="text-sm text-muted-foreground">Joined on {user.metadata.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString() : 'N/A'}</p>
             </div>
           </div>

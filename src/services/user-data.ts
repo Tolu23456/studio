@@ -29,7 +29,7 @@ export function generateAdsenerId(): string {
     return result;
 }
 
-export async function createUserProfile(user: User, referralCode?: string): Promise<void> {
+export async function createUserProfile(user: User, displayName: string, referralCode?: string): Promise<void> {
     const batch = writeBatch(db);
     const userRef = doc(db, 'users', user.uid);
     const now = new Date();
@@ -65,7 +65,7 @@ export async function createUserProfile(user: User, referralCode?: string): Prom
                     const referrerActivityRef = doc(collection(db, 'users', referrerDoc.id, 'activities'));
                     batch.set(referrerActivityRef, {
                         type: 'Referral Bonus',
-                        description: `You referred a new user: ${user.email || 'New User'}`,
+                        description: `You referred a new user: ${displayName}`,
                         cubes_earned: referrerReward,
                         date: now,
                     });
@@ -74,14 +74,14 @@ export async function createUserProfile(user: User, referralCode?: string): Prom
                     const referrerTransactionRef = doc(collection(db, 'users', referrerDoc.id, 'transactions'));
                     batch.set(referrerTransactionRef, {
                         type: 'reward',
-                        description: `Bonus for referring ${user.email || 'New User'}`,
+                        description: `Bonus for referring ${displayName}`,
                         amount: referrerReward,
                         date: now,
                         status: 'completed',
                     });
                     
                     // Add notification for referrer
-                    _createNotification(batch, referrerDoc.id, "Referral Success!", `You earned ${referrerReward} Cubes for referring a new user!`);
+                    _createNotification(batch, referrerDoc.id, "Referral Success!", `You earned ${referrerReward} Cubes for referring ${displayName}!`);
                 }
             }
         } catch (error) {
@@ -95,6 +95,7 @@ export async function createUserProfile(user: User, referralCode?: string): Prom
         uid: user.uid,
         adsenerId: generateAdsenerId(),
         email: user.email,
+        displayName: displayName,
         photoURL: user.photoURL || '',
         cubeBalance: startingBalance,
         totalEarned: startingBalance,
@@ -143,6 +144,7 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
             uid: data.uid,
             adsenerId: data.adsenerId,
             email: data.email,
+            displayName: data.displayName || data.email,
             photoURL: data.photoURL,
             cubeBalance: data.cubeBalance,
             totalEarned: data.totalEarned,
@@ -194,7 +196,7 @@ export async function claimAdReward(reward: number, title: string): Promise<void
 
   const docSnap = await getDoc(userRef);
   if (!docSnap.exists()) {
-    await createUserProfile(user);
+    throw new Error("User profile not found, cannot claim reward.");
   }
 
   const batch = writeBatch(db);
@@ -235,7 +237,7 @@ export async function claimGameReward(reward: number, gameTitle: string): Promis
   
   const docSnap = await getDoc(userRef);
   if (!docSnap.exists()) {
-    await createUserProfile(user);
+    throw new Error("User profile not found, cannot claim reward.");
   }
 
   const batch = writeBatch(db);
@@ -277,9 +279,7 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   const docSnap = await getDoc(userRef);
 
   if (!docSnap.exists()) {
-    await createUserProfile(user);
-    // After creating, refetch the document to get the default values before proceeding
-    return claimDailyReward();
+    throw new Error("User profile not found, cannot claim reward.");
   }
 
   const profileData = docSnap.data();
@@ -287,6 +287,7 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
       uid: profileData.uid,
       adsenerId: profileData.adsenerId,
       email: profileData.email,
+      displayName: profileData.displayName,
       cubeBalance: profileData.cubeBalance,
       totalEarned: profileData.totalEarned,
       referrals: profileData.referrals,
@@ -400,7 +401,7 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
             const senderTransactionRef = doc(collection(db, 'users', sender.uid, 'transactions'));
             transaction.set(senderTransactionRef, {
                 type: 'withdrawal',
-                description: `Sent to ${recipientData.email || recipientData.adsenerId}`,
+                description: `Sent to ${recipientData.displayName || recipientData.adsenerId}`,
                 amount: -amount,
                 date: now,
                 status: 'completed',
@@ -410,7 +411,7 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
             const recipientTransactionRef = doc(collection(db, 'users', recipientDoc.id, 'transactions'));
             transaction.set(recipientTransactionRef, {
                 type: 'deposit',
-                description: `Received from ${senderData.email || senderData.adsenerId}`,
+                description: `Received from ${senderData.displayName || senderData.adsenerId}`,
                 amount: amount,
                 date: now,
                 status: 'completed',
@@ -420,7 +421,7 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
             const senderNotificationRef = doc(collection(db, 'users', sender.uid, 'notifications'));
             transaction.set(senderNotificationRef, {
                 title: "Transfer Sent",
-                description: `You successfully sent ${amount} Cubes to ${recipientData.email || recipientData.adsenerId}.`,
+                description: `You successfully sent ${amount} Cubes to ${recipientData.displayName || recipientData.adsenerId}.`,
                 date: now,
                 read: false,
             });
@@ -429,7 +430,7 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
             const recipientNotificationRef = doc(collection(db, 'users', recipientDoc.id, 'notifications'));
             transaction.set(recipientNotificationRef, {
                 title: "Cubes Received!",
-                description: `You have received ${amount} Cubes from ${senderData.email || senderData.adsenerId}.`,
+                description: `You have received ${amount} Cubes from ${senderData.displayName || senderData.adsenerId}.`,
                 date: now,
                 read: false,
             });

@@ -2,6 +2,7 @@ export type UserProfile = {
   uid: string;
   adsenerId: string;
   email: string | null;
+  displayName: string;
   photoURL?: string;
   cubeBalance: number;
   totalEarned: number;

@@ -23,6 +23,7 @@ import { auth } from "@/lib/firebase";
 import { createUserProfile } from "@/services/user-data";
 
 const formSchema = z.object({
+  displayName: z.string().min(3, { message: "Display name must be at least 3 characters." }).max(20, { message: "Display name must be 20 characters or less." }),
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
   referralCode: z.string().optional(),
@@ -34,6 +35,7 @@ export function RegisterForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      displayName: "",
       email: "",
       password: "",
       referralCode: "",
@@ -43,7 +45,7 @@ export function RegisterForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      await createUserProfile(userCredential.user, values.referralCode);
+      await createUserProfile(userCredential.user, values.displayName, values.referralCode);
       toast({
         title: "Registration Successful",
         description: "Redirecting to your dashboard...",
@@ -73,6 +75,19 @@ export function RegisterForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="displayName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Display Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. CubeMaster" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="email"
