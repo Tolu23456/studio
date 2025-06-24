@@ -1,65 +1,75 @@
-require('dotenv').config();
-
-// This is a one-time use script to grant admin privileges to a user.
-// 1. Make sure your .env file at the root of the project is populated
-//    with your Firebase Admin credentials. The Next.js app needs to be restarted
-//    to pick up changes to the .env file.
-// 2. Replace the placeholder email below with the email of the user
-//    you want to make an admin.
-// 3. Run this script from your terminal: `node scripts/set-admin.js`
-// 4. After the script confirms success, the user must log out and log back in
-//    to the application for the admin role to take effect.
-
 const admin = require('firebase-admin');
+const fs = require('fs');
+const readline = require('readline');
 
-// --- CONFIGURATION ---
-// IMPORTANT: Replace this with the email of the user you want to make an admin.
-const USER_EMAIL_TO_MAKE_ADMIN = "t85491005@gmail.com";
-// -------------------
+// This script will guide you to set an admin user.
+// You will need two things:
+// 1. The email address of the user you want to make an admin.
+// 2. The path to your Firebase service account JSON file.
+// You can download this file from your Firebase project settings:
+// Project Settings > Service Accounts > Generate new private key
 
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
-// Initialize Firebase Admin SDK
-try {
-  const serviceAccount = {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-  };
-
-  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-    throw new Error(
-      'Firebase admin credentials are not set in your .env file. Please check your configuration.'
-    );
-  }
-
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-
-} catch (error) {
-  if (error.code !== 'app/duplicate-app') {
-    console.error('Error initializing Firebase Admin SDK:', error.message);
-    process.exit(1);
-  }
+function askQuestion(query) {
+  return new Promise(resolve => rl.question(query, resolve));
 }
 
 async function setAdminClaim() {
-  if (USER_EMAIL_TO_MAKE_ADMIN === "your-email@example.com" || USER_EMAIL_TO_MAKE_ADMIN === "") {
-    console.error("❌ Please replace 'your-email@example.com' with a real user's email in the script.");
-    return;
-  }
-
   try {
-    const user = await admin.auth().getUserByEmail(USER_EMAIL_TO_MAKE_ADMIN);
-    await admin.auth().setCustomUserClaims(user.uid, { admin: true });
-    console.log(`✅ Success! ${USER_EMAIL_TO_MAKE_ADMIN} has been made an admin.`);
-    console.log("👉 The user must log out and log back in for the changes to apply.");
-  } catch (error) {
-    console.error("❌ Error setting admin claim:", error.message);
-    if (error.code === 'auth/user-not-found') {
-        console.error(`Hint: Make sure the user "${USER_EMAIL_TO_MAKE_ADMIN}" has already signed up.`);
+    console.log("👋 Welcome to the Admin User setup script.");
+    
+    const email = await askQuestion("Enter the email of the user to make admin: ");
+    if (!email) {
+      console.error("❌ Email is required.");
+      return;
     }
+
+    const serviceAccountPath = await askQuestion("Enter the full path to your Firebase service account JSON file: ");
+    if (!serviceAccountPath) {
+      console.error("❌ Path to service account file is required.");
+      return;
+    }
+    
+    let serviceAccount;
+    try {
+        serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+    } catch (e) {
+        console.error("❌ Error reading or parsing the service account file.");
+        console.error(e.message);
+        return;
+    }
+
+    // Initialize Firebase Admin SDK
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+    } catch (error) {
+        if (error.code !== 'app/duplicate-app') {
+            throw error;
+        }
+    }
+
+    const user = await admin.auth().getUserByEmail(email);
+    await admin.auth().setCustomUserClaims(user.uid, { admin: true });
+    
+    console.log(`\n✅ Success! ${email} has been made an admin.`);
+    console.log("👉 The user must log out and log back in for the changes to apply.");
+
+  } catch (error) {
+    console.error("\n❌ An error occurred:");
+    if (error.code === 'auth/user-not-found') {
+        console.error(`Hint: Make sure the user with email "${error.email}" has already signed up.`);
+    } else {
+        console.error(error.message);
+    }
+  } finally {
+    rl.close();
   }
 }
 
-setAdminClaim().then(() => process.exit(0));
+setAdminClaim();
