@@ -1,8 +1,10 @@
 
 import * as admin from 'firebase-admin';
+import type { App } from 'firebase-admin/app';
 
-function getAdminApp() {
+function getAdminApp(): App {
     if (admin.apps.length > 0) {
+        // Return the existing app instance
         return admin.app();
     }
 
@@ -10,22 +12,19 @@ function getAdminApp() {
     if (!serviceAccountJson) {
         throw new Error("The FIREBASE_SERVICE_ACCOUNT_JSON environment variable is not set. Please check your configuration.");
     }
-
+    
     try {
         const serviceAccount = JSON.parse(serviceAccountJson);
-        
-        // This is the fix: The private key has \\n characters that need to be replaced with \n.
         serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-
+        
         return admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
         });
     } catch (error: any) {
-        throw new Error(`Failed to initialize Firebase Admin SDK from service account JSON: ${error.message}`);
+        console.error("Firebase Admin SDK initialization error:", error);
+        throw new Error(`Failed to initialize Firebase Admin SDK. Please check your service account credentials. Error: ${error.message}`);
     }
 }
 
-const getAdminAuth = () => admin.auth(getAdminApp());
-const getAdminDb = () => admin.firestore(getAdminApp());
-
-export { getAdminAuth, getAdminDb };
+export const adminAuth = () => getAdminApp().auth();
+export const adminDb = () => getAdminApp().firestore();
