@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = docSnap.data();
             const profile: UserProfile = {
               uid: data.uid,
+              adsenerId: data.adsenerId || '',
               email: data.email,
               photoURL: data.photoURL || '',
               cubeBalance: data.cubeBalance,
@@ -58,7 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             // User exists in Auth, but not in Firestore.
             // This can happen briefly during sign-up or if profile creation fails.
-            // The reward claiming logic handles creating a profile if it's missing.
             setUserProfile(null);
           }
           setLoading(false);

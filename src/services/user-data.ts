@@ -2,7 +2,7 @@
 'use client';
 
 import type { Activity, Notification, Transaction, UserProfile } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay } from 'date-fns';
@@ -16,6 +16,19 @@ const getCurrentUser = (): User => {
     return user;
 };
 
+// In a production app, you would want to ensure this ID is unique by checking the database.
+// For this prototype, we'll assume collisions are unlikely.
+function generateAdsenerId(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    let result = 'AC-';
+    for (let i = 0; i < 6; i++) {
+        result += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    }
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    return result;
+}
+
 export async function createUserProfile(user: User, referralCode?: string): Promise<void> {
     const batch = writeBatch(db);
     const userRef = doc(db, 'users', user.uid);
@@ -25,44 +38,51 @@ export async function createUserProfile(user: User, referralCode?: string): Prom
 
     // Handle referral if code is provided
     if (referralCode) {
-        const referrerRef = doc(db, 'users', referralCode.trim());
+        const usersRef = collection(db, 'users');
+        // Referral codes are now the adsenerId, which are uppercase
+        const q = query(usersRef, where("adsenerId", "==", referralCode.trim().toUpperCase()));
+        
         try {
-            const referrerSnap = await getDoc(referrerRef);
+            const querySnapshot = await getDocs(q);
 
             // Check if referrer exists and is not the new user themselves
-            if (referrerSnap.exists() && referrerSnap.id !== user.uid) {
-                const referralBonus = 100;
-                const referrerReward = 200;
-                startingBalance = referralBonus;
-
-                // Update referrer's profile
-                batch.update(referrerRef, {
-                    referrals: increment(1),
-                    cubeBalance: increment(referrerReward),
-                    totalEarned: increment(referrerReward),
-                });
-
-                // Add activity for referrer
-                const referrerActivityRef = doc(collection(db, 'users', referrerSnap.id, 'activities'));
-                batch.set(referrerActivityRef, {
-                    type: 'Referral Bonus',
-                    description: `You referred a new user: ${user.email || 'New User'}`,
-                    cubes_earned: referrerReward,
-                    date: now,
-                });
-
-                // Add transaction for referrer
-                const referrerTransactionRef = doc(collection(db, 'users', referrerSnap.id, 'transactions'));
-                batch.set(referrerTransactionRef, {
-                    type: 'reward',
-                    description: `Bonus for referring ${user.email || 'New User'}`,
-                    amount: referrerReward,
-                    date: now,
-                    status: 'completed',
-                });
-                
-                // Add notification for referrer
-                _createNotification(batch, referrerSnap.id, "Referral Success!", `You earned ${referrerReward} Cubes for referring a new user!`);
+            if (!querySnapshot.empty) {
+                const referrerDoc = querySnapshot.docs[0];
+                if (referrerDoc.id !== user.uid) {
+                    const referrerRef = referrerDoc.ref;
+                    const referralBonus = 100;
+                    const referrerReward = 200;
+                    startingBalance = referralBonus;
+    
+                    // Update referrer's profile
+                    batch.update(referrerRef, {
+                        referrals: increment(1),
+                        cubeBalance: increment(referrerReward),
+                        totalEarned: increment(referrerReward),
+                    });
+    
+                    // Add activity for referrer
+                    const referrerActivityRef = doc(collection(db, 'users', referrerDoc.id, 'activities'));
+                    batch.set(referrerActivityRef, {
+                        type: 'Referral Bonus',
+                        description: `You referred a new user: ${user.email || 'New User'}`,
+                        cubes_earned: referrerReward,
+                        date: now,
+                    });
+    
+                    // Add transaction for referrer
+                    const referrerTransactionRef = doc(collection(db, 'users', referrerDoc.id, 'transactions'));
+                    batch.set(referrerTransactionRef, {
+                        type: 'reward',
+                        description: `Bonus for referring ${user.email || 'New User'}`,
+                        amount: referrerReward,
+                        date: now,
+                        status: 'completed',
+                    });
+                    
+                    // Add notification for referrer
+                    _createNotification(batch, referrerDoc.id, "Referral Success!", `You earned ${referrerReward} Cubes for referring a new user!`);
+                }
             }
         } catch (error) {
             console.error("Error processing referral code:", error);
@@ -73,6 +93,7 @@ export async function createUserProfile(user: User, referralCode?: string): Prom
     // Create new user's profile
     const newUserProfile: UserProfile = {
         uid: user.uid,
+        adsenerId: generateAdsenerId(),
         email: user.email,
         photoURL: user.photoURL || '',
         cubeBalance: startingBalance,
@@ -120,6 +141,7 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
         const data = docSnap.data();
         return {
             uid: data.uid,
+            adsenerId: data.adsenerId,
             email: data.email,
             photoURL: data.photoURL,
             cubeBalance: data.cubeBalance,
@@ -263,6 +285,7 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   const profileData = docSnap.data();
   const userProfile: UserProfile = {
       uid: profileData.uid,
+      adsenerId: profileData.adsenerId,
       email: profileData.email,
       cubeBalance: profileData.cubeBalance,
       totalEarned: profileData.totalEarned,
@@ -320,42 +343,56 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   return { success: true, message: `You earned ${reward} Cubes!` };
 }
 
-export async function transferCubes(recipientId: string, amount: number): Promise<{ success: boolean; message: string }> {
+export async function transferCubes(recipientAdsenerId: string, amount: number): Promise<{ success: boolean; message: string }> {
     const sender = getCurrentUser();
-
-    if (sender.uid === recipientId.trim()) {
-        return { success: false, message: "You cannot send cubes to yourself." };
-    }
+    const formattedRecipientId = recipientAdsenerId.trim().toUpperCase();
 
     if (amount <= 0) {
         return { success: false, message: "Transfer amount must be positive." };
     }
 
     const senderRef = doc(db, 'users', sender.uid);
-    const recipientRef = doc(db, 'users', recipientId.trim());
 
+    // Find recipient by their adsenerId (read BEFORE transaction)
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where("adsenerId", "==", formattedRecipientId));
+    
     try {
+        const recipientQuerySnapshot = await getDocs(q);
+
+        if (recipientQuerySnapshot.empty) {
+            throw new Error("Recipient user could not be found. Please check the User ID.");
+        }
+        
+        const recipientDocSnapshot = recipientQuerySnapshot.docs[0];
+        const recipientRef = recipientDocSnapshot.ref;
+
+        if (sender.uid === recipientDocSnapshot.id) {
+            return { success: false, message: "You cannot send cubes to yourself." };
+        }
+
         await runTransaction(db, async (transaction) => {
             const senderDoc = await transaction.get(senderRef);
-            const recipientDoc = await transaction.get(recipientRef);
+            const recipientDoc = await transaction.get(recipientRef); // Read recipient inside transaction
 
             if (!senderDoc.exists()) {
                 throw new Error("Your user profile could not be found.");
             }
-
-            if (!recipientDoc.exists()) {
-                throw new Error("Recipient user could not be found. Please check the User ID.");
+             if (!recipientDoc.exists()) {
+                // This is a safety check, should not happen if query outside worked
+                throw new Error("Recipient user could not be found.");
             }
 
             const senderData = senderDoc.data() as UserProfile;
+            const recipientData = recipientDoc.data() as UserProfile;
+
             if (senderData.cubeBalance < amount) {
                 throw new Error("Insufficient cube balance for this transfer.");
             }
 
-            const recipientData = recipientDoc.data() as UserProfile;
             const now = new Date();
 
-            // Update sender and recipient balances
+            // All writes happen after all reads
             transaction.update(senderRef, { cubeBalance: increment(-amount) });
             transaction.update(recipientRef, { cubeBalance: increment(amount) });
 
@@ -363,17 +400,17 @@ export async function transferCubes(recipientId: string, amount: number): Promis
             const senderTransactionRef = doc(collection(db, 'users', sender.uid, 'transactions'));
             transaction.set(senderTransactionRef, {
                 type: 'withdrawal',
-                description: `Sent to ${recipientData.email || recipientId}`,
+                description: `Sent to ${recipientData.email || recipientData.adsenerId}`,
                 amount: -amount,
                 date: now,
                 status: 'completed',
             });
 
             // Create transaction log for recipient
-            const recipientTransactionRef = doc(collection(db, 'users', recipientId, 'transactions'));
+            const recipientTransactionRef = doc(collection(db, 'users', recipientDoc.id, 'transactions'));
             transaction.set(recipientTransactionRef, {
                 type: 'deposit',
-                description: `Received from ${senderData.email || sender.uid}`,
+                description: `Received from ${senderData.email || senderData.adsenerId}`,
                 amount: amount,
                 date: now,
                 status: 'completed',
@@ -383,16 +420,16 @@ export async function transferCubes(recipientId: string, amount: number): Promis
             const senderNotificationRef = doc(collection(db, 'users', sender.uid, 'notifications'));
             transaction.set(senderNotificationRef, {
                 title: "Transfer Sent",
-                description: `You successfully sent ${amount} Cubes to ${recipientData.email || recipientId}.`,
+                description: `You successfully sent ${amount} Cubes to ${recipientData.email || recipientData.adsenerId}.`,
                 date: now,
                 read: false,
             });
 
             // Create notification for recipient
-            const recipientNotificationRef = doc(collection(db, 'users', recipientId, 'notifications'));
+            const recipientNotificationRef = doc(collection(db, 'users', recipientDoc.id, 'notifications'));
             transaction.set(recipientNotificationRef, {
                 title: "Cubes Received!",
-                description: `You have received ${amount} Cubes from ${senderData.email || sender.uid}.`,
+                description: `You have received ${amount} Cubes from ${senderData.email || senderData.adsenerId}.`,
                 date: now,
                 read: false,
             });

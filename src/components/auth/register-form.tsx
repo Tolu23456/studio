@@ -106,7 +106,12 @@ export function RegisterForm() {
                 <FormItem>
                   <FormLabel>Referral Code (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter referral code" {...field} />
+                    <Input 
+                        placeholder="e.g. AC-123456A" 
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                        className="uppercase"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

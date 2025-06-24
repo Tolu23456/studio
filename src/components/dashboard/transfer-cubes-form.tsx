@@ -28,7 +28,9 @@ import { transferCubes } from '@/services/user-data';
 import { Send } from 'lucide-react';
 
 const formSchema = z.object({
-  recipientId: z.string().min(1, 'Recipient User ID is required.'),
+  recipientId: z.string().regex(/^AC-[0-9]{6}[A-Z]$/, {
+    message: "Invalid User ID format. Should be e.g. AC-123456A"
+  }),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
 });
 
@@ -101,10 +103,15 @@ export function TransferCubesForm() {
                 <FormItem>
                   <FormLabel>Recipient User ID</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter the user's ID" {...field} />
+                    <Input
+                      placeholder="e.g. AC-123456A"
+                      {...field}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                      className="uppercase"
+                    />
                   </FormControl>
                   <HookFormDescription>
-                    You can find the User ID on your friend's profile page or in their settings.
+                    Ask your friend for their User ID. It can be found on their profile or settings page.
                   </HookFormDescription>
                   <FormMessage />
                 </FormItem>

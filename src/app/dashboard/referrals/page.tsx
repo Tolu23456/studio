@@ -15,7 +15,7 @@ export default function ReferralsPage() {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
-  const referralCode = user?.uid;
+  const referralCode = userProfile?.adsenerId;
 
   const handleCopy = () => {
     if (!referralCode) return;
@@ -76,7 +76,7 @@ export default function ReferralsPage() {
               value={referralCode}
               className="font-mono text-sm"
             />
-            <Button size="icon" onClick={handleCopy} aria-label="Copy referral code">
+            <Button size="icon" onClick={handleCopy} aria-label="Copy referral code" disabled={!referralCode}>
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>

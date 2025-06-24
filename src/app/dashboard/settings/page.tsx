@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
 export default function SettingsPage() {
-    const { user, loading } = useAuth();
+    const { user, userProfile, loading } = useAuth();
     const { toast } = useToast();
 
     if (loading) {
@@ -36,7 +36,7 @@ export default function SettingsPage() {
         )
     }
 
-    if (!user) {
+    if (!user || !userProfile) {
         return <div>Please log in to view settings.</div>;
     }
 
@@ -63,7 +63,7 @@ export default function SettingsPage() {
                     </div>
                      <div>
                         <Label>User ID</Label>
-                        <p className="text-sm text-muted-foreground font-mono text-xs">{user.uid}</p>
+                        <p className="text-sm text-muted-foreground font-mono text-xs">{userProfile.adsenerId}</p>
                     </div>
                 </CardContent>
             </Card>
