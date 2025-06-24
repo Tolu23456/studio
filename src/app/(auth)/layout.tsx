@@ -33,7 +33,7 @@ export default function AuthLayout({
        <div className="absolute top-8 left-8">
         <Link href="/" className="flex items-center space-x-2 text-foreground/80 hover:text-foreground transition-colors">
             <Zap className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg font-headline">AdBoost</span>
+            <span className="font-bold text-lg font-headline">Adsener</span>
         </Link>
        </div>
       {children}

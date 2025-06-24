@@ -68,7 +68,7 @@ export default function ProfilePage() {
       <Card>
         <CardHeader>
             <CardTitle>Account Statistics</CardTitle>
-            <CardDescription>Your current progress and earnings on AdBoost.</CardDescription>
+            <CardDescription>Your current progress and earnings on Adsener.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
              <div className="flex items-center gap-4 p-4 border rounded-lg">

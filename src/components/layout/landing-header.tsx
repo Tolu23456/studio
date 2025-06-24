@@ -12,7 +12,7 @@ export default function LandingHeader() {
         <div className="mr-4 hidden md:flex">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <Zap className="h-6 w-6 text-primary" />
-            <span className="font-bold font-headline">AdBoost</span>
+            <span className="font-bold font-headline">Adsener</span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
             <Link
@@ -34,7 +34,7 @@ export default function LandingHeader() {
             <SheetContent side="left">
               <Link href="/" className="mr-6 flex items-center space-x-2 mb-6">
                 <Zap className="h-6 w-6 text-primary" />
-                <span className="font-bold font-headline">AdBoost</span>
+                <span className="font-bold font-headline">Adsener</span>
               </Link>
               <nav className="flex flex-col space-y-4">
                 <SheetClose asChild>

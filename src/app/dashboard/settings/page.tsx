@@ -84,7 +84,7 @@ export default function SettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Notifications</CardTitle>
-                    <CardDescription>Manage how you receive notifications from AdBoost.</CardDescription>
+                    <CardDescription>Manage how you receive notifications from Adsener.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between p-4 border rounded-lg">

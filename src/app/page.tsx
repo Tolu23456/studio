@@ -46,7 +46,7 @@ export default function Home() {
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-4xl font-bold tracking-tighter font-headline sm:text-5xl md:text-6xl/none">
-                    Turn Your Time into Rewards with AdBoost
+                    Turn Your Time into Rewards with Adsener
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
                     Watch ads, complete tasks, and play games to earn Cubes.
@@ -67,7 +67,7 @@ export default function Home() {
                 width="650"
                 height="450"
                 alt="Hero"
-                data-ai-hint="cartoon rewards"
+                data-ai-hint="digital earnings"
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
               />
             </div>
@@ -116,7 +116,7 @@ export default function Home() {
                 Ready to Start Earning?
               </h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed">
-                Join thousands of users who are already earning rewards on AdBoost.
+                Join thousands of users who are already earning rewards on Adsener.
                 Sign up is quick, easy, and free!
               </p>
             </div>
