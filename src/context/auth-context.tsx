@@ -40,7 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       
       if (currentUser) {
-        setLoading(true);
         const userRef = doc(db, 'users', currentUser.uid);
         
         // Set up a real-time listener for the user's profile
