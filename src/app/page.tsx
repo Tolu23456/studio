@@ -73,13 +73,13 @@ export default function Home() {
                 <title id="hero-illustration-title">An illustration of a mobile app interface showing graphs and floating reward cubes.</title>
                 <defs>
                   <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="hsl(var(--primary) / 0.1)" />
-                    <stop offset="100%" stop-color="hsl(var(--primary) / 0.0)" />
+                    <stop offset="0%" stopColor="hsl(var(--primary) / 0.1)" />
+                    <stop offset="100%" stopColor="hsl(var(--primary) / 0.0)" />
                   </linearGradient>
                   <filter id="drop-shadow">
                     <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
                     <feOffset dx="5" dy="5" result="offsetblur"/>
-                    <feFlood flood-color="hsl(var(--foreground) / 0.1)"/>
+                    <feFlood floodColor="hsl(var(--foreground) / 0.1)"/>
                     <feComposite in2="offsetblur" operator="in"/>
                     <feMerge>
                       <feMergeNode/>
@@ -93,11 +93,11 @@ export default function Home() {
                 <circle cx="600" cy="400" r="120" fill="hsl(var(--accent) / 0.05)" />
 
                 <g style={{ filter: 'url(#drop-shadow)' }}>
-                  <rect x="175" y="50" width="300" height="350" rx="30" fill="hsl(var(--card))" stroke="hsl(var(--border))" stroke-width="1" />
+                  <rect x="175" y="50" width="300" height="350" rx="30" fill="hsl(var(--card))" stroke="hsl(var(--border))" strokeWidth="1" />
                   <rect x="195" y="70" width="260" height="40" rx="10" fill="hsl(var(--muted))" />
                   
                   <rect x="195" y="130" width="120" height="120" rx="10" fill="hsl(var(--primary) / 0.1)"/>
-                  <path d="M220 220L245 180L270 200L295 160" stroke="hsl(var(--primary))" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M220 220L245 180L270 200L295 160" stroke="hsl(var(--primary))" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
                   
                   <rect x="335" y="130" width="120" height="120" rx="10" fill="hsl(var(--muted))" />
                   
