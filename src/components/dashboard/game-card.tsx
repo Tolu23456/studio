@@ -129,7 +129,7 @@ export function GameCard({ game }: GameCardProps) {
         await refreshUserProfile();
         toast({
             title: "Reward Claimed!",
-            description: `You've earned ${game.reward} Cubes.`,
+            description: `You've earned ${game.reward} Cubes for playing ${game.title}.`,
         });
 
         // Update play count and cooldown
@@ -192,20 +192,22 @@ export function GameCard({ game }: GameCardProps) {
             className="object-cover aspect-video"
             data-ai-hint={game.dataAiHint}
           />
-           {(playCount > 0 && !onCooldown) && (
-                <div className="absolute top-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full">
-                    {MAX_PLAYS - playCount} plays left
-                </div>
-            )}
         </CardHeader>
         <CardContent className="p-4 flex-grow">
           <CardTitle className="font-headline text-lg">{game.title}</CardTitle>
           <CardDescription className="mt-1">{game.description}</CardDescription>
         </CardContent>
         <CardFooter className="p-4 bg-muted/50 flex justify-between items-center">
-          <div className="flex items-center gap-1 font-bold text-primary">
+          <div>
+            <div className="flex items-center gap-1 font-bold text-primary">
               <Zap className="w-5 h-5" />
               <span>{game.reward}</span>
+            </div>
+            {!onCooldown && (
+              <div className="text-xs text-muted-foreground mt-1">
+                {MAX_PLAYS - playCount} {MAX_PLAYS - playCount === 1 ? 'play' : 'plays'} left
+              </div>
+            )}
           </div>
           
           <Button onClick={() => setIsGameOpen(true)} disabled={onCooldown}>
