@@ -38,7 +38,7 @@ const setGamePlays = (plays: any) => {
     localStorage.setItem('game_plays', JSON.stringify(plays));
 };
 
-const ComingSoonGame = ({ onGameComplete }: { onGameComplete: () => void }) => (
+const ComingSoonGame = ({ onGameComplete }: { onGameComplete: () => void; onGameWon?: (score: number) => void; playsLeft?: number; }) => (
     <div className="p-6 text-center space-y-4">
         <Gamepad2 className="w-16 h-16 mx-auto text-muted-foreground/50" />
         <h3 className="text-xl font-bold font-headline">Coming Soon!</h3>
@@ -240,7 +240,7 @@ export function GameCard({ game }: GameCardProps) {
              <RadixDialogTitle>{game.title}</RadixDialogTitle>
              <RadixDialogDescription>{game.description}</RadixDialogDescription>
            </DialogHeader>
-           <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} />
+           <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} playsLeft={playsLeft} />
         </DialogContent>
       </Dialog>
     </>

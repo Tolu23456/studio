@@ -8,11 +8,12 @@ import { cn } from '@/lib/utils';
 type ReactionTimeGameProps = {
   onGameComplete: () => void;
   onGameWon: (reactionTime: number) => void;
+  playsLeft: number;
 };
 
 type GameState = 'idle' | 'waiting' | 'active' | 'result' | 'too_soon';
 
-export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGameProps) {
+export function ReactionTimeGame({ onGameComplete, onGameWon, playsLeft }: ReactionTimeGameProps) {
   const [gameState, setGameState] = useState<GameState>('idle');
   const [startTime, setStartTime] = useState(0);
   const [reactionTime, setReactionTime] = useState(0);
@@ -87,9 +88,14 @@ export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGame
             </div>
           ),
           action: (
-            <div className='flex flex-col sm:flex-row gap-2 justify-center'>
-              <Button onClick={startGame} variant="secondary">Play Again</Button>
-              <Button onClick={onGameComplete}>Finish Game</Button>
+            <div className='flex flex-col items-center gap-2'>
+                {playsLeft <= 0 && (
+                     <p className="text-sm text-primary-foreground/80 font-semibold -mb-1">No more plays left.</p>
+                )}
+                <div className='flex flex-col sm:flex-row gap-2 justify-center pt-2'>
+                    <Button onClick={startGame} variant="secondary" disabled={playsLeft <= 0}>Play Again</Button>
+                    <Button onClick={onGameComplete}>Finish Game</Button>
+                </div>
             </div>
           )
         };
@@ -116,7 +122,7 @@ export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGame
         >
            {text}
         </div>
-        <div className="h-10">
+        <div className="h-16 flex items-center justify-center">
             {action}
         </div>
     </div>

@@ -9,6 +9,7 @@ import { Apple, Banana, Carrot, Grape, Pizza, Sandwich, CheckCircle, BrainCircui
 type MemoryMatchGameProps = {
   onGameComplete: () => void;
   onGameWon: (moves: number) => void;
+  playsLeft: number;
 };
 
 const ICONS = [Apple, Banana, Carrot, Grape, Pizza, Sandwich];
@@ -33,7 +34,7 @@ const createShuffledBoard = (): CardType[] => {
     }));
 };
 
-export function MemoryMatchGame({ onGameComplete, onGameWon }: MemoryMatchGameProps) {
+export function MemoryMatchGame({ onGameComplete, onGameWon, playsLeft }: MemoryMatchGameProps) {
   const [cards, setCards] = useState<CardType[]>(createShuffledBoard);
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
@@ -147,8 +148,11 @@ export function MemoryMatchGame({ onGameComplete, onGameWon }: MemoryMatchGamePr
             <CheckCircle className="w-6 h-6" />
             <span>You Won!</span>
           </div>
+          {playsLeft <= 0 && (
+            <p className="text-sm text-destructive font-semibold">No more plays left.</p>
+          )}
           <div className='flex flex-col sm:flex-row gap-2 justify-center w-full'>
-            <Button onClick={resetGame} variant="secondary">Play Again</Button>
+            <Button onClick={resetGame} variant="secondary" disabled={playsLeft <= 0}>Play Again</Button>
             <Button onClick={onGameComplete}>Finish Game</Button>
           </div>
         </div>
