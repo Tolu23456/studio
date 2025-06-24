@@ -103,12 +103,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setNotifications([]);
       return;
     }
-
+  
     const notificationsRef = collection(db, 'users', user.uid, 'notifications');
     const q = query(notificationsRef, orderBy('date', 'desc'), limit(10));
-    
+  
     let isInitialLoad = true;
-
+  
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const newNotifications = querySnapshot.docs.map(doc => {
         const data = doc.data();
@@ -118,31 +118,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           date: (data.date as Timestamp).toDate(),
         } as Notification;
       });
-
+  
       if (isInitialLoad) {
         setNotifications(newNotifications);
         isInitialLoad = false;
         return;
       }
-      
-      setNotifications(currentNotifications => {
-        const latestNew = newNotifications.length ? newNotifications[0] : null;
-        const latestOld = currentNotifications.length ? currentNotifications[0] : null;
-
-        if (latestNew && (!latestOld || latestNew.id !== latestOld.id)) {
-          toast({
-            title: `🔔 ${latestNew.title}`,
-            description: latestNew.description,
-          });
-        }
-        return newNotifications;
-      });
+  
+      const latestNew = newNotifications.length > 0 ? newNotifications[0] : null;
+      const latestOld = notifications.length > 0 ? notifications[0] : null;
+  
+      if (latestNew && (!latestOld || latestNew.id !== latestOld.id)) {
+        toast({
+          title: `🔔 ${latestNew.title}`,
+          description: latestNew.description,
+        });
+      }
+  
+      setNotifications(newNotifications);
+  
     }, (error) => {
       console.error("Error fetching real-time notifications: ", error);
     });
-
+  
     return () => unsubscribe();
-  }, [user, toast]);
+  }, [user, toast, notifications]);
 
   const value = { user, userProfile, loading, notifications };
 
