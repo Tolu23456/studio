@@ -33,6 +33,8 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
   
   const gameLoopRef = useRef<number>();
   const keysPressed = useRef<{ [key: string]: boolean }>({});
+  const touchStartX = useRef(0);
+  const playerStartX = useRef(0);
 
   const resetGame = useCallback(() => {
     setPlayerX(GAME_WIDTH / 2 - PLAYER_SIZE / 2);
@@ -145,25 +147,24 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
   }, []);
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    const touchX = e.touches[0].clientX;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const midPoint = rect.left + rect.width / 2;
+    if (gameState !== 'playing') return;
+    e.preventDefault();
+    touchStartX.current = e.touches[0].clientX;
+    playerStartX.current = playerX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (gameState !== 'playing') return;
+    e.preventDefault();
+    const currentTouchX = e.touches[0].clientX;
+    const deltaX = currentTouchX - touchStartX.current;
     
-    // Clear previous touch states
-    keysPressed.current['ArrowLeft'] = false;
-    keysPressed.current['ArrowRight'] = false;
-
-    if (touchX < midPoint) {
-      keysPressed.current['ArrowLeft'] = true;
-    } else {
-      keysPressed.current['ArrowRight'] = true;
-    }
+    const newPlayerX = playerStartX.current + deltaX;
+    
+    const clampedX = Math.max(0, Math.min(GAME_WIDTH - PLAYER_SIZE, newPlayerX));
+    setPlayerX(clampedX);
   };
 
-  const handleTouchEnd = () => {
-    keysPressed.current['ArrowLeft'] = false;
-    keysPressed.current['ArrowRight'] = false;
-  };
 
   return (
     <div className="flex flex-col items-center p-4 space-y-4">
@@ -172,12 +173,11 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
         className="relative bg-secondary overflow-hidden border-2 border-primary/20 rounded-lg touch-none" 
         style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchStart} // Handle dragging between sides
-        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
       >
         {gameState === 'idle' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/50 p-4 text-center">
-            <p className="text-white text-lg font-bold mb-4">Use Arrow Keys or Tap Left/Right to Move</p>
+            <p className="text-white text-lg font-bold mb-4">Use Arrow Keys or Drag to Move</p>
             <Button onClick={resetGame}>Start Game</Button>
           </div>
         )}
