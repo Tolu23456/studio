@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Game } from "@/lib/types";
 import { Gamepad2, Zap, Clock } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
-import { claimGameReward } from "@/services/user-data";
+import { claimGameReward, createSimpleNotification } from "@/services/user-data";
 import { ReactionTimeGame } from "@/components/games/reaction-time-game";
 import { MemoryMatchGame } from "@/components/games/memory-match-game";
 import { CubeRunnerGame } from "@/components/games/cube-runner-game";
@@ -41,16 +41,16 @@ const setGamePlays = (plays: any) => {
 };
 
 const GameComponentMap: { [key: string]: React.ElementType } = {
-  'g1': CubeRunnerGame,    // One Tap Dash
-  'g2': CubeRunnerGame,    // Shadow Jump
-  'g3': PuzzleBoxGame,    // Don’t Touch the Red
-  'g4': MemoryMatchGame,   // Quick Flip
-  'g5': ReactionTimeGame,  // Laser Reflex
-  'g6': ReactionTimeGame,    // Tiny Tapper
-  'g7': CubeRunnerGame,    // Stack Tower
-  'g8': PuzzleBoxGame,    // Speed Type
-  'g9': PuzzleBoxGame,    // Reverse Swipe
-  'g10': PuzzleBoxGame,   // Tilt Maze
+  'g1': CubeRunnerGame,
+  'g2': CubeRunnerGame,
+  'g3': PuzzleBoxGame,
+  'g4': MemoryMatchGame,
+  'g5': ReactionTimeGame,
+  'g6': ReactionTimeGame,
+  'g7': CubeRunnerGame,
+  'g8': PuzzleBoxGame,
+  'g9': PuzzleBoxGame,
+  'g10': PuzzleBoxGame,
 };
 
 
@@ -92,21 +92,32 @@ export function GameCard({ game }: GameCardProps) {
   
    useEffect(() => {
     if (cooldownTime > 0) {
-      const interval = setInterval(() => {
+      const interval = setInterval(async () => {
         const now = new Date().getTime();
         if (now >= cooldownTime) {
+          clearInterval(interval);
           setCooldownTime(0);
           setPlayCount(0);
           const allPlays = getGamePlays();
           const newPlays = { ...allPlays };
           delete newPlays[game.id];
           setGamePlays(newPlays);
-          clearInterval(interval);
+          
+          if (user) {
+            try {
+              await createSimpleNotification(
+                `Plays Refreshed!`, 
+                `You can now play '${game.title}' again.`
+              );
+            } catch (error) {
+                console.error("Failed to send refresh notification", error);
+            }
+          }
         }
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [cooldownTime, game.id]);
+  }, [cooldownTime, game.id, user, game.title]);
 
 
   const handleGameWon = async (scorePayload: number) => {

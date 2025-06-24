@@ -197,6 +197,18 @@ function _createNotification(batch: any, uid: string, title: string, description
     batch.set(notificationRef, newNotification);
 }
 
+export async function createSimpleNotification(title: string, description: string): Promise<void> {
+    const user = getCurrentUser();
+    const notificationRef = doc(collection(db, 'users', user.uid, 'notifications'));
+    const newNotification: Omit<Notification, 'id'> = {
+        title,
+        description,
+        date: new Date(),
+        read: false,
+    };
+    await setDoc(notificationRef, newNotification);
+}
+
 // Simulate a secure, server-side configuration for ad rewards
 const TRUSTED_AD_CONFIG: { [key: string]: { reward: number; title: string } } = {
   "1": { reward: 15, title: "Explore the New TechGadget Pro" },
