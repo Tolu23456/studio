@@ -12,18 +12,8 @@ async function verifyToken(idToken: string): Promise<DecodedIdToken> {
     const adminAuth = getAdminAuth();
     return await adminAuth.verifyIdToken(idToken);
   } catch (error: any) {
-    if (error.message.startsWith('Failed to initialize Firebase Admin SDK')) {
-      console.error("Firebase Admin SDK Initialization Error:", error.message);
-      throw error;
-    }
-    
-    if (error.code) { 
-      console.error('Firebase token verification error:', error.code, error.message);
-      throw new Error(`User is not authenticated. Reason: ${error.code}`);
-    }
-
-    console.error('An unexpected error occurred during token verification:', error);
-    throw new Error('An unexpected error occurred during authentication.');
+    // Re-throw the original error to provide more specific details
+    throw error;
   }
 }
 
