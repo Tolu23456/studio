@@ -344,6 +344,30 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   return { success: true, message: `You earned ${reward} Cubes!` };
 }
 
+export async function fetchRecipientDisplayName(adsenerId: string): Promise<string | null> {
+    const formattedId = adsenerId.trim().toUpperCase();
+    if (!formattedId || !/^AC-[0-9]{6}[A-Z]$/.test(formattedId)) {
+        return null;
+    }
+    const currentUser = auth.currentUser;
+    
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where("adsenerId", "==", formattedId));
+    
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+        return "User not found";
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    if (currentUser && currentUser.uid === userDoc.id) {
+        return "You cannot send cubes to yourself.";
+    }
+
+    const userData = userDoc.data();
+    return userData.displayName || 'Unnamed User';
+}
+
 export async function transferCubes(recipientAdsenerId: string, amount: number): Promise<{ success: boolean; message: string }> {
     const sender = getCurrentUser();
     const formattedRecipientId = recipientAdsenerId.trim().toUpperCase();

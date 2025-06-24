@@ -18,14 +18,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription as HookFormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { transferCubes } from '@/services/user-data';
-import { Send } from 'lucide-react';
+import { transferCubes, fetchRecipientDisplayName } from '@/services/user-data';
+import { Send, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 const formSchema = z.object({
   recipientId: z.string().regex(/^AC-[0-9]{6}[A-Z]$/, {
@@ -37,6 +37,8 @@ const formSchema = z.object({
 export function TransferCubesForm() {
   const { userProfile } = useAuth();
   const { toast } = useToast();
+  const [recipientName, setRecipientName] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -45,6 +47,34 @@ export function TransferCubesForm() {
       amount: 0,
     },
   });
+  
+  const recipientIdValue = form.watch('recipientId');
+
+  useEffect(() => {
+    const handler = setTimeout(async () => {
+      const validFormat = /^AC-[0-9]{6}[A-Z]$/.test(recipientIdValue);
+      if (validFormat) {
+        setIsVerifying(true);
+        setRecipientName(null);
+        try {
+          const name = await fetchRecipientDisplayName(recipientIdValue);
+          setRecipientName(name);
+        } catch (error) {
+          console.error("Error fetching recipient name:", error);
+          setRecipientName("Error finding user.");
+        } finally {
+          setIsVerifying(false);
+        }
+      } else {
+        setRecipientName(null);
+      }
+    }, 500); // 500ms debounce
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [recipientIdValue]);
+
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!userProfile) {
@@ -109,12 +139,10 @@ export function TransferCubesForm() {
                       onChange={(e) => {
                         let value = e.target.value.toUpperCase();
                 
-                        // When user starts typing, add prefix if it's not there.
                         if (value && !value.startsWith('AC-')) {
                           value = 'AC-' + value;
                         }
                 
-                        // If user backspaces until only prefix is left, clear the input.
                         if (value === 'AC-') {
                           value = '';
                         }
@@ -124,10 +152,26 @@ export function TransferCubesForm() {
                       className="uppercase"
                     />
                   </FormControl>
-                  <HookFormDescription>
-                    Ask your friend for their User ID. It can be found on their profile or settings page.
-                  </HookFormDescription>
-                  <FormMessage />
+                  <div className="h-5 pt-1 text-sm text-muted-foreground">
+                    {isVerifying ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Verifying ID...
+                      </span>
+                    ) : recipientName ? (
+                      <span>
+                        Recipient:{" "}
+                        <span className="font-semibold text-foreground">
+                          {recipientName}
+                        </span>
+                      </span>
+                    ) : (
+                      <span>
+                        Ask your friend for their User ID.
+                      </span>
+                    )}
+                  </div>
+                  <FormMessage className="pt-1" />
                 </FormItem>
               )}
             />
