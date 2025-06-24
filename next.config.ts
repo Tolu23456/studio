@@ -1,7 +1,8 @@
+
 import type {NextConfig} from 'next';
 
+// This file has been intentionally modified to force a cache clear.
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
