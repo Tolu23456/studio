@@ -209,7 +209,7 @@ export function GameCard({ game }: GameCardProps) {
           <div className="text-sm text-muted-foreground">
             <div className="flex items-center gap-1 font-bold text-primary">
               <Zap className="w-5 h-5" />
-              <span>Performance-based</span>
+              <span>{game.rewardDescription || "Performance-based"}</span>
             </div>
             {!onCooldown && (
               <div className="text-xs mt-1">

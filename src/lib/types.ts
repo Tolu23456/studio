@@ -45,6 +45,7 @@ export type Game = {
   description: string;
   imageUrl: string;
   dataAiHint?: string;
+  rewardDescription?: string;
 };
 
 export type Notification = {
