@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 type ReactionTimeGameProps = {
   onGameComplete: () => void;
-  onGameWon: (reward: number) => void;
+  onGameWon: (reactionTime: number) => void;
 };
 
 type GameState = 'idle' | 'waiting' | 'active' | 'result' | 'too_soon';
@@ -44,8 +44,7 @@ export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGame
       setReactionTime(newReactionTime);
       setGameState('result');
       if (!hasClaimed) {
-        const reward = Math.max(1, 30 - Math.floor(newReactionTime / 100));
-        onGameWon(reward);
+        onGameWon(newReactionTime);
         setHasClaimed(true);
       }
     }
@@ -85,7 +84,6 @@ export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGame
           text: (
             <div className="text-primary-foreground">
               <p>Your reaction time: {reactionTime}ms</p>
-              <p className="text-sm mt-2">Cubes Earned: {Math.max(1, 30 - Math.floor(reactionTime / 100))}</p>
             </div>
           ),
           action: (

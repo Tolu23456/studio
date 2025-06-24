@@ -112,7 +112,7 @@ export function WatchAdCard({ ad, onAdClaimed }: WatchAdCardProps) {
     }
     setIsClaiming(true);
     try {
-        await claimAdReward(ad.reward, ad.title);
+        await claimAdReward(ad.id);
         toast({
             title: "Reward Claimed!",
             description: `You've earned ${ad.reward} Cubes.`,

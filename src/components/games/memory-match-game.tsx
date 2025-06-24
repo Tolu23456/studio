@@ -8,7 +8,7 @@ import { Apple, Banana, Carrot, Grape, Pizza, Sandwich, CheckCircle, BrainCircui
 
 type MemoryMatchGameProps = {
   onGameComplete: () => void;
-  onGameWon: (reward: number) => void;
+  onGameWon: (moves: number) => void;
 };
 
 const ICONS = [Apple, Banana, Carrot, Grape, Pizza, Sandwich];
@@ -80,8 +80,7 @@ export function MemoryMatchGame({ onGameComplete, onGameWon }: MemoryMatchGamePr
     if (gameWon) {
       setIsWon(true);
       if (!hasClaimed) {
-        const reward = Math.max(5, 40 - moves);
-        onGameWon(reward);
+        onGameWon(moves);
         setHasClaimed(true);
       }
     }
@@ -148,7 +147,6 @@ export function MemoryMatchGame({ onGameComplete, onGameWon }: MemoryMatchGamePr
             <CheckCircle className="w-6 h-6" />
             <span>You Won!</span>
           </div>
-          <p>Cubes Earned: {Math.max(5, 40 - moves)}</p>
           <div className='flex flex-col sm:flex-row gap-2 justify-center w-full'>
             <Button onClick={resetGame} variant="secondary">Play Again</Button>
             <Button onClick={onGameComplete}>Finish Game</Button>

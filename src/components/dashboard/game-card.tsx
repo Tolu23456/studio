@@ -113,26 +113,26 @@ export function GameCard({ game }: GameCardProps) {
   }, [cooldownTime, game.id]);
 
 
-  const handleGameWon = async (earnedReward: number) => {
+  const handleGameWon = async (scorePayload: number) => {
     if (!user) {
         toast({ variant: "destructive", title: "You must be logged in to claim rewards." });
         return;
     }
 
-    if (earnedReward <= 0) {
-        toast({
-            title: "Game Over",
-            description: "No cubes earned this time. Better luck next time!",
-        });
-        return;
-    }
-
     try {
-        await claimGameReward(earnedReward, game.title);
-        toast({
-            title: "Reward Claimed!",
-            description: `You've earned ${earnedReward} Cubes for playing ${game.title}.`,
-        });
+        const actualReward = await claimGameReward(game.id, scorePayload);
+        
+        if (actualReward > 0) {
+            toast({
+                title: "Reward Claimed!",
+                description: `You've earned ${actualReward} Cubes for playing ${game.title}.`,
+            });
+        } else {
+            toast({
+                title: "Game Over",
+                description: "No cubes earned this time. Better luck next time!",
+            });
+        }
 
         const allPlays = getGamePlays();
         const currentCount = (allPlays[game.id]?.count || 0) + 1;

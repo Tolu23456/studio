@@ -190,8 +190,24 @@ function _createNotification(batch: any, uid: string, title: string, description
     batch.set(notificationRef, newNotification);
 }
 
-export async function claimAdReward(reward: number, title: string): Promise<void> {
+// Simulate a secure, server-side configuration for ad rewards
+const TRUSTED_AD_CONFIG: { [key: string]: { reward: number; title: string } } = {
+  "1": { reward: 15, title: "Explore the New TechGadget Pro" },
+  "2": { reward: 12, title: "Quick & Healthy Snack Ideas" },
+  "3": { reward: 20, title: "Adventure Awaits: Travel Deals" },
+  "4": { reward: 8, title: "Mobile Gaming Madness" },
+};
+
+export async function claimAdReward(adId: string): Promise<void> {
   const user = getCurrentUser();
+  const adConfig = TRUSTED_AD_CONFIG[adId];
+
+  if (!adConfig) {
+    throw new Error("Invalid ad ID or ad not found.");
+  }
+  
+  const { reward, title } = adConfig;
+  
   const userRef = doc(db, 'users', user.uid);
 
   const docSnap = await getDoc(userRef);
@@ -231,10 +247,42 @@ export async function claimAdReward(reward: number, title: string): Promise<void
   await batch.commit();
 }
 
-export async function claimGameReward(reward: number, gameTitle: string): Promise<void> {
+const calculateGameReward = (gameId: string, scorePayload: number): number => {
+    switch (gameId) {
+        case 'g1': // Cube Runner
+            return Math.floor(scorePayload); // Reward is the score
+        case 'g3': // Puzzle Box
+            return Math.max(5, 50 - scorePayload * 2); // scorePayload is moves
+        case 'g4': // Memory Match
+            return Math.max(5, 40 - scorePayload); // scorePayload is moves
+        case 'g6': // Reaction Time
+            return Math.max(1, 30 - Math.floor(scorePayload / 100)); // scorePayload is reactionTime in ms
+        default:
+            return 0; // No reward for unknown games
+    }
+};
+
+const getGameTitle = (gameId: string): string => {
+    const titles: { [key: string]: string } = {
+        'g1': 'Cube Runner',
+        'g3': 'Puzzle Box',
+        'g4': 'Memory Match',
+        'g5': 'Word Finder',
+        'g6': 'Reaction Time',
+    };
+    return titles[gameId] || 'a game';
+};
+
+export async function claimGameReward(gameId: string, scorePayload: number): Promise<number> {
   const user = getCurrentUser();
-  const userRef = doc(db, 'users', user.uid);
+  const reward = calculateGameReward(gameId, scorePayload);
+  const gameTitle = getGameTitle(gameId);
+
+  if (reward <= 0) {
+    return 0;
+  }
   
+  const userRef = doc(db, 'users', user.uid);
   const docSnap = await getDoc(userRef);
   if (!docSnap.exists()) {
     throw new Error("User profile not found, cannot claim reward.");
@@ -270,6 +318,8 @@ export async function claimGameReward(reward: number, gameTitle: string): Promis
   _createNotification(batch, user.uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`);
 
   await batch.commit();
+  
+  return reward;
 }
 
 
