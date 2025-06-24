@@ -256,26 +256,27 @@ export async function claimAdReward(adId: string): Promise<void> {
 
 const calculateGameReward = (gameId: string, scorePayload: number): number => {
     switch (gameId) {
-        case 'g1': // Cube Runner
-            return Math.floor(scorePayload); // Reward is the score
-        case 'g3': // Puzzle Box
-            return Math.max(5, 50 - scorePayload * 2); // scorePayload is moves
-        case 'g4': // Memory Match
+        case 'g4': // Quick Flip (Memory Match)
             return Math.max(5, 40 - scorePayload); // scorePayload is moves
-        case 'g6': // Reaction Time
+        case 'g5': // Laser Reflex (Reaction Time)
             return Math.max(1, 30 - Math.floor(scorePayload / 100)); // scorePayload is reactionTime in ms
         default:
-            return 0; // No reward for unknown games
+            return 0; // No reward for unknown or "coming soon" games
     }
 };
 
 const getGameTitle = (gameId: string): string => {
     const titles: { [key: string]: string } = {
-        'g1': 'Cube Runner',
-        'g3': 'Puzzle Box',
-        'g4': 'Memory Match',
-        'g5': 'Word Finder',
-        'g6': 'Reaction Time',
+        'g1': 'One Tap Dash',
+        'g2': 'Shadow Jump',
+        'g3': 'Don’t Touch the Red',
+        'g4': 'Quick Flip',
+        'g5': 'Laser Reflex',
+        'g6': 'Tiny Tapper',
+        'g7': 'Stack Tower',
+        'g8': 'Speed Type',
+        'g9': 'Reverse Swipe',
+        'g10': 'Tilt Maze',
     };
     return titles[gameId] || 'a game';
 };

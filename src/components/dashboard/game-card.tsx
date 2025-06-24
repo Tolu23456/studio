@@ -25,8 +25,6 @@ import { Gamepad2, Zap, Clock } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { claimGameReward } from "@/services/user-data";
 import { ReactionTimeGame } from "@/components/games/reaction-time-game";
-import { CubeRunnerGame } from "@/components/games/cube-runner-game";
-import { PuzzleBoxGame } from "@/components/games/puzzle-box-game";
 import { MemoryMatchGame } from "@/components/games/memory-match-game";
 
 const getGamePlays = () => {
@@ -50,11 +48,16 @@ const ComingSoonGame = ({ onGameComplete }: { onGameComplete: () => void }) => (
 );
 
 const GameComponentMap: { [key: string]: React.ElementType } = {
-  'g1': CubeRunnerGame,
-  'g3': PuzzleBoxGame,
-  'g4': MemoryMatchGame,
-  'g5': ComingSoonGame,
-  'g6': ReactionTimeGame,
+  'g1': ComingSoonGame,    // One Tap Dash
+  'g2': ComingSoonGame,    // Shadow Jump
+  'g3': ComingSoonGame,    // Don’t Touch the Red
+  'g4': MemoryMatchGame,   // Quick Flip
+  'g5': ReactionTimeGame,  // Laser Reflex
+  'g6': ComingSoonGame,    // Tiny Tapper
+  'g7': ComingSoonGame,    // Stack Tower
+  'g8': ComingSoonGame,    // Speed Type
+  'g9': ComingSoonGame,    // Reverse Swipe
+  'g10': ComingSoonGame,   // Tilt Maze
 };
 
 
