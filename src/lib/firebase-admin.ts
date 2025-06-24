@@ -14,6 +14,9 @@ function getAdminApp() {
     try {
         const serviceAccount = JSON.parse(serviceAccountJson);
         
+        // This is the fix: The private key has \\n characters that need to be replaced with \n.
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+
         return admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
         });
