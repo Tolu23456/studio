@@ -8,7 +8,7 @@ import { CheckCircle, Lightbulb } from 'lucide-react';
 
 type PuzzleBoxGameProps = {
   onGameComplete: () => void;
-  onGameWon: () => void;
+  onGameWon: (reward: number) => void;
 };
 
 const GRID_SIZE = 3;
@@ -57,11 +57,12 @@ export function PuzzleBoxGame({ onGameComplete, onGameWon }: PuzzleBoxGameProps)
         if (allOff || allOn) {
             setIsWon(true);
             if (!hasClaimed) {
-              onGameWon();
+              const reward = Math.max(5, 50 - moves * 2);
+              onGameWon(reward);
               setHasClaimed(true);
             }
         }
-    }, [onGameWon, hasClaimed]);
+    }, [onGameWon, hasClaimed, moves]);
 
     const handleTileClick = (row: number, col: number) => {
         if (isWon) return;
@@ -77,8 +78,9 @@ export function PuzzleBoxGame({ onGameComplete, onGameWon }: PuzzleBoxGameProps)
             }
         });
         
+        const newMoves = moves + 1;
         setBoard(newBoard);
-        setMoves(m => m + 1);
+        setMoves(newMoves);
         checkWinCondition(newBoard);
     };
     
@@ -125,6 +127,7 @@ export function PuzzleBoxGame({ onGameComplete, onGameWon }: PuzzleBoxGameProps)
                         <CheckCircle className="w-6 h-6" />
                         <span>Puzzle Solved!</span>
                     </div>
+                     <p>Cubes Earned: {Math.max(5, 50 - moves * 2)}</p>
                     <div className='flex flex-col sm:flex-row gap-2 justify-center w-full'>
                         <Button onClick={resetGame} variant="secondary">Play Again</Button>
                         <Button onClick={onGameComplete}>Finish Game</Button>

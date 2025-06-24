@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 type ReactionTimeGameProps = {
   onGameComplete: () => void;
-  onGameWon: () => void;
+  onGameWon: (reward: number) => void;
 };
 
 type GameState = 'idle' | 'waiting' | 'active' | 'result' | 'too_soon';
@@ -40,10 +40,12 @@ export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGame
       setGameState('too_soon');
     } else if (gameState === 'active') {
       const endTime = Date.now();
-      setReactionTime(endTime - startTime);
+      const newReactionTime = endTime - startTime;
+      setReactionTime(newReactionTime);
       setGameState('result');
       if (!hasClaimed) {
-        onGameWon();
+        const reward = Math.max(1, 30 - Math.floor(newReactionTime / 100));
+        onGameWon(reward);
         setHasClaimed(true);
       }
     }
@@ -80,7 +82,12 @@ export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGame
       case 'result':
         return {
           bg: 'bg-primary',
-          text: <span className="text-primary-foreground">Your reaction time: {reactionTime}ms</span>,
+          text: (
+            <div className="text-primary-foreground">
+              <p>Your reaction time: {reactionTime}ms</p>
+              <p className="text-sm mt-2">Cubes Earned: {Math.max(1, 30 - Math.floor(reactionTime / 100))}</p>
+            </div>
+          ),
           action: (
             <div className='flex flex-col sm:flex-row gap-2 justify-center'>
               <Button onClick={startGame} variant="secondary">Play Again</Button>
@@ -91,7 +98,7 @@ export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGame
       case 'too_soon':
         return {
           bg: 'bg-accent',
-          text: <span className="text-accent-foreground">Too Soon!</span>,
+          text: <span className="text-accent-foreground">Too Soon! Click to try again.</span>,
           action: <Button onClick={startGame} variant="secondary">Try Again</Button>
         };
     }
@@ -105,7 +112,7 @@ export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGame
         <div
             onClick={handleClick}
             className={cn(
-            "w-full h-64 rounded-lg flex items-center justify-center font-bold text-2xl transition-colors cursor-pointer",
+            "w-full h-64 rounded-lg flex items-center justify-center text-center font-bold text-2xl transition-colors cursor-pointer",
             bg
             )}
         >

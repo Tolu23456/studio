@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 
 type CubeRunnerGameProps = {
   onGameComplete: () => void;
-  onGameWon: () => void;
+  onGameWon: (reward: number) => void;
 };
 
 const GAME_WIDTH = 300;
@@ -109,10 +109,10 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
 
   useEffect(() => {
     if (gameState === 'gameover' && !hasClaimed) {
-      onGameWon();
+      onGameWon(score);
       setHasClaimed(true);
     }
-  }, [gameState, onGameWon, hasClaimed]);
+  }, [gameState, onGameWon, hasClaimed, score]);
 
   useEffect(() => {
     if (gameState === 'playing') {
@@ -161,6 +161,7 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/70 text-white">
             <h4 className="text-3xl font-bold">Game Over</h4>
             <p className="text-lg mt-2">Your Score: {score}</p>
+             <p className="text-lg mt-1">Cubes Earned: {score}</p>
             <div className="flex gap-4 mt-6">
                 <Button onClick={resetGame} variant="secondary">Play Again</Button>
                 <Button onClick={onGameComplete}>Finish Game</Button>
