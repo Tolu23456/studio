@@ -1,15 +1,13 @@
 
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { type Transaction } from '@/lib/types';
 import { Download, Image as ImageIcon } from 'lucide-react';
-import { generateReceipt } from '@/ai/flows/generate-receipt-flow';
-import { Skeleton } from '../ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 interface TransactionReceiptProps {
   transaction: Transaction | null;
@@ -17,32 +15,6 @@ interface TransactionReceiptProps {
 
 export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
-  const [receiptText, setReceiptText] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (transaction) {
-      setIsLoading(true);
-      generateReceipt(transaction)
-        .then(output => {
-          setReceiptText(output.receiptText);
-        })
-        .catch(error => {
-          console.error("Failed to generate receipt:", error);
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not generate AI receipt. Please try again.'
-          });
-          setReceiptText("Error: Could not generate receipt.");
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    }
-  }, [transaction, toast]);
-
 
   if (!transaction) return null;
   
@@ -71,26 +43,40 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
     });
   };
 
+  const formattedDate = format(transaction.date, 'Pp');
+  const formattedAmount = `${transaction.amount > 0 ? '+' : ''}${transaction.amount.toLocaleString()} Cubes`;
+
+  const receiptText = `----------------------------------------
+       Adsener Transaction Receipt
+----------------------------------------
+
+Transaction ID: ${transaction.id}
+Date & Time:    ${formattedDate}
+
+Details:
+  Description: ${transaction.description}
+  Type:        ${transaction.type}
+  Status:      ${transaction.status}
+
+Amount:      ${formattedAmount}
+
+----------------------------------------
+     Thank you for using Adsener!
+----------------------------------------`;
+
+
   return (
     <div>
         <div ref={receiptRef} className="bg-white p-6 sm:p-8 rounded-lg text-black shadow-md font-mono">
-            {isLoading ? (
-                <div className="space-y-2">
-                    {Array.from({ length: 15 }).map((_, i) => (
-                        <Skeleton key={i} className="h-4 bg-gray-200" style={{ width: `${Math.random() * 50 + 50}%`}} />
-                    ))}
-                </div>
-            ) : (
-                <pre className="whitespace-pre-wrap break-words">{receiptText}</pre>
-            )}
+            <pre className="whitespace-pre-wrap break-words">{receiptText}</pre>
         </div>
 
         <div className="mt-6 flex flex-col sm:flex-row gap-2 justify-center">
-            <Button onClick={handleDownloadImage} variant="outline" disabled={isLoading}>
+            <Button onClick={handleDownloadImage} variant="outline">
                 <ImageIcon className="mr-2 h-4 w-4" />
                 Download as Image
             </Button>
-            <Button onClick={handleDownloadPdf} disabled={isLoading}>
+            <Button onClick={handleDownloadPdf}>
                 <Download className="mr-2 h-4 w-4" />
                 Download as PDF
             </Button>
