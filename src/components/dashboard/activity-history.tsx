@@ -96,7 +96,7 @@ export function ActivityHistory() {
                 <TableRow key={activity.id}>
                   <TableCell>
                     <div className="font-medium">{activity.description}</div>
-                    <div className="text-sm text-muted-foreground">{activity.date.toLocaleDateString()}</div>
+                    <div className="text-sm text-muted-foreground">{activity.date.toLocaleString()}</div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge variant="outline">{activity.type}</Badge>

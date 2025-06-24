@@ -110,7 +110,7 @@ export function WalletHistory() {
                 <TableRow key={transaction.id}>
                   <TableCell>
                     <div className="font-medium">{transaction.description}</div>
-                    <div className="text-sm text-muted-foreground">{transaction.date.toLocaleDateString()}</div>
+                    <div className="text-sm text-muted-foreground">{transaction.date.toLocaleString()}</div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge variant="outline" className="capitalize">{transaction.type}</Badge>
