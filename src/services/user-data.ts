@@ -6,11 +6,12 @@ import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, Writ
 import type { Firestore } from 'firebase-admin/firestore';
 import { isYesterday, startOfDay, startOfToday, subDays, format } from 'date-fns';
 import { getAuthenticatedUid, verifyAdminAndGetUid, verifyTokenAndGetEmail } from './auth';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 
 
 export async function createUserProfile(idToken: string): Promise<void> {
-    const { adminAuth, adminDb } = getFirebaseAdmin();
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
     const { uid, email } = await verifyTokenAndGetEmail(idToken);
     const userRecord = await adminAuth.getUser(uid);
     const userRef = doc(adminDb, 'users', uid);
@@ -29,7 +30,7 @@ export async function createUserProfile(idToken: string): Promise<void> {
 
 export async function getUserProfile(idToken: string): Promise<UserProfile | null> {
     const uid = await getAuthenticatedUid(idToken);
-    const { adminDb } = getFirebaseAdmin();
+    const adminDb = getAdminDb();
     const userRef = doc(adminDb, 'users', uid);
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
@@ -61,7 +62,7 @@ function _createNotification(batch: WriteBatch, uid: string, title: string, desc
 
 export async function claimAdReward(idToken: string, reward: number, title: string): Promise<void> {
   const uid = await getAuthenticatedUid(idToken);
-  const { adminDb } = getFirebaseAdmin();
+  const adminDb = getAdminDb();
   const batch = writeBatch(adminDb);
   const userRef = doc(adminDb, 'users', uid);
   const now = new Date();
@@ -97,7 +98,7 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
 
 export async function claimGameReward(idToken: string, reward: number, gameTitle: string): Promise<void> {
   const uid = await getAuthenticatedUid(idToken);
-  const { adminDb } = getFirebaseAdmin();
+  const adminDb = getAdminDb();
   const batch = writeBatch(adminDb);
   const userRef = doc(adminDb, 'users', uid);
   const now = new Date();
@@ -134,7 +135,7 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
 
 export async function claimDailyReward(idToken: string): Promise<{ success: boolean; message: string }> {
   const uid = await getAuthenticatedUid(idToken);
-  const { adminDb } = getFirebaseAdmin();
+  const adminDb = getAdminDb();
   const userRef = doc(adminDb, 'users', uid);
   const docSnap = await getDoc(userRef);
 
@@ -205,7 +206,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
 // Admin functions
 export async function getAllUsers(idToken: string): Promise<UserProfile[]> {
   await verifyAdminAndGetUid(idToken);
-  const { adminDb } = getFirebaseAdmin();
+  const adminDb = getAdminDb();
   const usersSnapshot = await getDocs(collection(adminDb, 'users'));
   const users: UserProfile[] = [];
   usersSnapshot.forEach((doc) => {
@@ -226,7 +227,7 @@ export async function getAllUsers(idToken: string): Promise<UserProfile[]> {
 
 export async function getAdminDashboardStats(idToken: string): Promise<{ totalUsers: number; totalCubesAwarded: number }> {
     await verifyAdminAndGetUid(idToken);
-    const { adminDb } = getFirebaseAdmin();
+    const adminDb = getAdminDb();
     const usersSnapshot = await getDocs(collection(adminDb, 'users'));
     
     let totalCubesAwarded = 0;
@@ -243,7 +244,7 @@ export async function getAdminDashboardStats(idToken: string): Promise<{ totalUs
 
 export async function getUserGrowthStats(idToken: string): Promise<{ date: string; "New Users": number }[]> {
     await verifyAdminAndGetUid(idToken);
-    const { adminDb } = getFirebaseAdmin();
+    const adminDb = getAdminDb();
     
     const today = startOfToday();
     const startDate = subDays(today, 6); // 7 days ago including today
@@ -276,7 +277,7 @@ export async function getUserGrowthStats(idToken: string): Promise<{ date: strin
 
 export async function sendNotificationToAllUsers(idToken: string, title: string, description: string): Promise<{ success: boolean; message: string }> {
     await verifyAdminAndGetUid(idToken);
-    const { adminDb } = getFirebaseAdmin();
+    const adminDb = getAdminDb();
     const usersSnapshot = await getDocs(collection(adminDb, 'users'));
 
     if (usersSnapshot.empty) {

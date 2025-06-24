@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { getAdminAuth } from '@/lib/firebase-admin';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 
 async function verifyToken(idToken: string): Promise<DecodedIdToken> {
@@ -9,7 +9,7 @@ async function verifyToken(idToken: string): Promise<DecodedIdToken> {
     throw new Error('Authentication token is required.');
   }
   try {
-    const { adminAuth } = getFirebaseAdmin();
+    const adminAuth = getAdminAuth();
     return await adminAuth.verifyIdToken(idToken);
   } catch (error: any) {
     // If the error is from initialization, it's already well-formatted. Let's just throw it.
