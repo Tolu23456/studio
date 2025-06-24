@@ -93,8 +93,14 @@ export default {
           },
         },
         'referral-glow': {
-          '0%, 100%': { boxShadow: '0 0 2px hsl(var(--primary) / 0.4)' },
-          '50%': { boxShadow: '0 0 10px 2px hsl(var(--primary) / 0.4)' },
+          '0%, 100%': {
+            boxShadow: '0 0 5px -1px hsl(var(--primary) / 0.3)',
+            borderColor: 'hsl(var(--border))',
+          },
+          '50%': {
+            boxShadow: '0 0 12px 2px hsl(var(--primary) / 0.5)',
+            borderColor: 'hsl(var(--primary) / 0.8)',
+          },
         },
       },
       animation: {
