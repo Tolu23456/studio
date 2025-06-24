@@ -2,29 +2,22 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Rules for the users collection
+    
+    // Rules for the 'users' collection.
     match /users/{userId} {
-      // A user can create, read, and update their own profile document.
-      // They cannot delete their profile or list other users.
-      allow create, read, update: if request.auth != null && request.auth.uid == userId;
+      // A user can read their own profile.
+      // An admin can read any user's profile.
+      // Writes are blocked from the client to protect sensitive data like cubeBalance. All writes must go through secure server-side functions.
+      allow read: if request.auth.uid == userId || request.auth.token.admin == true;
+      allow write: if false;
+    }
 
-      // Rules for the 'activities' subcollection
-      match /activities/{activityId} {
-        // A user can read and write to their own activities.
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Rules for the 'transactions' subcollection
-      match /transactions/{transactionId} {
-        // A user can read and write to their own transactions.
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Rules for the 'notifications' subcollection
-      match /notifications/{notificationId} {
-        // A user can read and write to their own notifications.
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
+    match /users/{userId}/{subcollection}/{docId} {
+      // A user can read from their own subcollections (activities, transactions, etc.).
+      // An admin can read from any user's subcollections.
+      // Writes are blocked from the client.
+      allow read: if request.auth.uid == userId || request.auth.token.admin == true;
+      allow write: if false;
     }
   }
 }
