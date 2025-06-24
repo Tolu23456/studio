@@ -15,6 +15,7 @@ interface AuthContextType {
   loading: boolean;
   avatarUrl: string | null;
   loadingAvatar: boolean;
+  isAdmin: boolean;
   refreshUserProfile: () => Promise<void>;
 }
 
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   avatarUrl: null,
   loadingAvatar: true,
+  isAdmin: false,
   refreshUserProfile: async () => {},
 });
 
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loadingAvatar, setLoadingAvatar] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchUserProfile = useCallback(async (currentUser: User) => {
     try {
@@ -70,7 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        setLoading(true); 
+        setLoading(true);
+        const idTokenResult = await currentUser.getIdTokenResult();
+        setIsAdmin(!!idTokenResult.claims.admin);
+
         await Promise.all([
           fetchUserProfile(currentUser),
           fetchAvatar(currentUser.uid)
@@ -79,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setUserProfile(null);
         setAvatarUrl(null);
+        setIsAdmin(false);
         setLoading(false);
         setLoadingAvatar(false);
       }
@@ -89,11 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUserProfile = useCallback(async () => {
     if (user) {
+      const idTokenResult = await user.getIdTokenResult(true);
+      setIsAdmin(!!idTokenResult.claims.admin);
       await fetchUserProfile(user);
     }
   }, [user, fetchUserProfile]);
 
-  const value = { user, userProfile, loading, avatarUrl, loadingAvatar, refreshUserProfile };
+  const value = { user, userProfile, loading, avatarUrl, loadingAvatar, isAdmin, refreshUserProfile };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
