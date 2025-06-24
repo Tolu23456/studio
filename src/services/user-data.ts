@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -129,6 +130,41 @@ export async function claimAdReward(uid: string, reward: number, title: string):
 
   await batch.commit();
 }
+
+export async function claimGameReward(uid: string, reward: number, gameTitle: string): Promise<void> {
+  const batch = writeBatch(db);
+  const userRef = doc(db, 'users', uid);
+  const now = new Date();
+
+  batch.update(userRef, {
+    cubeBalance: increment(reward),
+    totalEarned: increment(reward),
+  });
+
+  const activityRef = doc(collection(db, 'users', uid, 'activities'));
+  const newActivity = {
+    type: 'Game Play',
+    description: `Played '${gameTitle}'`,
+    cubes_earned: reward,
+    date: now,
+  };
+  batch.set(activityRef, newActivity);
+
+  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
+  const newTransaction = {
+    type: 'reward',
+    description: `Reward from '${gameTitle}'`,
+    amount: reward,
+    date: now,
+    status: 'completed',
+  };
+  batch.set(transactionRef, newTransaction);
+
+  _createNotification(batch, uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`);
+
+  await batch.commit();
+}
+
 
 export async function claimDailyReward(uid: string): Promise<{ success: boolean; message: string }> {
   const userRef = doc(db, 'users', uid);
