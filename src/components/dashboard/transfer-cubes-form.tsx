@@ -106,7 +106,21 @@ export function TransferCubesForm() {
                     <Input
                       placeholder="e.g. AC-123456A"
                       {...field}
-                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        let value = e.target.value.toUpperCase();
+                
+                        // When user starts typing, add prefix if it's not there.
+                        if (value && !value.startsWith('AC-')) {
+                          value = 'AC-' + value;
+                        }
+                
+                        // If user backspaces until only prefix is left, clear the input.
+                        if (value === 'AC-') {
+                          value = '';
+                        }
+                
+                        field.onChange(value);
+                      }}
                       className="uppercase"
                     />
                   </FormControl>
