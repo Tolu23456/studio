@@ -1,3 +1,4 @@
+require('dotenv').config();
 
 // This is a one-time use script to grant admin privileges to a user.
 // 1. Make sure your .env file at the root of the project is populated
@@ -43,7 +44,7 @@ try {
 }
 
 async function setAdminClaim() {
-  if (USER_EMAIL_TO_MAKE_ADMIN === "your-email@example.com") {
+  if (USER_EMAIL_TO_MAKE_ADMIN === "your-email@example.com" || USER_EMAIL_TO_MAKE_ADMIN === "") {
     console.error("❌ Please replace 'your-email@example.com' with a real user's email in the script.");
     return;
   }
