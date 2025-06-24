@@ -1,15 +1,17 @@
 
 'use server';
 
-import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import type { Activity, Notification, Transaction, UserProfile } from '@/lib/types';
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, WriteBatch, getDocs, query, where } from 'firebase/firestore';
+import type { Firestore } from 'firebase-admin/firestore';
 import { isYesterday, startOfDay, startOfToday, subDays, format } from 'date-fns';
 import { getAuthenticatedUid } from './auth';
+import { getFirebaseAdmin } from '@/lib/firebase-admin';
 
 
 async function verifyAdmin(idToken: string): Promise<string> {
-    const decodedToken = await adminAuth().verifyIdToken(idToken);
+    const { adminAuth } = getFirebaseAdmin();
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
     if (decodedToken.admin !== true) {
         throw new Error('User does not have admin privileges.');
     }
@@ -17,8 +19,10 @@ async function verifyAdmin(idToken: string): Promise<string> {
 }
 
 export async function createUserProfile(idToken: string): Promise<void> {
-    const { uid, email, metadata } = await adminAuth().verifyIdToken(idToken);
-    const userRef = doc(adminDb(), 'users', uid);
+    const { adminAuth, adminDb } = getFirebaseAdmin();
+    const { uid, email } = await adminAuth.verifyIdToken(idToken);
+    const userRecord = await adminAuth.getUser(uid);
+    const userRef = doc(adminDb, 'users', uid);
     const newUserProfile: UserProfile = {
         uid: uid,
         email: email || null,
@@ -27,14 +31,15 @@ export async function createUserProfile(idToken: string): Promise<void> {
         referrals: 0,
         loginStreak: 0,
         lastClaimedDate: null,
-        createdAt: new Date(metadata.creationTime),
+        createdAt: new Date(userRecord.metadata.creationTime),
     };
     await setDoc(userRef, newUserProfile);
 }
 
 export async function getUserProfile(idToken: string): Promise<UserProfile | null> {
     const uid = await getAuthenticatedUid(idToken);
-    const userRef = doc(adminDb(), 'users', uid);
+    const { adminDb } = getFirebaseAdmin();
+    const userRef = doc(adminDb, 'users', uid);
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
         const data = docSnap.data();
@@ -52,8 +57,8 @@ export async function getUserProfile(idToken: string): Promise<UserProfile | nul
     return null;
 }
 
-function _createNotification(batch: WriteBatch, uid: string, title: string, description: string) {
-    const notificationRef = doc(collection(adminDb(), 'users', uid, 'notifications'));
+function _createNotification(batch: WriteBatch, uid: string, title: string, description: string, adminDb: Firestore) {
+    const notificationRef = doc(collection(adminDb, 'users', uid, 'notifications'));
     const newNotification: Omit<Notification, 'id'> = {
         title,
         description,
@@ -65,8 +70,9 @@ function _createNotification(batch: WriteBatch, uid: string, title: string, desc
 
 export async function claimAdReward(idToken: string, reward: number, title: string): Promise<void> {
   const uid = await getAuthenticatedUid(idToken);
-  const batch = writeBatch(adminDb());
-  const userRef = doc(adminDb(), 'users', uid);
+  const { adminDb } = getFirebaseAdmin();
+  const batch = writeBatch(adminDb);
+  const userRef = doc(adminDb, 'users', uid);
   const now = new Date();
 
   batch.update(userRef, {
@@ -74,7 +80,7 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
     totalEarned: increment(reward),
   });
 
-  const activityRef = doc(collection(adminDb(), 'users', uid, 'activities'));
+  const activityRef = doc(collection(adminDb, 'users', uid, 'activities'));
   const newActivity: Omit<Activity, 'id'> = {
     type: 'Ad Watch',
     description: `Watched '${title}' ad`,
@@ -83,7 +89,7 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
   };
   batch.set(activityRef, newActivity);
 
-  const transactionRef = doc(collection(adminDb(), 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(adminDb, 'users', uid, 'transactions'));
   const newTransaction: Omit<Transaction, 'id'> = {
       type: 'reward',
       description: `Watched '${title}' ad`,
@@ -93,15 +99,16 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
   };
   batch.set(transactionRef, newTransaction);
   
-  _createNotification(batch, uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`);
+  _createNotification(batch, uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`, adminDb);
 
   await batch.commit();
 }
 
 export async function claimGameReward(idToken: string, reward: number, gameTitle: string): Promise<void> {
   const uid = await getAuthenticatedUid(idToken);
-  const batch = writeBatch(adminDb());
-  const userRef = doc(adminDb(), 'users', uid);
+  const { adminDb } = getFirebaseAdmin();
+  const batch = writeBatch(adminDb);
+  const userRef = doc(adminDb, 'users', uid);
   const now = new Date();
 
   batch.update(userRef, {
@@ -109,7 +116,7 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
     totalEarned: increment(reward),
   });
 
-  const activityRef = doc(collection(adminDb(), 'users', uid, 'activities'));
+  const activityRef = doc(collection(adminDb, 'users', uid, 'activities'));
   const newActivity: Omit<Activity, 'id'> = {
     type: 'Game Play',
     description: `Played '${gameTitle}'`,
@@ -118,7 +125,7 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
   };
   batch.set(activityRef, newActivity);
 
-  const transactionRef = doc(collection(adminDb(), 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(adminDb, 'users', uid, 'transactions'));
   const newTransaction: Omit<Transaction, 'id'> = {
     type: 'reward',
     description: `Reward from '${gameTitle}'`,
@@ -128,7 +135,7 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
   };
   batch.set(transactionRef, newTransaction);
 
-  _createNotification(batch, uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`);
+  _createNotification(batch, uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`, adminDb);
 
   await batch.commit();
 }
@@ -136,7 +143,8 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
 
 export async function claimDailyReward(idToken: string): Promise<{ success: boolean; message: string }> {
   const uid = await getAuthenticatedUid(idToken);
-  const userRef = doc(adminDb(), 'users', uid);
+  const { adminDb } = getFirebaseAdmin();
+  const userRef = doc(adminDb, 'users', uid);
   const docSnap = await getDoc(userRef);
 
   if (!docSnap.exists()) {
@@ -170,7 +178,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
   const reward = 5 + (newStreak * 5);
   const now = new Date();
   
-  const batch = writeBatch(adminDb());
+  const batch = writeBatch(adminDb);
   
   batch.update(userRef, {
     cubeBalance: increment(reward),
@@ -179,7 +187,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
     lastClaimedDate: now,
   });
 
-  const activityRef = doc(collection(adminDb(), 'users', uid, 'activities'));
+  const activityRef = doc(collection(adminDb, 'users', uid, 'activities'));
   batch.set(activityRef, {
     type: 'Daily Login',
     description: `Claimed Day ${newStreak} login bonus`,
@@ -187,7 +195,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
     date: now,
   });
 
-  const transactionRef = doc(collection(adminDb(), 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(adminDb, 'users', uid, 'transactions'));
   batch.set(transactionRef, {
     type: 'reward',
     description: `Daily Login Bonus - Day ${newStreak}`,
@@ -196,7 +204,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
     status: 'completed',
   });
   
-  _createNotification(batch, uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`);
+  _createNotification(batch, uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`, adminDb);
   
   await batch.commit();
 
@@ -206,7 +214,8 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
 // Admin functions
 export async function getAllUsers(idToken: string): Promise<UserProfile[]> {
   await verifyAdmin(idToken);
-  const usersSnapshot = await getDocs(collection(adminDb(), 'users'));
+  const { adminDb } = getFirebaseAdmin();
+  const usersSnapshot = await getDocs(collection(adminDb, 'users'));
   const users: UserProfile[] = [];
   usersSnapshot.forEach((doc) => {
     const data = doc.data();
@@ -226,7 +235,8 @@ export async function getAllUsers(idToken: string): Promise<UserProfile[]> {
 
 export async function getAdminDashboardStats(idToken: string): Promise<{ totalUsers: number; totalCubesAwarded: number }> {
     await verifyAdmin(idToken);
-    const usersSnapshot = await getDocs(collection(adminDb(), 'users'));
+    const { adminDb } = getFirebaseAdmin();
+    const usersSnapshot = await getDocs(collection(adminDb, 'users'));
     
     let totalCubesAwarded = 0;
     usersSnapshot.forEach((doc) => {
@@ -242,11 +252,12 @@ export async function getAdminDashboardStats(idToken: string): Promise<{ totalUs
 
 export async function getUserGrowthStats(idToken: string): Promise<{ date: string; "New Users": number }[]> {
     await verifyAdmin(idToken);
+    const { adminDb } = getFirebaseAdmin();
     
     const today = startOfToday();
     const startDate = subDays(today, 6); // 7 days ago including today
 
-    const usersRef = collection(adminDb(), 'users');
+    const usersRef = collection(adminDb, 'users');
     const q = query(usersRef, where('createdAt', '>=', startDate));
     const usersSnapshot = await getDocs(q);
 
@@ -274,7 +285,8 @@ export async function getUserGrowthStats(idToken: string): Promise<{ date: strin
 
 export async function sendNotificationToAllUsers(idToken: string, title: string, description: string): Promise<{ success: boolean; message: string }> {
     await verifyAdmin(idToken);
-    const usersSnapshot = await getDocs(collection(adminDb(), 'users'));
+    const { adminDb } = getFirebaseAdmin();
+    const usersSnapshot = await getDocs(collection(adminDb, 'users'));
 
     if (usersSnapshot.empty) {
         return { success: false, message: "No users found." };
@@ -286,12 +298,12 @@ export async function sendNotificationToAllUsers(idToken: string, title: string,
 
     // Firestore batches are limited to 500 operations.
     for (let i = 0; i < userDocs.length; i += 499) {
-        const batch = writeBatch(adminDb());
+        const batch = writeBatch(adminDb);
         const chunk = userDocs.slice(i, i + 499);
         
         chunk.forEach(userDoc => {
             const uid = userDoc.id;
-            const notificationRef = doc(collection(adminDb(), 'users', uid, 'notifications'));
+            const notificationRef = doc(collection(adminDb, 'users', uid, 'notifications'));
             const newNotification: Omit<Notification, 'id'> = {
                 title,
                 description,

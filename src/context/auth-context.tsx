@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       if (currentUser) {
         setLoading(true);
-        const idTokenResult = await currentUser.getIdTokenResult();
+        const idTokenResult = await currentUser.getIdTokenResult(true);
         setIsAdmin(!!idTokenResult.claims.admin);
 
         await Promise.all([
