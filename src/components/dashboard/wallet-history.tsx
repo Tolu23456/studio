@@ -80,6 +80,14 @@ export function WalletHistory() {
     setSelectedTransaction(transaction);
     setIsReceiptOpen(true);
   };
+  
+  const handleRowClick = (transaction: Transaction) => {
+    // Check for window to ensure this runs only on the client
+    // 640px is the default 'sm' breakpoint in Tailwind
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      handleViewReceipt(transaction);
+    }
+  }
 
   return (
     <>
@@ -97,7 +105,7 @@ export function WalletHistory() {
                 <TableHead className="hidden sm:table-cell">Type</TableHead>
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -108,7 +116,7 @@ export function WalletHistory() {
                     <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                     <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                    <TableCell className="text-right hidden sm:table-cell"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : transactions.length === 0 ? (
@@ -119,7 +127,11 @@ export function WalletHistory() {
                   </TableRow>
               ) : (
                 transactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
+                  <TableRow 
+                    key={transaction.id}
+                    onClick={() => handleRowClick(transaction)}
+                    className="sm:cursor-auto cursor-pointer"
+                  >
                     <TableCell>
                       <div className="font-medium">{transaction.description}</div>
                       <div className="text-sm text-muted-foreground">{format(transaction.date, 'Pp')}</div>
@@ -133,7 +145,7 @@ export function WalletHistory() {
                     <TableCell className={cn("font-semibold", transaction.amount > 0 ? "text-success" : "text-destructive")}>
                       {transaction.amount > 0 ? `+${transaction.amount.toLocaleString()}` : transaction.amount.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right hidden sm:table-cell">
                       <Button variant="ghost" size="icon" onClick={() => handleViewReceipt(transaction)} aria-label="View Receipt">
                         <FileText className="h-4 w-4" />
                       </Button>
@@ -146,14 +158,16 @@ export function WalletHistory() {
         </CardContent>
       </Card>
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
-        <DialogContent className="sm:max-w-xl p-6 overflow-y-auto">
-          <DialogHeader className="mb-4">
+        <DialogContent className="sm:max-w-xl p-0 overflow-y-auto">
+          <DialogHeader className="mb-4 p-6 pb-0">
             <DialogTitle>Transaction Receipt</DialogTitle>
             {selectedTransaction && <DialogDescription>
               Official receipt for transaction ID: {selectedTransaction.id}
             </DialogDescription>}
           </DialogHeader>
-          <TransactionReceipt transaction={selectedTransaction} />
+           <div className="p-6 pt-0">
+            <TransactionReceipt transaction={selectedTransaction} />
+          </div>
         </DialogContent>
       </Dialog>
     </>
