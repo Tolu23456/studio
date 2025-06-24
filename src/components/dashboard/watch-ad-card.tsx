@@ -64,8 +64,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
     }
     setIsClaiming(true);
     try {
-        const idToken = await user.getIdToken(true);
-        await claimAdReward(idToken, ad.reward, ad.title);
+        await claimAdReward(ad.reward, ad.title);
         await refreshUserProfile();
         toast({
             title: "Reward Claimed!",

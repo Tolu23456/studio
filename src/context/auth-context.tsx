@@ -12,7 +12,6 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  isAdmin: boolean;
   refreshUserProfile: () => Promise<void>;
 }
 
@@ -20,7 +19,6 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   loading: true,
-  isAdmin: false,
   refreshUserProfile: async () => {},
 });
 
@@ -28,12 +26,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchUserProfile = useCallback(async (currentUser: User) => {
     try {
-      const idToken = await currentUser.getIdToken(true);
-      const profile = await getUserProfile(idToken);
+      const profile = await getUserProfile(currentUser);
       setUserProfile(profile);
     } catch (error) {
       console.error("Failed to fetch user profile:", error);
@@ -46,13 +42,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       if (currentUser) {
         setLoading(true);
-        const idTokenResult = await currentUser.getIdTokenResult(true);
-        setIsAdmin(!!idTokenResult.claims.admin);
         await fetchUserProfile(currentUser);
         setLoading(false);
       } else {
         setUserProfile(null);
-        setIsAdmin(false);
         setLoading(false);
       }
     });
@@ -62,13 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUserProfile = useCallback(async () => {
     if (user) {
-      const idTokenResult = await user.getIdTokenResult(true);
-      setIsAdmin(!!idTokenResult.claims.admin);
       await fetchUserProfile(user);
     }
   }, [user, fetchUserProfile]);
 
-  const value = { user, userProfile, loading, isAdmin, refreshUserProfile };
+  const value = { user, userProfile, loading, refreshUserProfile };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

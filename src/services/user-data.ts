@@ -1,37 +1,37 @@
 
-'use server';
+'use client';
 
 import type { Activity, Notification, Transaction, UserProfile } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, WriteBatch, getDocs, query, where } from 'firebase/firestore';
-import type { Firestore } from 'firebase-admin/firestore';
-import { isYesterday, startOfDay, startOfToday, subDays, format } from 'date-fns';
-import { getAuthenticatedUid, verifyAdminAndGetUid, verifyTokenAndGetEmail } from './auth';
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment } from 'firebase/firestore';
+import type { User } from 'firebase/auth';
+import { isYesterday, startOfDay } from 'date-fns';
+import { db, auth } from '@/lib/firebase';
 
+const getCurrentUid = (): string => {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error('User is not authenticated.');
+    }
+    return user.uid;
+};
 
-export async function createUserProfile(idToken: string): Promise<void> {
-    const adminAuth = getAdminAuth();
-    const adminDb = getAdminDb();
-    const { uid, email } = await verifyTokenAndGetEmail(idToken);
-    const userRecord = await adminAuth.getUser(uid);
-    const userRef = doc(adminDb, 'users', uid);
+export async function createUserProfile(user: User): Promise<void> {
+    const userRef = doc(db, 'users', user.uid);
     const newUserProfile: UserProfile = {
-        uid: uid,
-        email: email || null,
+        uid: user.uid,
+        email: user.email,
         cubeBalance: 0,
         totalEarned: 0,
         referrals: 0,
         loginStreak: 0,
         lastClaimedDate: null,
-        createdAt: new Date(userRecord.metadata.creationTime),
+        createdAt: new Date(user.metadata.creationTime || Date.now()),
     };
     await setDoc(userRef, newUserProfile);
 }
 
-export async function getUserProfile(idToken: string): Promise<UserProfile | null> {
-    const uid = await getAuthenticatedUid(idToken);
-    const adminDb = getAdminDb();
-    const userRef = doc(adminDb, 'users', uid);
+export async function getUserProfile(user: User): Promise<UserProfile | null> {
+    const userRef = doc(db, 'users', user.uid);
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
         const data = docSnap.data();
@@ -49,8 +49,8 @@ export async function getUserProfile(idToken: string): Promise<UserProfile | nul
     return null;
 }
 
-function _createNotification(batch: WriteBatch, uid: string, title: string, description: string, adminDb: Firestore) {
-    const notificationRef = doc(collection(adminDb, 'users', uid, 'notifications'));
+function _createNotification(batch: any, uid: string, title: string, description: string) {
+    const notificationRef = doc(collection(db, 'users', uid, 'notifications'));
     const newNotification: Omit<Notification, 'id'> = {
         title,
         description,
@@ -60,11 +60,10 @@ function _createNotification(batch: WriteBatch, uid: string, title: string, desc
     batch.set(notificationRef, newNotification);
 }
 
-export async function claimAdReward(idToken: string, reward: number, title: string): Promise<void> {
-  const uid = await getAuthenticatedUid(idToken);
-  const adminDb = getAdminDb();
-  const batch = writeBatch(adminDb);
-  const userRef = doc(adminDb, 'users', uid);
+export async function claimAdReward(reward: number, title: string): Promise<void> {
+  const uid = getCurrentUid();
+  const batch = writeBatch(db);
+  const userRef = doc(db, 'users', uid);
   const now = new Date();
 
   batch.update(userRef, {
@@ -72,7 +71,7 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
     totalEarned: increment(reward),
   });
 
-  const activityRef = doc(collection(adminDb, 'users', uid, 'activities'));
+  const activityRef = doc(collection(db, 'users', uid, 'activities'));
   const newActivity: Omit<Activity, 'id'> = {
     type: 'Ad Watch',
     description: `Watched '${title}' ad`,
@@ -81,7 +80,7 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
   };
   batch.set(activityRef, newActivity);
 
-  const transactionRef = doc(collection(adminDb, 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
   const newTransaction: Omit<Transaction, 'id'> = {
       type: 'reward',
       description: `Watched '${title}' ad`,
@@ -91,16 +90,15 @@ export async function claimAdReward(idToken: string, reward: number, title: stri
   };
   batch.set(transactionRef, newTransaction);
   
-  _createNotification(batch, uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`, adminDb);
+  _createNotification(batch, uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`);
 
   await batch.commit();
 }
 
-export async function claimGameReward(idToken: string, reward: number, gameTitle: string): Promise<void> {
-  const uid = await getAuthenticatedUid(idToken);
-  const adminDb = getAdminDb();
-  const batch = writeBatch(adminDb);
-  const userRef = doc(adminDb, 'users', uid);
+export async function claimGameReward(reward: number, gameTitle: string): Promise<void> {
+  const uid = getCurrentUid();
+  const batch = writeBatch(db);
+  const userRef = doc(db, 'users', uid);
   const now = new Date();
 
   batch.update(userRef, {
@@ -108,7 +106,7 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
     totalEarned: increment(reward),
   });
 
-  const activityRef = doc(collection(adminDb, 'users', uid, 'activities'));
+  const activityRef = doc(collection(db, 'users', uid, 'activities'));
   const newActivity: Omit<Activity, 'id'> = {
     type: 'Game Play',
     description: `Played '${gameTitle}'`,
@@ -117,7 +115,7 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
   };
   batch.set(activityRef, newActivity);
 
-  const transactionRef = doc(collection(adminDb, 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
   const newTransaction: Omit<Transaction, 'id'> = {
     type: 'reward',
     description: `Reward from '${gameTitle}'`,
@@ -127,16 +125,15 @@ export async function claimGameReward(idToken: string, reward: number, gameTitle
   };
   batch.set(transactionRef, newTransaction);
 
-  _createNotification(batch, uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`, adminDb);
+  _createNotification(batch, uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`);
 
   await batch.commit();
 }
 
 
-export async function claimDailyReward(idToken: string): Promise<{ success: boolean; message: string }> {
-  const uid = await getAuthenticatedUid(idToken);
-  const adminDb = getAdminDb();
-  const userRef = doc(adminDb, 'users', uid);
+export async function claimDailyReward(): Promise<{ success: boolean; message: string }> {
+  const uid = getCurrentUid();
+  const userRef = doc(db, 'users', uid);
   const docSnap = await getDoc(userRef);
 
   if (!docSnap.exists()) {
@@ -170,7 +167,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
   const reward = 5 + (newStreak * 5);
   const now = new Date();
   
-  const batch = writeBatch(adminDb);
+  const batch = writeBatch(db);
   
   batch.update(userRef, {
     cubeBalance: increment(reward),
@@ -179,7 +176,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
     lastClaimedDate: now,
   });
 
-  const activityRef = doc(collection(adminDb, 'users', uid, 'activities'));
+  const activityRef = doc(collection(db, 'users', uid, 'activities'));
   batch.set(activityRef, {
     type: 'Daily Login',
     description: `Claimed Day ${newStreak} login bonus`,
@@ -187,7 +184,7 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
     date: now,
   });
 
-  const transactionRef = doc(collection(adminDb, 'users', uid, 'transactions'));
+  const transactionRef = doc(collection(db, 'users', uid, 'transactions'));
   batch.set(transactionRef, {
     type: 'reward',
     description: `Daily Login Bonus - Day ${newStreak}`,
@@ -196,118 +193,9 @@ export async function claimDailyReward(idToken: string): Promise<{ success: bool
     status: 'completed',
   });
   
-  _createNotification(batch, uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`, adminDb);
+  _createNotification(batch, uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`);
   
   await batch.commit();
 
   return { success: true, message: `You earned ${reward} Cubes!` };
-}
-
-// Admin functions
-export async function getAllUsers(idToken: string): Promise<UserProfile[]> {
-  await verifyAdminAndGetUid(idToken);
-  const adminDb = getAdminDb();
-  const usersSnapshot = await getDocs(collection(adminDb, 'users'));
-  const users: UserProfile[] = [];
-  usersSnapshot.forEach((doc) => {
-    const data = doc.data();
-    users.push({
-      uid: data.uid,
-      email: data.email,
-      cubeBalance: data.cubeBalance,
-      totalEarned: data.totalEarned,
-      referrals: data.referrals,
-      loginStreak: data.loginStreak || 0,
-      lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
-      createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(doc.createTime!.seconds * 1000),
-    });
-  });
-  return users;
-}
-
-export async function getAdminDashboardStats(idToken: string): Promise<{ totalUsers: number; totalCubesAwarded: number }> {
-    await verifyAdminAndGetUid(idToken);
-    const adminDb = getAdminDb();
-    const usersSnapshot = await getDocs(collection(adminDb, 'users'));
-    
-    let totalCubesAwarded = 0;
-    usersSnapshot.forEach((doc) => {
-        const data = doc.data();
-        totalCubesAwarded += data.totalEarned || 0;
-    });
-
-    return {
-        totalUsers: usersSnapshot.size,
-        totalCubesAwarded: totalCubesAwarded,
-    };
-}
-
-export async function getUserGrowthStats(idToken: string): Promise<{ date: string; "New Users": number }[]> {
-    await verifyAdminAndGetUid(idToken);
-    const adminDb = getAdminDb();
-    
-    const today = startOfToday();
-    const startDate = subDays(today, 6); // 7 days ago including today
-
-    const usersRef = collection(adminDb, 'users');
-    const q = query(usersRef, where('createdAt', '>=', startDate));
-    const usersSnapshot = await getDocs(q);
-
-    const stats: { [key: string]: number } = {};
-
-    // Initialize last 7 days to ensure all days are present
-    for (let i = 0; i < 7; i++) {
-        const date = subDays(today, i);
-        stats[format(date, 'MMM d')] = 0;
-    }
-
-    usersSnapshot.forEach((doc) => {
-        const data = doc.data();
-        const createdAt = (data.createdAt as Timestamp).toDate();
-        const dateKey = format(createdAt, 'MMM d');
-        if (stats[dateKey] !== undefined) {
-            stats[dateKey]++;
-        }
-    });
-
-    return Object.entries(stats)
-        .map(([date, count]) => ({ date, "New Users": count }))
-        .reverse(); // To show oldest to newest for the chart
-}
-
-export async function sendNotificationToAllUsers(idToken: string, title: string, description: string): Promise<{ success: boolean; message: string }> {
-    await verifyAdminAndGetUid(idToken);
-    const adminDb = getAdminDb();
-    const usersSnapshot = await getDocs(collection(adminDb, 'users'));
-
-    if (usersSnapshot.empty) {
-        return { success: false, message: "No users found." };
-    }
-
-    const userDocs = usersSnapshot.docs;
-    let commitCount = 0;
-    const now = new Date();
-
-    // Firestore batches are limited to 500 operations.
-    for (let i = 0; i < userDocs.length; i += 499) {
-        const batch = writeBatch(adminDb);
-        const chunk = userDocs.slice(i, i + 499);
-        
-        chunk.forEach(userDoc => {
-            const uid = userDoc.id;
-            const notificationRef = doc(collection(adminDb, 'users', uid, 'notifications'));
-            const newNotification: Omit<Notification, 'id'> = {
-                title,
-                description,
-                date: now,
-                read: false,
-            };
-            batch.set(notificationRef, newNotification);
-        });
-        
-        await batch.commit();
-        commitCount++;
-    }
-
-    return { success: true, message: `Notification sent to ${usersSnapshot.size} users.` };
 }

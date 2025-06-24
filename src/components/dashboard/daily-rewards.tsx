@@ -63,8 +63,7 @@ export function DailyRewards() {
     if (!user) return;
     setIsClaiming(true);
     try {
-        const idToken = await user.getIdToken(true);
-        const result = await claimDailyReward(idToken);
+        const result = await claimDailyReward();
         if (result.success) {
             toast({
                 title: "Reward Claimed!",

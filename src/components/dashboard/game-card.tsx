@@ -120,8 +120,7 @@ export function GameCard({ game }: GameCardProps) {
     }
 
     try {
-        const idToken = await user.getIdToken(true);
-        await claimGameReward(idToken, game.reward, game.title);
+        await claimGameReward(game.reward, game.title);
         await refreshUserProfile();
         toast({
             title: "Reward Claimed!",

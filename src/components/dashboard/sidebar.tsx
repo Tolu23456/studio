@@ -28,7 +28,6 @@ import { useAuth } from "@/context/auth-context";
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
 
   const navItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -82,20 +81,6 @@ export default function DashboardSidebar() {
             ))}
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-            {isAdmin && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    href="/admin"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-                  >
-                    <Shield className="h-5 w-5" />
-                    <span className="sr-only">Admin Panel</span>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right">Admin Panel</TooltipContent>
-              </Tooltip>
-            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button

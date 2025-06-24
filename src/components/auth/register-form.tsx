@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -40,8 +41,7 @@ export function RegisterForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const idToken = await userCredential.user.getIdToken();
-      await createUserProfile(idToken);
+      await createUserProfile(userCredential.user);
       toast({
         title: "Registration Successful",
         description: "Redirecting to your dashboard...",
