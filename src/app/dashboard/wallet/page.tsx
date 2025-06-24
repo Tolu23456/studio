@@ -1,13 +1,14 @@
 
 "use client";
 
+import Link from "next/link";
 import { WalletHistory } from "@/components/dashboard/wallet-history";
 import { TransferCubesForm } from "@/components/dashboard/transfer-cubes-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/auth-context";
-import { Zap } from "lucide-react";
+import { Zap, ArrowRight } from "lucide-react";
 
 export default function WalletPage() {
   const { userProfile, loading } = useAuth();
@@ -18,7 +19,13 @@ export default function WalletPage() {
       <h1 className="text-3xl font-bold tracking-tight font-headline">My Cube Wallet</h1>
       <Card>
         <CardHeader>
-          <CardDescription>Current Balance</CardDescription>
+          <div className="flex justify-between items-center">
+            <CardDescription>Current Balance</CardDescription>
+            <Link href="#transaction-history" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+                View History
+                <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
           <CardTitle className="flex items-center text-3xl sm:text-4xl">
             {loading ? (
               <Skeleton className="w-48 h-10" />
@@ -38,7 +45,9 @@ export default function WalletPage() {
       
       <Separator />
 
-      <WalletHistory />
+      <div id="transaction-history" className="scroll-mt-24">
+        <WalletHistory />
+      </div>
     </div>
   );
 }
