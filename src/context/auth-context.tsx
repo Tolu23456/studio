@@ -73,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               loginStreak: data.loginStreak || 0,
               lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
               createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
+              isAdmin: data.isAdmin || false,
             };
             setUserProfile(profile);
           } else {

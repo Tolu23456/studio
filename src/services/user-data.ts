@@ -110,6 +110,7 @@ export async function createUserProfile(user: User, displayName: string, referra
         loginStreak: 0,
         lastClaimedDate: null,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
+        isAdmin: false,
     };
     batch.set(userRef, newUserProfile);
 
@@ -159,6 +160,7 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
             loginStreak: data.loginStreak || 0,
             lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
             createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(docSnap.createTime!.seconds * 1000),
+            isAdmin: data.isAdmin || false,
         };
     }
     return null;

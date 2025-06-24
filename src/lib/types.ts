@@ -10,6 +10,7 @@ export type UserProfile = {
   loginStreak: number;
   lastClaimedDate: Date | null;
   createdAt: Date;
+  isAdmin?: boolean;
 };
 
 export type Transaction = {
