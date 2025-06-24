@@ -1,6 +1,8 @@
+
 "use client";
 
 import { WalletHistory } from "@/components/dashboard/wallet-history";
+import { TransferCubesForm } from "@/components/dashboard/transfer-cubes-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +31,10 @@ export default function WalletPage() {
           </CardTitle>
         </CardHeader>
       </Card>
+
+      <Separator />
+
+      <TransferCubesForm />
       
       <Separator />
 

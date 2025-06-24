@@ -2,7 +2,7 @@
 'use client';
 
 import type { Activity, Notification, Transaction, UserProfile } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay } from 'date-fns';
@@ -318,4 +318,90 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   await batch.commit();
 
   return { success: true, message: `You earned ${reward} Cubes!` };
+}
+
+export async function transferCubes(recipientId: string, amount: number): Promise<{ success: boolean; message: string }> {
+    const sender = getCurrentUser();
+
+    if (sender.uid === recipientId.trim()) {
+        return { success: false, message: "You cannot send cubes to yourself." };
+    }
+
+    if (amount <= 0) {
+        return { success: false, message: "Transfer amount must be positive." };
+    }
+
+    const senderRef = doc(db, 'users', sender.uid);
+    const recipientRef = doc(db, 'users', recipientId.trim());
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const senderDoc = await transaction.get(senderRef);
+            const recipientDoc = await transaction.get(recipientRef);
+
+            if (!senderDoc.exists()) {
+                throw new Error("Your user profile could not be found.");
+            }
+
+            if (!recipientDoc.exists()) {
+                throw new Error("Recipient user could not be found. Please check the User ID.");
+            }
+
+            const senderData = senderDoc.data() as UserProfile;
+            if (senderData.cubeBalance < amount) {
+                throw new Error("Insufficient cube balance for this transfer.");
+            }
+
+            const recipientData = recipientDoc.data() as UserProfile;
+            const now = new Date();
+
+            // Update sender and recipient balances
+            transaction.update(senderRef, { cubeBalance: increment(-amount) });
+            transaction.update(recipientRef, { cubeBalance: increment(amount) });
+
+            // Create transaction log for sender
+            const senderTransactionRef = doc(collection(db, 'users', sender.uid, 'transactions'));
+            transaction.set(senderTransactionRef, {
+                type: 'withdrawal',
+                description: `Sent to ${recipientData.email || recipientId}`,
+                amount: -amount,
+                date: now,
+                status: 'completed',
+            });
+
+            // Create transaction log for recipient
+            const recipientTransactionRef = doc(collection(db, 'users', recipientId, 'transactions'));
+            transaction.set(recipientTransactionRef, {
+                type: 'deposit',
+                description: `Received from ${senderData.email || sender.uid}`,
+                amount: amount,
+                date: now,
+                status: 'completed',
+            });
+
+            // Create notification for sender
+            const senderNotificationRef = doc(collection(db, 'users', sender.uid, 'notifications'));
+            transaction.set(senderNotificationRef, {
+                title: "Transfer Sent",
+                description: `You successfully sent ${amount} Cubes to ${recipientData.email || recipientId}.`,
+                date: now,
+                read: false,
+            });
+
+            // Create notification for recipient
+            const recipientNotificationRef = doc(collection(db, 'users', recipientId, 'notifications'));
+            transaction.set(recipientNotificationRef, {
+                title: "Cubes Received!",
+                description: `You have received ${amount} Cubes from ${senderData.email || sender.uid}.`,
+                date: now,
+                read: false,
+            });
+        });
+        
+        return { success: true, message: `Successfully sent ${amount.toLocaleString()} cubes.` };
+
+    } catch (error: any) {
+        console.error("Cube transfer failed:", error);
+        return { success: false, message: error.message || "An unexpected error occurred during the transfer." };
+    }
 }
