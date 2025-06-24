@@ -233,7 +233,7 @@ export function GameCard({ game }: GameCardProps) {
       </Card>
 
       <Dialog open={isGameOpen} onOpenChange={setIsGameOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="p-0 sm:p-6 flex items-center justify-center">
            <DialogHeader className="sr-only">
              <RadixDialogTitle>{game.title}</RadixDialogTitle>
              <RadixDialogDescription>{game.description}</RadixDialogDescription>
