@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Zap, Award } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export function OverviewCards() {
   const { userProfile, loading } = useAuth();
@@ -42,7 +43,10 @@ export function OverviewCards() {
   return (
     <>
       {stats.map((stat, index) => (
-        <Card key={index}>
+        <Card
+          key={index}
+          className={cn(stat.title === 'Referrals' && 'animate-referral-glow')}
+        >
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>

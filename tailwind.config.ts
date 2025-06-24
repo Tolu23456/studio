@@ -92,10 +92,15 @@ export default {
             height: '0',
           },
         },
+        'referral-glow': {
+          '0%, 100%': { boxShadow: '0 0 2px hsl(var(--primary) / 0.4)' },
+          '50%': { boxShadow: '0 0 10px 2px hsl(var(--primary) / 0.4)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'referral-glow': 'referral-glow 2.5s ease-in-out infinite',
       },
     },
   },
