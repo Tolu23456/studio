@@ -38,7 +38,9 @@ const createInitialBoard = () => {
     }
     
     // Ensure it's not already solved
-    if (board.every(row => row.every(cell => !cell))) {
+    const allOff = board.every(row => row.every(cell => !cell));
+    const allOn = board.every(row => row.every(cell => cell));
+    if (allOff || allOn) {
         return createInitialBoard(); // Recurse if we accidentally solved it
     }
 
@@ -51,8 +53,9 @@ export function PuzzleBoxGame({ onGameComplete }: PuzzleBoxGameProps) {
     const [isWon, setIsWon] = useState(false);
 
     const checkWinCondition = useCallback((currentBoard: boolean[][]) => {
-        const won = currentBoard.every(row => row.every(cell => !cell));
-        if (won) {
+        const allOff = currentBoard.every(row => row.every(cell => !cell));
+        const allOn = currentBoard.every(row => row.every(cell => cell));
+        if (allOff || allOn) {
             setIsWon(true);
         }
     }, []);
@@ -85,7 +88,7 @@ export function PuzzleBoxGame({ onGameComplete }: PuzzleBoxGameProps) {
     return (
         <div className="text-center p-4 space-y-4">
             <h3 className="text-xl font-bold font-headline">Puzzle Box</h3>
-            <p className="text-sm text-muted-foreground">Turn off all the lights to unlock the box!</p>
+            <p className="text-sm text-muted-foreground">Turn all lights ON or OFF to unlock the box!</p>
 
             <div 
                 className="grid gap-2 mx-auto"
