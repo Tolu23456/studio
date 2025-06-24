@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = useCallback(async (currentUser: User) => {
     try {
-      const idToken = await currentUser.getIdToken();
+      const idToken = await currentUser.getIdToken(true);
       const profile = await getUserProfile(idToken);
       setUserProfile(profile);
     } catch (error) {

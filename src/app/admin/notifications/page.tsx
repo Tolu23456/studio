@@ -38,7 +38,7 @@ export default function AdminNotificationsPage() {
     }
     
     try {
-        const idToken = await user.getIdToken();
+        const idToken = await user.getIdToken(true);
         const result = await sendNotificationToAllUsers(idToken, values.title, values.description);
         if (result.success) {
             toast({

@@ -36,7 +36,7 @@ export default function AdminUsersPage() {
       setLoading(true);
       setError(null);
       try {
-        const idToken = await user.getIdToken();
+        const idToken = await user.getIdToken(true);
         const fetchedUsers = await getAllUsers(idToken);
         setUsers(fetchedUsers);
       } catch (err) {

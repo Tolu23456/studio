@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -63,7 +64,7 @@ export function WatchAdCard({ ad }: WatchAdCardProps) {
     }
     setIsClaiming(true);
     try {
-        const idToken = await user.getIdToken();
+        const idToken = await user.getIdToken(true);
         await claimAdReward(idToken, ad.reward, ad.title);
         await refreshUserProfile();
         toast({

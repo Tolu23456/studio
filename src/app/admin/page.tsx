@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
       if (!user) return;
       setLoading(true);
       try {
-        const idToken = await user.getIdToken();
+        const idToken = await user.getIdToken(true);
         const [fetchedStats, fetchedUserGrowth] = await Promise.all([
             getAdminDashboardStats(idToken),
             getUserGrowthStats(idToken)
