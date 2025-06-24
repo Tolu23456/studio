@@ -20,7 +20,6 @@ import {
   Settings,
   Users,
   Gamepad2,
-  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";

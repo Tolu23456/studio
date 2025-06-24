@@ -15,20 +15,101 @@ const getCurrentUid = (): string => {
     return user.uid;
 };
 
-export async function createUserProfile(user: User): Promise<void> {
+export async function createUserProfile(user: User, referralCode?: string): Promise<void> {
+    const batch = writeBatch(db);
     const userRef = doc(db, 'users', user.uid);
+    const now = new Date();
+    
+    let startingBalance = 0;
+
+    // Handle referral if code is provided
+    if (referralCode) {
+        const referrerRef = doc(db, 'users', referralCode.trim());
+        try {
+            const referrerSnap = await getDoc(referrerRef);
+
+            // Check if referrer exists and is not the new user themselves
+            if (referrerSnap.exists() && referrerSnap.id !== user.uid) {
+                const referralBonus = 100;
+                const referrerReward = 200;
+                startingBalance = referralBonus;
+
+                // Update referrer's profile
+                batch.update(referrerRef, {
+                    referrals: increment(1),
+                    cubeBalance: increment(referrerReward),
+                    totalEarned: increment(referrerReward),
+                });
+
+                // Add activity for referrer
+                const referrerActivityRef = doc(collection(db, 'users', referrerSnap.id, 'activities'));
+                batch.set(referrerActivityRef, {
+                    type: 'Referral Bonus',
+                    description: `You referred a new user: ${user.email || 'New User'}`,
+                    cubes_earned: referrerReward,
+                    date: now,
+                });
+
+                // Add transaction for referrer
+                const referrerTransactionRef = doc(collection(db, 'users', referrerSnap.id, 'transactions'));
+                batch.set(referrerTransactionRef, {
+                    type: 'reward',
+                    description: `Bonus for referring ${user.email || 'New User'}`,
+                    amount: referrerReward,
+                    date: now,
+                    status: 'completed',
+                });
+                
+                // Add notification for referrer
+                _createNotification(batch, referrerSnap.id, "Referral Success!", `You earned ${referrerReward} Cubes for referring a new user!`);
+            }
+        } catch (error) {
+            console.error("Error processing referral code:", error);
+            // Fail silently to not block user creation
+        }
+    }
+
+    // Create new user's profile
     const newUserProfile: UserProfile = {
         uid: user.uid,
         email: user.email,
-        cubeBalance: 0,
-        totalEarned: 0,
+        cubeBalance: startingBalance,
+        totalEarned: startingBalance,
         referrals: 0,
         loginStreak: 0,
         lastClaimedDate: null,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
     };
-    await setDoc(userRef, newUserProfile);
+    batch.set(userRef, newUserProfile);
+
+    // If there was a bonus, log it for the new user
+    if (startingBalance > 0) {
+        // Add activity for new user
+        const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
+        batch.set(activityRef, {
+            type: 'Referral Bonus',
+            description: `Welcome bonus for using a referral code.`,
+            cubes_earned: startingBalance,
+            date: now,
+        });
+
+        // Add transaction for new user
+        const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
+        batch.set(transactionRef, {
+            type: 'reward',
+            description: 'Welcome bonus from referral',
+            amount: startingBalance,
+            date: now,
+            status: 'completed',
+        });
+        
+        // Add notification for new user
+        _createNotification(batch, user.uid, "Welcome Bonus!", `You received ${startingBalance} Cubes for using a referral code!`);
+    }
+
+    await batch.commit();
 }
+
 
 export async function getUserProfile(user: User): Promise<UserProfile | null> {
     const userRef = doc(db, 'users', user.uid);

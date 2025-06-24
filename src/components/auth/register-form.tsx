@@ -25,6 +25,7 @@ import { createUserProfile } from "@/services/user-data";
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
+  referralCode: z.string().optional(),
 });
 
 export function RegisterForm() {
@@ -35,13 +36,14 @@ export function RegisterForm() {
     defaultValues: {
       email: "",
       password: "",
+      referralCode: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      await createUserProfile(userCredential.user);
+      await createUserProfile(userCredential.user, values.referralCode);
       toast({
         title: "Registration Successful",
         description: "Redirecting to your dashboard...",
@@ -92,6 +94,19 @@ export function RegisterForm() {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="referralCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Referral Code (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter referral code" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
