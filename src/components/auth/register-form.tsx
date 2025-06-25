@@ -19,8 +19,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/lib/firebase";
+import { auth, isFirebaseConfigured } from "@/lib/firebase";
 import { createUserProfile } from "@/services/user-data";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal } from "lucide-react";
+import { Label } from "../ui/label";
+
 
 const formSchema = z.object({
   displayName: z.string().min(3, { message: "Display name must be at least 3 characters." }).max(20, { message: "Display name must be 20 characters or less." }),
@@ -43,6 +47,7 @@ export function RegisterForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth) return;
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       await createUserProfile(userCredential.user, values.displayName, values.referralCode);
@@ -64,6 +69,53 @@ export function RegisterForm() {
         description: description,
       });
     }
+  }
+  
+  if (!isFirebaseConfigured) {
+      return (
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+                <CardTitle className="text-2xl font-headline">Sign Up</CardTitle>
+                <CardDescription>
+                Create an account to start earning Cubes.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Alert variant="destructive" className="mb-4">
+                    <Terminal className="h-4 w-4" />
+                    <AlertTitle>Feature Disabled</AlertTitle>
+                    <AlertDescription>
+                        Firebase is not configured correctly. Please add your API keys to enable registration.
+                    </AlertDescription>
+                </Alert>
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="displayName-disabled">Display Name</Label>
+                        <Input id="displayName-disabled" placeholder="e.g. CubeMaster" disabled />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="email-disabled">Email</Label>
+                        <Input id="email-disabled" placeholder="name@example.com" disabled />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="password-disabled">Password</Label>
+                        <Input id="password-disabled" type="password" placeholder="••••••••" disabled />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="referral-disabled">Referral Code (Optional)</Label>
+                        <Input id="referral-disabled" placeholder="e.g. AC-123456A" disabled />
+                    </div>
+                    <Button className="w-full" disabled>Create account</Button>
+                 </div>
+                 <div className="mt-4 text-center text-sm">
+                    Already have an account?{" "}
+                    <span className="underline text-muted-foreground cursor-not-allowed">
+                        Login
+                    </span>
+                </div>
+            </CardContent>
+        </Card>
+      )
   }
 
   return (

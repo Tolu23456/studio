@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -19,7 +20,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/lib/firebase";
+import { auth, isFirebaseConfigured } from "@/lib/firebase";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal } from "lucide-react";
+import { Label } from "../ui/label";
+
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -37,6 +42,7 @@ export function ForgotPasswordForm() {
     });
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
+        if (!auth) return;
         try {
             await sendPasswordResetEmail(auth, values.email);
             toast({
@@ -53,6 +59,43 @@ export function ForgotPasswordForm() {
             });
         }
     }
+
+  if (!isFirebaseConfigured) {
+    return (
+        <Card className="w-full max-w-sm">
+            <CardHeader>
+                <CardTitle className="text-2xl font-headline">Forgot Password</CardTitle>
+                <CardDescription>
+                    Enter your email and we&apos;ll send you a link to reset your password.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Alert variant="destructive" className="mb-4">
+                    <Terminal className="h-4 w-4" />
+                    <AlertTitle>Feature Disabled</AlertTitle>
+                    <AlertDescription>
+                        Firebase is not configured correctly. This feature is unavailable.
+                    </AlertDescription>
+                </Alert>
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="email-disabled">Email</Label>
+                        <Input id="email-disabled" placeholder="name@example.com" disabled />
+                    </div>
+                    <Button type="submit" className="w-full" disabled>
+                        Send Reset Link
+                    </Button>
+                </div>
+                 <div className="mt-4 text-center text-sm">
+                    Remember your password?{" "}
+                    <span className="underline text-muted-foreground cursor-not-allowed">
+                        Login
+                    </span>
+                </div>
+            </CardContent>
+        </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-sm">
