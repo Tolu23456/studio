@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import type { UserProfile, Notification, PlatformSettings } from '@/lib/types';
-import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit, setDoc, getDoc } from 'firebase/firestore';
 import { generateAdsenerId } from '@/services/user-data';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,6 +16,7 @@ interface AuthContextType {
   loading: boolean;
   notifications: Notification[];
   platformSettings: PlatformSettings | null;
+  refreshUserProfile?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -34,6 +35,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  const fetchUserProfile = useCallback(async (uid: string) => {
+    if (!db) return;
+    const userRef = doc(db, 'users', uid);
+    const docSnap = await getDoc(userRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+       const profile: UserProfile = {
+          uid: data.uid,
+          adsenerId: data.adsenerId,
+          email: data.email,
+          displayName: data.displayName,
+          photoURL: data.photoURL || '',
+          cubeBalance: data.cubeBalance,
+          totalEarned: data.totalEarned,
+          referrals: data.referrals,
+          loginStreak: data.loginStreak || 0,
+          lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
+          createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
+          isAdmin: data.isAdmin || false,
+          status: data.status || 'Active',
+        };
+        setUserProfile(profile);
+    }
+  }, []);
+
+  const refreshUserProfile = useCallback(async () => {
+    if (user) {
+      await fetchUserProfile(user.uid);
+    }
+  }, [user, fetchUserProfile]);
+
+
   useEffect(() => {
     if (!isFirebaseConfigured) {
       setLoading(false);
@@ -43,7 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let profileUnsubscribe: (() => void) | undefined;
     let settingsUnsubscribe: (() => void) | undefined;
     
-    // Subscribe to platform settings
     const settingsRef = doc(db, 'platform_settings', 'config');
     settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
         if (docSnap.exists()) {
@@ -77,7 +109,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       
       if (currentUser) {
-        // Subscribe to user profile
         const userRef = doc(db, 'users', currentUser.uid);
         profileUnsubscribe = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -124,7 +155,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       } else {
         setUserProfile(null);
-        // Do not clear platform settings on logout
         setLoading(false);
       }
     });
@@ -178,7 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [user, toast]);
 
-  const value = { user, userProfile, loading, notifications, platformSettings };
+  const value = useMemo(() => ({ user, userProfile, loading, notifications, platformSettings, refreshUserProfile }), [user, userProfile, loading, notifications, platformSettings, refreshUserProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

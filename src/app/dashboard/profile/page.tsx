@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button';
 import { useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadProfilePicture } from '@/services/user-data';
+import { format } from 'date-fns';
 
 export default function ProfilePage() {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, refreshUserProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
@@ -38,7 +39,8 @@ export default function ProfilePage() {
     setIsUploading(true);
     try {
       await uploadProfilePicture(file);
-      // The onSnapshot listener in AuthContext will handle the refresh automatically.
+      // Explicitly refresh the profile to update the UI immediately
+      if(refreshUserProfile) await refreshUserProfile();
       toast({
         title: 'Profile Picture Updated',
         description: 'Your new avatar has been saved.',
@@ -119,7 +121,7 @@ export default function ProfilePage() {
                     ref={fileInputRef}
                     onChange={handleFileChange}
                     className="hidden"
-                    accept="image/png, image/jpeg, image/webp"
+                    accept="image/png, image/jpeg, image-webp"
                     disabled={isUploading}
                 />
             </div>
@@ -127,7 +129,7 @@ export default function ProfilePage() {
             <div className="space-y-1 text-center sm:text-left">
               <h2 className="text-2xl font-semibold">{userProfile.displayName}</h2>
               <p className="text-sm text-muted-foreground">{user.email}</p>
-              <p className="text-sm text-muted-foreground">Joined on {user.metadata.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString() : 'N/A'}</p>
+              <p className="text-sm text-muted-foreground">Joined on {format(userProfile.createdAt, 'PP')}</p>
             </div>
           </div>
         </CardContent>

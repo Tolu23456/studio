@@ -17,6 +17,7 @@ import {
   LogOut,
   ArrowLeft,
   Megaphone,
+  Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "firebase/auth";
@@ -28,6 +29,7 @@ export default function AdminSidebar() {
   const navItems = [
     { href: "/admin/dashboard", icon: Gauge, label: "Dashboard" },
     { href: "/admin/users", icon: Users, label: "Users" },
+    { href: "/admin/games", icon: Gamepad2, label: "Games" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
     { href: "/admin/notifications", icon: Megaphone, label: "Notifications" },
   ];

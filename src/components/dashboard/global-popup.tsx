@@ -22,11 +22,16 @@ export function GlobalPopup() {
 
   useEffect(() => {
     if (popupConfig?.enabled) {
-      const popupKey = `globalPopup_${popupConfig.title}_${popupConfig.message}`;
-      const hasSeenPopup = sessionStorage.getItem(popupKey);
-
-      if (!hasSeenPopup) {
-        setIsOpen(true);
+      // The key is based on content to ensure new popups are shown.
+      const popupKey = `globalPopup_seen_${popupConfig.title}_${popupConfig.message}`;
+      try {
+        const hasSeenPopup = sessionStorage.getItem(popupKey);
+        if (!hasSeenPopup) {
+          setIsOpen(true);
+        }
+      } catch (error) {
+        // sessionStorage might not be available in some environments (e.g. SSR)
+        console.error("Could not access sessionStorage:", error);
       }
     }
   }, [popupConfig]);
@@ -34,8 +39,12 @@ export function GlobalPopup() {
   const handleClose = () => {
     setIsOpen(false);
     if (popupConfig) {
-      const popupKey = `globalPopup_${popupConfig.title}_${popupConfig.message}`;
-      sessionStorage.setItem(popupKey, 'true');
+      const popupKey = `globalPopup_seen_${popupConfig.title}_${popupConfig.message}`;
+       try {
+        sessionStorage.setItem(popupKey, 'true');
+      } catch (error) {
+        console.error("Could not access sessionStorage:", error);
+      }
     }
   };
 
@@ -47,12 +56,12 @@ export function GlobalPopup() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent>
         {popupConfig.imageUrl && (
-          <div className="relative w-full aspect-video rounded-t-lg overflow-hidden -mt-6 -mx-6">
+          <div className="relative -mx-6 -mt-6 aspect-video overflow-hidden rounded-t-lg">
             <Image 
               src={popupConfig.imageUrl} 
               alt={popupConfig.title}
-              layout="fill"
-              objectFit="cover"
+              fill
+              className="object-cover"
             />
           </div>
         )}
