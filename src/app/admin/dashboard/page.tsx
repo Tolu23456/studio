@@ -1,8 +1,39 @@
 
+'use client';
+
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Users, BarChart, Settings } from 'lucide-react';
+import { getAllUsersForAdmin } from '@/services/user-data';
+import { subWeeks, isAfter } from 'date-fns';
 
 export default function AdminDashboardPage() {
+  const [loading, setLoading] = useState(true);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [newUsers, setNewUsers] = useState(0);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        setLoading(true);
+        const users = await getAllUsersForAdmin();
+        setTotalUsers(users.length);
+
+        const oneWeekAgo = subWeeks(new Date(), 1);
+        const recentUsers = users.filter(user => isAfter(user.createdAt, oneWeekAgo));
+        setNewUsers(recentUsers.length);
+
+      } catch (error) {
+        console.error("Failed to fetch admin dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, []);
+
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8">
       <h1 className="text-3xl font-bold tracking-tight font-headline">Admin Dashboard</h1>
@@ -13,8 +44,19 @@ export default function AdminDashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
-            <p className="text-xs text-muted-foreground">+10 since last week</p>
+            {loading ? (
+              <>
+                <Skeleton className="h-8 w-24 mb-1" />
+                <Skeleton className="h-4 w-32" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{totalUsers.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                  +{newUsers.toLocaleString()} since last week
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card>
