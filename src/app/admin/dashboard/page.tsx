@@ -4,12 +4,14 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, BarChart, Settings } from 'lucide-react';
+import { Users, BarChart, Settings, AlertCircle } from 'lucide-react';
 import { getAllUsersForAdmin } from '@/services/user-data';
 import { subWeeks, isAfter } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [totalUsers, setTotalUsers] = useState(0);
   const [newUsers, setNewUsers] = useState(0);
 
@@ -17,6 +19,7 @@ export default function AdminDashboardPage() {
     async function fetchDashboardData() {
       try {
         setLoading(true);
+        setError(null);
         const users = await getAllUsersForAdmin();
         setTotalUsers(users.length);
 
@@ -24,8 +27,9 @@ export default function AdminDashboardPage() {
         const recentUsers = users.filter(user => isAfter(user.createdAt, oneWeekAgo));
         setNewUsers(recentUsers.length);
 
-      } catch (error) {
-        console.error("Failed to fetch admin dashboard data:", error);
+      } catch (err: any) {
+        console.error("Failed to fetch admin dashboard data:", err);
+        setError("Could not fetch user data. This might be due to a network issue or incorrect Firestore permissions. Please ensure your Firestore database is set up correctly and your security rules allow admin access.");
       } finally {
         setLoading(false);
       }
@@ -33,6 +37,19 @@ export default function AdminDashboardPage() {
 
     fetchDashboardData();
   }, []);
+  
+  if (error) {
+     return (
+        <div className="grid auto-rows-max items-start gap-4 md:gap-8">
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Admin Dashboard</h1>
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error Loading Dashboard</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        </div>
+     )
+  }
 
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8">
