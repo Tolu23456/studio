@@ -62,3 +62,14 @@ export type ReferredUser = {
   displayName: string;
   createdAt: Date;
 };
+
+export type AdminUserView = {
+  id: string;
+  photoURL?: string;
+  displayName: string;
+  email: string;
+  status: 'Active' | 'Disabled';
+  createdAt: Date;
+  lastLogin: Date;
+  isAdmin: boolean;
+};
