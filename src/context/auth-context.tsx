@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import type { UserProfile, Notification } from '@/lib/types';
 import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit } from 'firebase/firestore';
 import { generateAdsenerId } from '@/services/user-data';
@@ -32,6 +32,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
     let profileUnsubscribe: (() => void) | undefined;
 
     const authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -100,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !db) {
       setNotifications([]);
       return;
     }
