@@ -1,3 +1,4 @@
+
 export type UserProfile = {
   uid: string;
   adsenerId: string;
@@ -10,6 +11,7 @@ export type UserProfile = {
   loginStreak: number;
   lastClaimedDate: Date | null;
   createdAt: Date;
+  status: 'Active' | 'Disabled';
   isAdmin?: boolean;
 };
 
@@ -70,6 +72,5 @@ export type AdminUserView = {
   email: string;
   status: 'Active' | 'Disabled';
   createdAt: Date;
-  lastLogin: Date;
   isAdmin: boolean;
 };

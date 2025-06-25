@@ -1,8 +1,8 @@
 
 'use client';
 
-import type { Activity, Notification, Transaction, UserProfile } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs } from 'firebase/firestore';
+import type { Activity, AdminUserView, Notification, Transaction, UserProfile } from '@/lib/types';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay } from 'date-fns';
@@ -98,8 +98,7 @@ export async function createUserProfile(user: User, displayName: string, referra
     }
 
     // Create new user's profile
-    const newUserProfile: UserProfile = {
-        uid: user.uid,
+    const newUserProfile: Omit<UserProfile, 'uid'> = {
         adsenerId: generateAdsenerId(),
         email: user.email,
         displayName: displayName,
@@ -110,9 +109,10 @@ export async function createUserProfile(user: User, displayName: string, referra
         loginStreak: 0,
         lastClaimedDate: null,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
+        status: 'Active',
         isAdmin: false,
     };
-    batch.set(userRef, newUserProfile);
+    batch.set(userRef, { uid: user.uid, ...newUserProfile});
 
     // If there was a bonus, log it for the new user
     if (startingBalance > 0) {
@@ -160,11 +160,35 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
             loginStreak: data.loginStreak || 0,
             lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
             createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(docSnap.createTime!.seconds * 1000),
+            status: data.status || 'Active',
             isAdmin: data.isAdmin || false,
         };
     }
     return null;
 }
+
+export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
+    // This function assumes the current user is an admin.
+    // The component calling this should be protected by an admin check.
+    const usersCollectionRef = collection(db, 'users');
+    const q = query(usersCollectionRef, orderBy('createdAt', 'desc'));
+
+    const querySnapshot = await getDocs(q);
+    const users: AdminUserView[] = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            photoURL: data.photoURL,
+            displayName: data.displayName,
+            email: data.email,
+            status: data.status || 'Active',
+            createdAt: (data.createdAt as Timestamp).toDate(),
+            isAdmin: data.isAdmin || false,
+        };
+    });
+    return users;
+}
+
 
 export async function uploadProfilePicture(file: File): Promise<string> {
     const user = getCurrentUser();
@@ -370,12 +394,15 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
       adsenerId: profileData.adsenerId,
       email: profileData.email,
       displayName: profileData.displayName,
+      photoURL: profileData.photoURL,
       cubeBalance: profileData.cubeBalance,
       totalEarned: profileData.totalEarned,
       referrals: profileData.referrals,
       loginStreak: profileData.loginStreak || 0,
       lastClaimedDate: profileData.lastClaimedDate ? (profileData.lastClaimedDate as Timestamp).toDate() : null,
       createdAt: profileData.createdAt ? (profileData.createdAt as Timestamp).toDate() : new Date(docSnap.createTime!.seconds * 1000),
+      status: profileData.status || 'Active',
+      isAdmin: profileData.isAdmin || false,
   }
 
   const today = startOfDay(new Date());

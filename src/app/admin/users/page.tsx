@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -6,6 +7,7 @@ import {
   ListFilter,
   MoreHorizontal,
   PlusCircle,
+  User as UserIcon
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -37,63 +39,35 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { AdminUserView } from '@/lib/types';
+import { type AdminUserView } from '@/lib/types';
 import { format } from 'date-fns';
-
-const mockUsers: AdminUserView[] = [
-  {
-    id: 'usr_1',
-    photoURL: 'https://placehold.co/40x40.png',
-    displayName: 'Olivia Martin',
-    email: 'olivia.martin@email.com',
-    status: 'Active',
-    createdAt: new Date('2023-11-15'),
-    lastLogin: new Date('2024-07-18'),
-    isAdmin: false,
-  },
-  {
-    id: 'usr_2',
-    displayName: 'Jackson Lee',
-    email: 'jackson.lee@email.com',
-    status: 'Active',
-    createdAt: new Date('2023-10-20'),
-    lastLogin: new Date('2024-07-19'),
-    isAdmin: false,
-  },
-  {
-    id: 'usr_3',
-    displayName: 'Isabella Nguyen',
-    email: 'isabella.nguyen@email.com',
-    status: 'Disabled',
-    createdAt: new Date('2023-09-01'),
-    lastLogin: new Date('2024-06-01'),
-    isAdmin: false,
-  },
-  {
-    id: 'usr_4',
-    photoURL: 'https://placehold.co/40x40.png',
-    displayName: 'William Kim',
-    email: 'will@email.com',
-    status: 'Active',
-    createdAt: new Date('2024-01-10'),
-    lastLogin: new Date('2024-07-20'),
-    isAdmin: true,
-  },
-  {
-    id: 'usr_5',
-    displayName: 'Sofia Davis',
-    email: 'sofia.davis@email.com',
-    status: 'Active',
-    createdAt: new Date('2024-03-25'),
-    lastLogin: new Date('2024-07-15'),
-    isAdmin: false,
-  },
-];
+import { getAllUsersForAdmin } from '@/services/user-data';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
+  const [users, setUsers] = React.useState<AdminUserView[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const fetchedUsers = await getAllUsersForAdmin();
+        setUsers(fetchedUsers);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not fetch the user list.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, [toast]);
 
   const handleAction = (action: string, userName: string) => {
     toast({
@@ -167,7 +141,7 @@ export default function AdminUsersPage() {
                     Role
                   </TableHead>
                   <TableHead className="hidden md:table-cell">
-                    Last Login
+                    Date Joined
                   </TableHead>
                   <TableHead>
                     <span className="sr-only">Actions</span>
@@ -175,72 +149,90 @@ export default function AdminUsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="hidden sm:table-cell">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage
-                          src={user.photoURL}
-                          alt="Avatar"
-                        />
-                        <AvatarFallback>
-                          <UserIcon className="h-5 w-5" />
-                        </AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      <div className="font-semibold">{user.displayName}</div>
-                      <div className="text-sm text-muted-foreground">{user.email}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={user.status === 'Active' ? 'default' : 'secondary'}>
-                        {user.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {user.isAdmin ? <Badge variant="destructive">Admin</Badge> : 'User'}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {format(user.lastLogin, 'PPpp')}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem
-                            onClick={() => handleAction('View profile', user.displayName)}
-                          >
-                            View Profile
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleAction('Edit', user.displayName)}
-                          >
-                            Edit
-                          </DropdownMenuItem>
-                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleAction('Disable', user.displayName)}
-                          >
-                            Disable
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="hidden sm:table-cell">
+                        <Skeleton className="h-9 w-9 rounded-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-4 w-48 mt-1" />
+                      </TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-16" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="hidden sm:table-cell">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage
+                            src={user.photoURL}
+                            alt="Avatar"
+                          />
+                          <AvatarFallback>
+                            <UserIcon className="h-5 w-5" />
+                          </AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="font-semibold">{user.displayName}</div>
+                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.status === 'Active' ? 'default' : 'secondary'}>
+                          {user.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {user.isAdmin ? <Badge variant="destructive">Admin</Badge> : 'User'}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {format(user.createdAt, 'PP')}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => handleAction('View profile', user.displayName)}
+                            >
+                              View Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleAction('Edit', user.displayName)}
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleAction('Disable', user.displayName)}
+                            >
+                              Disable
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>1-5</strong> of <strong>{mockUsers.length}</strong> users
+              Showing <strong>{users.length}</strong> users
             </div>
           </CardFooter>
         </Card>

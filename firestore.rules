@@ -1,23 +1,24 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Rules for the 'users' collection.
     match /users/{userId} {
-      // A user can read their own profile.
-      // An admin can read any user's profile.
-      // Writes are blocked from the client to protect sensitive data like cubeBalance. All writes must go through secure server-side functions.
-      allow read: if request.auth.uid == userId || request.auth.token.admin == true;
-      allow write: if false;
-    }
+      // A user is an admin if their own user document has isAdmin: true
+      function isAdmin() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      }
 
-    match /users/{userId}/{subcollection}/{docId} {
-      // A user can read from their own subcollections (activities, transactions, etc.).
-      // An admin can read from any user's subcollections.
-      // Writes are blocked from the client.
-      allow read: if request.auth.uid == userId || request.auth.token.admin == true;
-      allow write: if false;
+      // Users can read and write their own data.
+      allow read, write: if request.auth.uid == userId;
+
+      // Admins can read and update any user's data.
+      allow read, update: if isAdmin();
+
+      // Rules for subcollections - only the owner can access them.
+      match /{subcollection}/{docId} {
+        allow read, write: if request.auth.uid == userId;
+      }
     }
   }
 }
