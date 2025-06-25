@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   ArrowLeft,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "firebase/auth";
@@ -28,6 +29,7 @@ export default function AdminSidebar() {
     { href: "/admin/dashboard", icon: Gauge, label: "Dashboard" },
     { href: "/admin/users", icon: Users, label: "Users" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
+    { href: "/admin/notifications", icon: Megaphone, label: "Notifications" },
   ];
   
   const isLinkActive = (href: string) => {

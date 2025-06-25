@@ -25,7 +25,7 @@ export type Transaction = {
 };
 
 export type Activity = {
-  id: string;
+  id:string;
   type: 'Ad Watch' | 'Task Completion' | 'Game Play' | 'Referral Bonus' | 'Daily Login';
   description:string;
   cubes_earned: number;
@@ -73,4 +73,16 @@ export type AdminUserView = {
   status: 'Active' | 'Disabled';
   createdAt: Date;
   isAdmin: boolean;
+  cubeBalance: number;
+  totalEarned: number;
+};
+
+export type PlatformSettings = {
+  id: 'config'; // a single document for all settings
+  allowNewRegistrations: boolean;
+  requireEmailVerification: boolean;
+  welcomeBonus: number;
+  globalAdRewardMultiplier: number;
+  globalGameRewardMultiplier: number;
+  maintenanceMode: boolean;
 };

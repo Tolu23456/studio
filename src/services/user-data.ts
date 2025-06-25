@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Activity, AdminUserView, Notification, Transaction, UserProfile } from '@/lib/types';
+import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile } from '@/lib/types';
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { User } from 'firebase/auth';
@@ -168,8 +168,6 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
 }
 
 export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
-    // This function assumes the current user is an admin.
-    // The component calling this should be protected by an admin check.
     const usersCollectionRef = collection(db, 'users');
     const q = query(usersCollectionRef, orderBy('createdAt', 'desc'));
 
@@ -184,6 +182,8 @@ export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
             status: data.status || 'Active',
             createdAt: (data.createdAt as Timestamp).toDate(),
             isAdmin: data.isAdmin || false,
+            cubeBalance: data.cubeBalance || 0,
+            totalEarned: data.totalEarned || 0,
         };
     });
     return users;
@@ -192,20 +192,14 @@ export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
 
 export async function uploadProfilePicture(file: File): Promise<string> {
     const user = getCurrentUser();
-    // A standard path for all profile pictures for simplicity. This will overwrite the previous image.
     const filePath = `profile-pictures/${user.uid}/profile.jpg`;
     const storageRef = ref(storage, filePath);
 
-    // Upload the file to Firebase Storage
     await uploadBytes(storageRef, file);
     
-    // Get the download URL
     const downloadURL = await getDownloadURL(storageRef);
-
-    // Add a unique query parameter to bust the browser's cache.
     const photoURL = `${downloadURL}&_v=${new Date().getTime()}`;
 
-    // Update the user's profile in Firestore
     const userRef = doc(db, 'users', user.uid);
     await updateDoc(userRef, { photoURL });
     
@@ -235,7 +229,6 @@ export async function createSimpleNotification(title: string, description: strin
     await setDoc(notificationRef, newNotification);
 }
 
-// Simulate a secure, server-side configuration for ad rewards
 const TRUSTED_AD_CONFIG: { [key: string]: { reward: number; title: string } } = {
   "1": { reward: 15, title: "Explore the New TechGadget Pro" },
   "2": { reward: 12, title: "Quick & Healthy Snack Ideas" },
@@ -294,37 +287,24 @@ export async function claimAdReward(adId: string): Promise<void> {
 
 const calculateGameReward = (gameId: string, scorePayload: number): number => {
     switch (gameId) {
-        case 'g1': // One Tap Dash (Cube Runner)
-        case 'g2': // Shadow Jump (Cube Runner)
-        case 'g7': // Stack Tower (Cube Runner)
-            return scorePayload; // score is cubes collected, a direct reward
-        case 'g3': // Don’t Touch the Red (Puzzle Box)
-        case 'g8': // Speed Type (Puzzle Box)
-        case 'g9': // Reverse Swipe (Puzzle Box)
-        case 'g10': // Tilt Maze (Puzzle Box)
-            return Math.max(5, 50 - scorePayload); // scorePayload is moves, less is better
-        case 'g4': // Quick Flip (Memory Match)
-            return Math.max(5, 40 - scorePayload); // scorePayload is moves, less is better
-        case 'g5': // Laser Reflex (Reaction Time)
-        case 'g6': // Tiny Tapper (Reaction Time)
-            return Math.max(1, 30 - Math.floor(scorePayload / 100)); // scorePayload is reactionTime in ms
+        case 'g1': case 'g2': case 'g7':
+            return scorePayload;
+        case 'g3': case 'g8': case 'g9': case 'g10':
+            return Math.max(5, 50 - scorePayload);
+        case 'g4':
+            return Math.max(5, 40 - scorePayload);
+        case 'g5': case 'g6':
+            return Math.max(1, 30 - Math.floor(scorePayload / 100));
         default:
-            return 0; // No reward for unknown or unmapped games
+            return 0;
     }
 };
 
 const getGameTitle = (gameId: string): string => {
     const titles: { [key: string]: string } = {
-        'g1': 'One Tap Dash',
-        'g2': 'Shadow Jump',
-        'g3': 'Don’t Touch the Red',
-        'g4': 'Quick Flip',
-        'g5': 'Laser Reflex',
-        'g6': 'Tiny Tapper',
-        'g7': 'Stack Tower',
-        'g8': 'Speed Type',
-        'g9': 'Reverse Swipe',
-        'g10': 'Tilt Maze',
+        'g1': 'One Tap Dash', 'g2': 'Shadow Jump', 'g3': 'Don’t Touch the Red', 'g4': 'Quick Flip',
+        'g5': 'Laser Reflex', 'g6': 'Tiny Tapper', 'g7': 'Stack Tower', 'g8': 'Speed Type',
+        'g9': 'Reverse Swipe', 'g10': 'Tilt Maze',
     };
     return titles[gameId] || 'a game';
 };
@@ -334,15 +314,11 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   const reward = calculateGameReward(gameId, scorePayload);
   const gameTitle = getGameTitle(gameId);
 
-  if (reward <= 0) {
-    return 0;
-  }
+  if (reward <= 0) return 0;
   
   const userRef = doc(db, 'users', user.uid);
   const docSnap = await getDoc(userRef);
-  if (!docSnap.exists()) {
-    throw new Error("User profile not found, cannot claim reward.");
-  }
+  if (!docSnap.exists()) throw new Error("User profile not found.");
 
   const batch = writeBatch(db);
   const now = new Date();
@@ -353,28 +329,24 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   });
 
   const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
-  const newActivity: Omit<Activity, 'id'> = {
+  batch.set(activityRef, {
     type: 'Game Play',
     description: `Played '${gameTitle}'`,
     cubes_earned: reward,
     date: now,
-  };
-  batch.set(activityRef, newActivity);
+  });
 
   const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
-  const newTransaction: Omit<Transaction, 'id'> = {
+  batch.set(transactionRef, {
     type: 'reward',
     description: `Reward from '${gameTitle}'`,
     amount: reward,
     date: now,
     status: 'completed',
-  };
-  batch.set(transactionRef, newTransaction);
+  });
 
   _createNotification(batch, user.uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`);
-
   await batch.commit();
-  
   return reward;
 }
 
@@ -383,45 +355,21 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   const user = getCurrentUser();
   const userRef = doc(db, 'users', user.uid);
   const docSnap = await getDoc(userRef);
+  if (!docSnap.exists()) throw new Error("User profile not found.");
 
-  if (!docSnap.exists()) {
-    throw new Error("User profile not found, cannot claim reward.");
-  }
-
-  const profileData = docSnap.data();
-  const userProfile: UserProfile = {
-      uid: profileData.uid,
-      adsenerId: profileData.adsenerId,
-      email: profileData.email,
-      displayName: profileData.displayName,
-      photoURL: profileData.photoURL,
-      cubeBalance: profileData.cubeBalance,
-      totalEarned: profileData.totalEarned,
-      referrals: profileData.referrals,
-      loginStreak: profileData.loginStreak || 0,
-      lastClaimedDate: profileData.lastClaimedDate ? (profileData.lastClaimedDate as Timestamp).toDate() : null,
-      createdAt: profileData.createdAt ? (profileData.createdAt as Timestamp).toDate() : new Date(docSnap.createTime!.seconds * 1000),
-      status: profileData.status || 'Active',
-      isAdmin: profileData.isAdmin || false,
-  }
-
+  const userProfile = docSnap.data() as UserProfile;
   const today = startOfDay(new Date());
-  const lastClaimedDay = userProfile.lastClaimedDate ? startOfDay(userProfile.lastClaimedDate) : null;
+  const lastClaimedDay = userProfile.lastClaimedDate ? startOfDay((userProfile.lastClaimedDate as Timestamp).toDate()) : null;
 
   if (lastClaimedDay && lastClaimedDay.getTime() === today.getTime()) {
       return { success: false, message: 'You have already claimed your reward for today.' };
   }
   
-  let newStreak = 1;
-  if (lastClaimedDay && isYesterday(lastClaimedDay)) {
-    newStreak = userProfile.loginStreak + 1;
-  }
-
+  const newStreak = (lastClaimedDay && isYesterday(lastClaimedDay)) ? userProfile.loginStreak + 1 : 1;
   const reward = 5 + (newStreak * 5);
   const now = new Date();
   
   const batch = writeBatch(db);
-  
   batch.update(userRef, {
     cubeBalance: increment(reward),
     totalEarned: increment(reward),
@@ -447,132 +395,130 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   });
   
   _createNotification(batch, user.uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`);
-  
   await batch.commit();
-
   return { success: true, message: `You earned ${reward} Cubes!` };
 }
 
 export async function fetchRecipientDisplayName(adsenerId: string): Promise<string | null> {
     const formattedId = adsenerId.trim().toUpperCase();
-    if (!formattedId || !/^AC-[0-9]{6}[A-Z]$/.test(formattedId)) {
-        return null;
-    }
-    const currentUser = auth.currentUser;
+    if (!formattedId || !/^AC-[0-9]{6}[A-Z]$/.test(formattedId)) return null;
     
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where("adsenerId", "==", formattedId));
     
     const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-        return "User not found";
-    }
+    if (querySnapshot.empty) return "User not found";
 
     const userDoc = querySnapshot.docs[0];
-    if (currentUser && currentUser.uid === userDoc.id) {
-        return "You cannot send cubes to yourself.";
-    }
+    if (auth.currentUser && auth.currentUser.uid === userDoc.id) return "You cannot send cubes to yourself.";
 
-    const userData = userDoc.data();
-    return userData.displayName || 'Unnamed User';
+    return userDoc.data().displayName || 'Unnamed User';
 }
 
 export async function transferCubes(recipientAdsenerId: string, amount: number): Promise<{ success: boolean; message: string }> {
     const sender = getCurrentUser();
-    const formattedRecipientId = recipientAdsenerId.trim().toUpperCase();
+    if (amount <= 0) return { success: false, message: "Transfer amount must be positive." };
 
-    if (amount <= 0) {
-        return { success: false, message: "Transfer amount must be positive." };
-    }
-
-    const senderRef = doc(db, 'users', sender.uid);
-
-    // Find recipient by their adsenerId (read BEFORE transaction)
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where("adsenerId", "==", formattedRecipientId));
+    const q = query(usersRef, where("adsenerId", "==", recipientAdsenerId.trim().toUpperCase()));
     
     try {
         const recipientQuerySnapshot = await getDocs(q);
-
-        if (recipientQuerySnapshot.empty) {
-            throw new Error("Recipient user could not be found. Please check the User ID.");
-        }
+        if (recipientQuerySnapshot.empty) throw new Error("Recipient user could not be found.");
         
-        const recipientDocSnapshot = recipientQuerySnapshot.docs[0];
-        const recipientRef = recipientDocSnapshot.ref;
-
-        if (sender.uid === recipientDocSnapshot.id) {
-            return { success: false, message: "You cannot send cubes to yourself." };
-        }
+        const recipientDoc = recipientQuerySnapshot.docs[0];
+        if (sender.uid === recipientDoc.id) return { success: false, message: "You cannot send cubes to yourself." };
 
         await runTransaction(db, async (transaction) => {
+            const senderRef = doc(db, 'users', sender.uid);
             const senderDoc = await transaction.get(senderRef);
-            const recipientDoc = await transaction.get(recipientRef); // Read recipient inside transaction
-
-            if (!senderDoc.exists()) {
-                throw new Error("Your user profile could not be found.");
-            }
-             if (!recipientDoc.exists()) {
-                // This is a safety check, should not happen if query outside worked
-                throw new Error("Recipient user could not be found.");
-            }
-
+            if (!senderDoc.exists()) throw new Error("Your user profile could not be found.");
+            
             const senderData = senderDoc.data() as UserProfile;
-            const recipientData = recipientDoc.data() as UserProfile;
-
-            if (senderData.cubeBalance < amount) {
-                throw new Error("Insufficient cube balance for this transfer.");
-            }
+            if (senderData.cubeBalance < amount) throw new Error("Insufficient cube balance.");
 
             const now = new Date();
-
-            // All writes happen after all reads
             transaction.update(senderRef, { cubeBalance: increment(-amount) });
-            transaction.update(recipientRef, { cubeBalance: increment(amount) });
+            transaction.update(recipientDoc.ref, { cubeBalance: increment(amount) });
 
-            // Create transaction log for sender
             const senderTransactionRef = doc(collection(db, 'users', sender.uid, 'transactions'));
-            transaction.set(senderTransactionRef, {
-                type: 'withdrawal',
-                description: `Sent to ${recipientData.displayName || recipientData.adsenerId}`,
-                amount: -amount,
-                date: now,
-                status: 'completed',
-            });
-
-            // Create transaction log for recipient
+            transaction.set(senderTransactionRef, { type: 'withdrawal', description: `Sent to ${recipientDoc.data().displayName}`, amount: -amount, date: now, status: 'completed' });
+            
             const recipientTransactionRef = doc(collection(db, 'users', recipientDoc.id, 'transactions'));
-            transaction.set(recipientTransactionRef, {
-                type: 'deposit',
-                description: `Received from ${senderData.displayName || senderData.adsenerId}`,
-                amount: amount,
-                date: now,
-                status: 'completed',
-            });
-
-            // Create notification for sender
-            const senderNotificationRef = doc(collection(db, 'users', sender.uid, 'notifications'));
-            transaction.set(senderNotificationRef, {
-                title: "Transfer Sent",
-                description: `You successfully sent ${amount} Cubes to ${recipientData.displayName || recipientData.adsenerId}.`,
-                date: now,
-                read: false,
-            });
-
-            // Create notification for recipient
-            const recipientNotificationRef = doc(collection(db, 'users', recipientDoc.id, 'notifications'));
-            transaction.set(recipientNotificationRef, {
-                title: "Cubes Received!",
-                description: `You have received ${amount} Cubes from ${senderData.displayName || senderData.adsenerId}.`,
-                date: now,
-                read: false,
-            });
+            transaction.set(recipientTransactionRef, { type: 'deposit', description: `Received from ${senderData.displayName}`, amount: amount, date: now, status: 'completed' });
         });
         
         return { success: true, message: `Successfully sent ${amount.toLocaleString()} cubes.` };
 
     } catch (error: any) {
         console.error("Cube transfer failed:", error);
-        return { success: false, message: error.message || "An unexpected error occurred during the transfer." };
+        return { success: false, message: error.message || "An unexpected error occurred." };
     }
+}
+
+// Admin Functions
+export async function updateUserStatus(uid: string, status: 'Active' | 'Disabled'): Promise<void> {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, { status });
+}
+
+export async function updateUserProfileAdmin(uid: string, data: { displayName: string; isAdmin: boolean; }): Promise<void> {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, data);
+}
+
+export async function getPlatformSettings(): Promise<PlatformSettings> {
+    const settingsRef = doc(db, 'platform_settings', 'config');
+    const docSnap = await getDoc(settingsRef);
+
+    if (docSnap.exists()) {
+        return docSnap.data() as PlatformSettings;
+    }
+
+    const defaultSettings: PlatformSettings = {
+        id: 'config',
+        allowNewRegistrations: true,
+        requireEmailVerification: true,
+        welcomeBonus: 50,
+        globalAdRewardMultiplier: 1.0,
+        globalGameRewardMultiplier: 1.0,
+        maintenanceMode: false,
+    };
+    await setDoc(settingsRef, defaultSettings);
+    return defaultSettings;
+}
+
+export async function updatePlatformSettings(settings: Partial<Omit<PlatformSettings, 'id'>>): Promise<void> {
+    const settingsRef = doc(db, 'platform_settings', 'config');
+    await updateDoc(settingsRef, settings);
+}
+
+export async function sendNotificationToAllUsers(title: string, description: string): Promise<{ successCount: number; errorCount: number }> {
+    const usersCollectionRef = collection(db, 'users');
+    const querySnapshot = await getDocs(usersCollectionRef);
+    if (querySnapshot.empty) return { successCount: 0, errorCount: 0 };
+
+    let successCount = 0;
+    let errorCount = 0;
+    const chunks = [];
+    for (let i = 0; i < querySnapshot.docs.length; i += 499) {
+        chunks.push(querySnapshot.docs.slice(i, i + 499));
+    }
+
+    for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach(userDoc => {
+            const notificationRef = doc(collection(db, 'users', userDoc.id, 'notifications'));
+            batch.set(notificationRef, { title, description, date: new Date(), read: false });
+        });
+        
+        try {
+            await batch.commit();
+            successCount += chunk.length;
+        } catch (e) {
+            console.error("Failed to commit a batch of notifications:", e);
+            errorCount += chunk.length;
+        }
+    }
+    return { successCount, errorCount };
 }
