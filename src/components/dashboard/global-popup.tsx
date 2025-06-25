@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 
 export function GlobalPopup() {
   const { platformSettings } = useAuth();
@@ -45,9 +46,19 @@ export function GlobalPopup() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent>
-        <DialogHeader>
+        {popupConfig.imageUrl && (
+          <div className="relative w-full aspect-video rounded-t-lg overflow-hidden -mt-6 -mx-6">
+            <Image 
+              src={popupConfig.imageUrl} 
+              alt={popupConfig.title}
+              layout="fill"
+              objectFit="cover"
+            />
+          </div>
+        )}
+        <DialogHeader className={popupConfig.imageUrl ? 'pt-4' : ''}>
           <DialogTitle>{popupConfig.title}</DialogTitle>
-          <DialogDescription>{popupConfig.message}</DialogDescription>
+          <DialogDescription className="whitespace-pre-wrap">{popupConfig.message}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button onClick={handleClose}>Close</Button>

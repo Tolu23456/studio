@@ -4,18 +4,16 @@
 import * as React from 'react';
 import {
   File,
-  ListFilter,
   MoreHorizontal,
   User as UserIcon,
   AlertCircle,
-  Zap,
   Award,
   Loader2,
-  X,
   UserCog,
   UserX,
   Eye,
   PlusCircle,
+  Zap,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -65,17 +63,19 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
   const [users, setUsers] = React.useState<AdminUserView[]>([]);
+  const [filteredUsers, setFilteredUsers] = React.useState<AdminUserView[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [selectedUser, setSelectedUser] = React.useState<AdminUserView | null>(null);
   const [isViewOpen, setIsViewOpen] = React.useState(false);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState('all');
 
   const fetchUsers = React.useCallback(async () => {
     try {
@@ -83,6 +83,8 @@ export default function AdminUsersPage() {
       setLoading(true);
       const fetchedUsers = await getAllUsersForAdmin();
       setUsers(fetchedUsers);
+      setFilteredUsers(fetchedUsers);
+      setActiveTab('all');
     } catch (err: any) {
       console.error("Failed to fetch users:", err);
       setError("Could not fetch the user list. Please check your network connection and Firestore security rules.");
@@ -94,6 +96,16 @@ export default function AdminUsersPage() {
   React.useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  React.useEffect(() => {
+      if (activeTab === 'all') {
+          setFilteredUsers(users);
+      } else if (activeTab === 'active') {
+          setFilteredUsers(users.filter(u => u.status === 'Active'));
+      } else if (activeTab === 'disabled') {
+          setFilteredUsers(users.filter(u => u.status === 'Disabled'));
+      }
+  }, [activeTab, users]);
 
   const handleStatusToggle = async (user: AdminUserView) => {
     const newStatus = user.status === 'Active' ? 'Disabled' : 'Active';
@@ -151,7 +163,7 @@ export default function AdminUsersPage() {
 
   return (
     <>
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="all" onValueChange={setActiveTab}>
         <div className="flex items-center">
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
@@ -190,7 +202,7 @@ export default function AdminUsersPage() {
             </Dialog>
           </div>
         </div>
-        <TabsContent value="all">
+        <TabsContent value={activeTab}>
           <Card>
             <CardHeader>
               <CardTitle>User Management</CardTitle>
@@ -243,7 +255,7 @@ export default function AdminUsersPage() {
                           </TableRow>
                       ))
                       ) : (
-                      users.map((user) => (
+                      filteredUsers.map((user) => (
                           <TableRow key={user.id}>
                           <TableCell className="hidden sm:table-cell">
                               <Avatar className="h-9 w-9">
@@ -322,7 +334,7 @@ export default function AdminUsersPage() {
             </CardContent>
             <CardFooter>
               <div className="text-xs text-muted-foreground">
-                Showing <strong>{users.length}</strong> users
+                Showing <strong>{filteredUsers.length}</strong> of <strong>{users.length}</strong> users
               </div>
             </CardFooter>
           </Card>
@@ -388,11 +400,11 @@ export default function AdminUsersPage() {
                         <Label htmlFor="displayName">Display Name</Label>
                         <Input id="displayName" name="displayName" defaultValue={selectedUser.displayName} />
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-between rounded-lg border p-3">
                         <Label htmlFor="isAdmin" className="font-semibold text-destructive">Admin Status</Label>
                         <Switch id="isAdmin" name="isAdmin" defaultChecked={selectedUser.isAdmin} />
                     </div>
-                     <DialogFooter>
+                     <DialogFooter className='pt-4'>
                         <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
                         <Button type="submit" disabled={isSaving}>
                           {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

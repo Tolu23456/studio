@@ -6,7 +6,7 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import type { UserProfile, Notification, PlatformSettings } from '@/lib/types';
-import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit, getDoc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit, setDoc } from 'firebase/firestore';
 import { generateAdsenerId } from '@/services/user-data';
 import { useToast } from '@/hooks/use-toast';
 
@@ -42,11 +42,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let profileUnsubscribe: (() => void) | undefined;
     let settingsUnsubscribe: (() => void) | undefined;
+    
+    // Subscribe to platform settings
+    const settingsRef = doc(db, 'platform_settings', 'config');
+    settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
+        if (docSnap.exists()) {
+            setPlatformSettings(docSnap.data() as PlatformSettings);
+        } else {
+            const defaultSettings: PlatformSettings = {
+                id: 'config',
+                allowNewRegistrations: true,
+                welcomeBonus: 50,
+                globalAdRewardMultiplier: 1.0,
+                globalGameRewardMultiplier: 1.0,
+                maintenanceMode: false,
+                transferFeePercentage: 1,
+                globalPopup: {
+                  enabled: false,
+                  title: "Welcome!",
+                  message: "Welcome to Adsener. We are happy to have you here.",
+                  imageUrl: "",
+                }
+            };
+            setDoc(settingsRef, defaultSettings);
+            setPlatformSettings(defaultSettings);
+        }
+    }, (error) => {
+        console.error("Firestore snapshot error (settings):", error);
+    });
 
     const authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (profileUnsubscribe) profileUnsubscribe();
-      if (settingsUnsubscribe) settingsUnsubscribe();
-
+      
       setUser(currentUser);
       
       if (currentUser) {
@@ -95,36 +122,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         });
 
-        // Fetch platform settings once
-        const settingsRef = doc(db, 'platform_settings', 'config');
-        settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setPlatformSettings(docSnap.data() as PlatformSettings);
-          } else {
-             const defaultSettings: PlatformSettings = {
-                id: 'config',
-                allowNewRegistrations: true,
-                welcomeBonus: 50,
-                globalAdRewardMultiplier: 1.0,
-                globalGameRewardMultiplier: 1.0,
-                maintenanceMode: false,
-                transferFeePercentage: 1,
-                globalPopup: {
-                  enabled: false,
-                  title: "Welcome!",
-                  message: "Welcome to Adsener. We are happy to have you here."
-                }
-            };
-            setDoc(settingsRef, defaultSettings);
-            setPlatformSettings(defaultSettings);
-          }
-        }, (error) => {
-           console.error("Firestore snapshot error (settings):", error);
-        });
-
       } else {
         setUserProfile(null);
-        setPlatformSettings(null);
+        // Do not clear platform settings on logout
         setLoading(false);
       }
     });

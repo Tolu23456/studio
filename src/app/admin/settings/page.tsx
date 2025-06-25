@@ -37,6 +37,7 @@ const settingsSchema = z.object({
     enabled: z.boolean(),
     title: z.string(),
     message: z.string(),
+    imageUrl: z.string().url().or(z.literal('')),
   }),
 });
 
@@ -54,6 +55,7 @@ export default function AdminSettingsPage() {
         enabled: false,
         title: '',
         message: '',
+        imageUrl: '',
       }
     }
   });
@@ -66,7 +68,7 @@ export default function AdminSettingsPage() {
         // Ensure globalPopup is an object, even if it's missing from Firestore
         const formData = {
           ...settings,
-          globalPopup: settings.globalPopup || { enabled: false, title: '', message: '' },
+          globalPopup: settings.globalPopup || { enabled: false, title: '', message: '', imageUrl: '' },
         };
         form.reset(formData);
       } catch (error) {
@@ -121,10 +123,6 @@ export default function AdminSettingsPage() {
       <div className="grid auto-rows-max items-start gap-4 md:gap-8">
         <div className='flex items-center justify-between'>
            <h1 className="text-3xl font-bold tracking-tight font-headline">Platform Settings</h1>
-           <Button type="submit" disabled={isSaving}>
-              {isSaving && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
-              Save All Changes
-            </Button>
         </div>
         <div className="grid gap-6 lg:grid-cols-2">
             <div className="grid auto-rows-max gap-6">
@@ -231,6 +229,11 @@ export default function AdminSettingsPage() {
                             <Label htmlFor="popup-message">Popup Message</Label>
                             <Textarea id="popup-message" placeholder="Describe the announcement..." {...form.register('globalPopup.message')} />
                         </div>
+                        <div className="space-y-2 rounded-lg border p-4">
+                            <Label htmlFor="popup-imageUrl">Popup Image URL (Optional)</Label>
+                            <Input id="popup-imageUrl" placeholder="https://example.com/image.png" {...form.register('globalPopup.imageUrl')} />
+                             {form.formState.errors.globalPopup?.imageUrl && <p className='text-sm text-destructive'>{form.formState.errors.globalPopup.imageUrl.message}</p>}
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -257,7 +260,12 @@ export default function AdminSettingsPage() {
                 </Card>
             </div>
         </div>
-
+        <div className="flex justify-end mt-6">
+            <Button type="submit" disabled={isSaving}>
+                {isSaving && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+                Save All Changes
+            </Button>
+        </div>
       </div>
     </form>
   );

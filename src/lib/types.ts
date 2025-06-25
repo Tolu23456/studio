@@ -91,5 +91,6 @@ export type PlatformSettings = {
     enabled: boolean;
     title: string;
     message: string;
+    imageUrl?: string;
   };
 };
