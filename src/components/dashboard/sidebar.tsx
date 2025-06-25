@@ -20,6 +20,7 @@ import {
   Settings,
   Users,
   Gamepad2,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -34,6 +35,7 @@ export default function DashboardSidebar() {
     { href: "/dashboard/games", icon: Gamepad2, label: "Games" },
     { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
     { href: "/dashboard/referrals", icon: Users, label: "Referrals" },
+    { href: "/dashboard/notifications", icon: Bell, label: "Notifications" },
     { href: "/dashboard/settings", icon: Settings, label: "Settings" },
   ];
 
@@ -97,7 +99,7 @@ export default function DashboardSidebar() {
       </aside>
 
       {/* Mobile Bottom Bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t bg-background p-1 sm:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t bg-background p-1 sm:hidden">
           {navItems.map((item) => (
               <Link
                   key={item.href}
@@ -110,7 +112,7 @@ export default function DashboardSidebar() {
                   )}
               >
                   <item.icon className="h-5 w-5" />
-                  <span>{item.label}</span>
+                  <span className="truncate">{item.label}</span>
               </Link>
           ))}
       </nav>

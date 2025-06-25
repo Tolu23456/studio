@@ -6,7 +6,7 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import type { UserProfile, Notification, PlatformSettings } from '@/lib/types';
-import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit, getDoc, setDoc } from 'firebase/firestore';
 import { generateAdsenerId } from '@/services/user-data';
 import { useToast } from '@/hooks/use-toast';
 
@@ -82,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
               createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
               isAdmin: data.isAdmin || false,
+              status: data.status || 'Active',
             };
             setUserProfile(profile);
           } else {
@@ -99,6 +100,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
           if (docSnap.exists()) {
             setPlatformSettings(docSnap.data() as PlatformSettings);
+          } else {
+             const defaultSettings: PlatformSettings = {
+                id: 'config',
+                allowNewRegistrations: true,
+                welcomeBonus: 50,
+                globalAdRewardMultiplier: 1.0,
+                globalGameRewardMultiplier: 1.0,
+                maintenanceMode: false,
+                transferFeePercentage: 1,
+                globalPopup: {
+                  enabled: false,
+                  title: "Welcome!",
+                  message: "Welcome to Adsener. We are happy to have you here."
+                }
+            };
+            setDoc(settingsRef, defaultSettings);
+            setPlatformSettings(defaultSettings);
           }
         }, (error) => {
            console.error("Firestore snapshot error (settings):", error);
@@ -125,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   
     const notificationsRef = collection(db, 'users', user.uid, 'notifications');
-    const q = query(notificationsRef, orderBy('date', 'desc'), limit(10));
+    const q = query(notificationsRef, orderBy('date', 'desc'), limit(50));
     
     let isInitialQuery = true;
   

@@ -131,8 +131,8 @@ export default function DashboardHeader() {
               <p className="p-4 text-center text-sm text-muted-foreground">No new notifications</p>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center p-2">
-                <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+            <DropdownMenuItem className="justify-center p-2" asChild>
+                <Link href="/dashboard/notifications" className="text-sm text-muted-foreground hover:text-foreground">
                     View all notifications
                 </Link>
             </DropdownMenuItem>
