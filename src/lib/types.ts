@@ -78,11 +78,18 @@ export type AdminUserView = {
 };
 
 export type PlatformSettings = {
-  id: 'config'; // a single document for all settings
+  id: 'config';
   allowNewRegistrations: boolean;
-  requireEmailVerification: boolean;
   welcomeBonus: number;
+  maintenanceMode: boolean;
+  // Economy
   globalAdRewardMultiplier: number;
   globalGameRewardMultiplier: number;
-  maintenanceMode: boolean;
+  transferFeePercentage: number;
+  // Popup
+  globalPopup?: {
+    enabled: boolean;
+    title: string;
+    message: string;
+  };
 };

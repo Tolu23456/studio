@@ -8,6 +8,7 @@ import DashboardHeader from "@/components/dashboard/header";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/auth-context";
 import { Zap } from "lucide-react";
+import { GlobalPopup } from "@/components/dashboard/global-popup";
 
 export default function DashboardLayout({
   children,
@@ -45,6 +46,7 @@ export default function DashboardLayout({
             {children}
           </main>
         </div>
+        <GlobalPopup />
       </div>
     </SidebarProvider>
   );

@@ -98,7 +98,7 @@ export async function createUserProfile(user: User, displayName: string, referra
     }
 
     // Create new user's profile
-    const newUserProfile: Omit<UserProfile, 'uid'> = {
+    const newUserProfile: Omit<UserProfile, 'uid' | 'status' | 'isAdmin'> = {
         adsenerId: generateAdsenerId(),
         email: user.email,
         displayName: displayName,
@@ -109,10 +109,13 @@ export async function createUserProfile(user: User, displayName: string, referra
         loginStreak: 0,
         lastClaimedDate: null,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
+    };
+    batch.set(userRef, { 
+        uid: user.uid, 
+        ...newUserProfile,
         status: 'Active',
         isAdmin: false,
-    };
-    batch.set(userRef, { uid: user.uid, ...newUserProfile});
+    });
 
     // If there was a bonus, log it for the new user
     if (startingBalance > 0) {
@@ -239,19 +242,16 @@ const TRUSTED_AD_CONFIG: { [key: string]: { reward: number; title: string } } = 
 export async function claimAdReward(adId: string): Promise<void> {
   const user = getCurrentUser();
   const adConfig = TRUSTED_AD_CONFIG[adId];
-
-  if (!adConfig) {
-    throw new Error("Invalid ad ID or ad not found.");
-  }
+  if (!adConfig) throw new Error("Invalid ad ID or ad not found.");
   
-  const { reward, title } = adConfig;
+  const settings = await getPlatformSettings();
+  const reward = Math.round(adConfig.reward * settings.globalAdRewardMultiplier);
+  const { title } = adConfig;
   
   const userRef = doc(db, 'users', user.uid);
 
   const docSnap = await getDoc(userRef);
-  if (!docSnap.exists()) {
-    throw new Error("User profile not found, cannot claim reward.");
-  }
+  if (!docSnap.exists()) throw new Error("User profile not found, cannot claim reward.");
 
   const batch = writeBatch(db);
   const now = new Date();
@@ -262,23 +262,21 @@ export async function claimAdReward(adId: string): Promise<void> {
   });
 
   const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
-  const newActivity: Omit<Activity, 'id'> = {
+  batch.set(activityRef, {
     type: 'Ad Watch',
     description: `Watched '${title}' ad`,
     cubes_earned: reward,
     date: now,
-  };
-  batch.set(activityRef, newActivity);
+  });
 
   const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
-  const newTransaction: Omit<Transaction, 'id'> = {
+  batch.set(transactionRef, {
       type: 'reward',
       description: `Watched '${title}' ad`,
       amount: reward,
       date: now,
       status: 'completed',
-  };
-  batch.set(transactionRef, newTransaction);
+  });
   
   _createNotification(batch, user.uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`);
 
@@ -287,16 +285,11 @@ export async function claimAdReward(adId: string): Promise<void> {
 
 const calculateGameReward = (gameId: string, scorePayload: number): number => {
     switch (gameId) {
-        case 'g1': case 'g2': case 'g7':
-            return scorePayload;
-        case 'g3': case 'g8': case 'g9': case 'g10':
-            return Math.max(5, 50 - scorePayload);
-        case 'g4':
-            return Math.max(5, 40 - scorePayload);
-        case 'g5': case 'g6':
-            return Math.max(1, 30 - Math.floor(scorePayload / 100));
-        default:
-            return 0;
+        case 'g1': case 'g2': case 'g7': return scorePayload;
+        case 'g3': case 'g8': case 'g9': case 'g10': return Math.max(5, 50 - scorePayload);
+        case 'g4': return Math.max(5, 40 - scorePayload);
+        case 'g5': case 'g6': return Math.max(1, 30 - Math.floor(scorePayload / 100));
+        default: return 0;
     }
 };
 
@@ -311,10 +304,12 @@ const getGameTitle = (gameId: string): string => {
 
 export async function claimGameReward(gameId: string, scorePayload: number): Promise<number> {
   const user = getCurrentUser();
-  const reward = calculateGameReward(gameId, scorePayload);
+  const settings = await getPlatformSettings();
+  const baseReward = calculateGameReward(gameId, scorePayload);
+  const finalReward = Math.round(baseReward * settings.globalGameRewardMultiplier);
   const gameTitle = getGameTitle(gameId);
 
-  if (reward <= 0) return 0;
+  if (finalReward <= 0) return 0;
   
   const userRef = doc(db, 'users', user.uid);
   const docSnap = await getDoc(userRef);
@@ -324,15 +319,15 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   const now = new Date();
 
   batch.update(userRef, {
-    cubeBalance: increment(reward),
-    totalEarned: increment(reward),
+    cubeBalance: increment(finalReward),
+    totalEarned: increment(finalReward),
   });
 
   const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
   batch.set(activityRef, {
     type: 'Game Play',
     description: `Played '${gameTitle}'`,
-    cubes_earned: reward,
+    cubes_earned: finalReward,
     date: now,
   });
 
@@ -340,16 +335,15 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   batch.set(transactionRef, {
     type: 'reward',
     description: `Reward from '${gameTitle}'`,
-    amount: reward,
+    amount: finalReward,
     date: now,
     status: 'completed',
   });
 
-  _createNotification(batch, user.uid, "Game Reward!", `You earned ${reward} Cubes for playing '${gameTitle}'.`);
+  _createNotification(batch, user.uid, "Game Reward!", `You earned ${finalReward} Cubes for playing '${gameTitle}'.`);
   await batch.commit();
-  return reward;
+  return finalReward;
 }
-
 
 export async function claimDailyReward(): Promise<{ success: boolean; message: string }> {
   const user = getCurrentUser();
@@ -429,20 +423,25 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
         const recipientDoc = recipientQuerySnapshot.docs[0];
         if (sender.uid === recipientDoc.id) return { success: false, message: "You cannot send cubes to yourself." };
 
+        const settings = await getPlatformSettings();
+        const feePercentage = settings.transferFeePercentage || 0;
+        const feeAmount = Math.ceil(amount * (feePercentage / 100));
+        const totalDeduction = amount + feeAmount;
+
         await runTransaction(db, async (transaction) => {
             const senderRef = doc(db, 'users', sender.uid);
             const senderDoc = await transaction.get(senderRef);
             if (!senderDoc.exists()) throw new Error("Your user profile could not be found.");
             
             const senderData = senderDoc.data() as UserProfile;
-            if (senderData.cubeBalance < amount) throw new Error("Insufficient cube balance.");
+            if (senderData.cubeBalance < totalDeduction) throw new Error(`Insufficient balance. You need ${totalDeduction.toLocaleString()} Cubes (including a ${feeAmount.toLocaleString()} Cube fee).`);
 
             const now = new Date();
-            transaction.update(senderRef, { cubeBalance: increment(-amount) });
+            transaction.update(senderRef, { cubeBalance: increment(-totalDeduction) });
             transaction.update(recipientDoc.ref, { cubeBalance: increment(amount) });
 
             const senderTransactionRef = doc(collection(db, 'users', sender.uid, 'transactions'));
-            transaction.set(senderTransactionRef, { type: 'withdrawal', description: `Sent to ${recipientDoc.data().displayName}`, amount: -amount, date: now, status: 'completed' });
+            transaction.set(senderTransactionRef, { type: 'withdrawal', description: `Sent to ${recipientDoc.data().displayName}`, amount: -totalDeduction, date: now, status: 'completed' });
             
             const recipientTransactionRef = doc(collection(db, 'users', recipientDoc.id, 'transactions'));
             transaction.set(recipientTransactionRef, { type: 'deposit', description: `Received from ${senderData.displayName}`, amount: amount, date: now, status: 'completed' });
@@ -478,17 +477,22 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     const defaultSettings: PlatformSettings = {
         id: 'config',
         allowNewRegistrations: true,
-        requireEmailVerification: true,
         welcomeBonus: 50,
         globalAdRewardMultiplier: 1.0,
         globalGameRewardMultiplier: 1.0,
         maintenanceMode: false,
+        transferFeePercentage: 1,
+        globalPopup: {
+          enabled: false,
+          title: "Welcome!",
+          message: "Welcome to Adsener. We are happy to have you here."
+        }
     };
     await setDoc(settingsRef, defaultSettings);
     return defaultSettings;
 }
 
-export async function updatePlatformSettings(settings: Partial<Omit<PlatformSettings, 'id'>>): Promise<void> {
+export async function updatePlatformSettings(settings: Partial<PlatformSettings>): Promise<void> {
     const settingsRef = doc(db, 'platform_settings', 'config');
     await updateDoc(settingsRef, settings);
 }

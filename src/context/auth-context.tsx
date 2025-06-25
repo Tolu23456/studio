@@ -5,8 +5,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
-import type { UserProfile, Notification } from '@/lib/types';
-import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit } from 'firebase/firestore';
+import type { UserProfile, Notification, PlatformSettings } from '@/lib/types';
+import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit, getDoc } from 'firebase/firestore';
 import { generateAdsenerId } from '@/services/user-data';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,6 +15,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   loading: boolean;
   notifications: Notification[];
+  platformSettings: PlatformSettings | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -22,12 +23,14 @@ const AuthContext = createContext<AuthContextType>({
   userProfile: null,
   loading: true,
   notifications: [],
+  platformSettings: null,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -38,17 +41,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     let profileUnsubscribe: (() => void) | undefined;
+    let settingsUnsubscribe: (() => void) | undefined;
 
     const authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (profileUnsubscribe) {
-        profileUnsubscribe();
-      }
+      if (profileUnsubscribe) profileUnsubscribe();
+      if (settingsUnsubscribe) settingsUnsubscribe();
 
       setUser(currentUser);
       
       if (currentUser) {
+        // Subscribe to user profile
         const userRef = doc(db, 'users', currentUser.uid);
-        
         profileUnsubscribe = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
@@ -86,21 +89,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           setLoading(false);
         }, (error) => {
-          console.error("Firestore snapshot error:", error);
+          console.error("Firestore snapshot error (profile):", error);
           setUserProfile(null);
           setLoading(false);
         });
+
+        // Fetch platform settings once
+        const settingsRef = doc(db, 'platform_settings', 'config');
+        settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setPlatformSettings(docSnap.data() as PlatformSettings);
+          }
+        }, (error) => {
+           console.error("Firestore snapshot error (settings):", error);
+        });
+
       } else {
         setUserProfile(null);
+        setPlatformSettings(null);
         setLoading(false);
       }
     });
 
     return () => {
       authUnsubscribe();
-      if (profileUnsubscribe) {
-        profileUnsubscribe();
-      }
+      if (profileUnsubscribe) profileUnsubscribe();
+      if (settingsUnsubscribe) settingsUnsubscribe();
     };
   }, []);
 
@@ -146,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [user, toast]);
 
-  const value = { user, userProfile, loading, notifications };
+  const value = { user, userProfile, loading, notifications, platformSettings };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
