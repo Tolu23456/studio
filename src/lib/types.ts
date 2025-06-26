@@ -16,6 +16,8 @@ export type UserProfile = {
   isAdmin?: boolean;
   disableCount: number;
   showReenableWarning?: boolean;
+  adResetTimestamp?: Date | null;
+  claimedAdIds?: string[];
 };
 
 export type Transaction = {

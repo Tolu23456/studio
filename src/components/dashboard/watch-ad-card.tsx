@@ -117,11 +117,11 @@ export function WatchAdCard({ ad, onAdClaimed }: WatchAdCardProps) {
             title: "Reward Claimed!",
             description: `You've earned ${ad.reward} Cubes.`,
         });
-        localStorage.setItem(`ad_claimed_${ad.id}`, 'true');
+        localStorage.removeItem(`ad_watched_${ad.id}`); // Clean up client-side watched status
         onAdClaimed(ad.id);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to claim reward", error);
-        toast({ variant: "destructive", title: "Claiming failed", description: "Could not claim your reward. Please try again." });
+        toast({ variant: "destructive", title: "Claiming failed", description: error.message || "Could not claim your reward. Please try again." });
     } finally {
         setIsClaiming(false);
     }

@@ -52,10 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           loginStreak: data.loginStreak || 0,
           lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
           createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
-          isAdmin: data.isAdmin || false,
           status: data.status || 'Active',
+          isAdmin: data.isAdmin || false,
           disableCount: data.disableCount || 0,
           showReenableWarning: data.showReenableWarning || false,
+          adResetTimestamp: data.adResetTimestamp ? (data.adResetTimestamp as Timestamp).toDate() : null,
+          claimedAdIds: data.claimedAdIds || [],
         };
         setUserProfile(profile);
     }
@@ -153,6 +155,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               status: data.status || 'Active',
               disableCount: data.disableCount || 0,
               showReenableWarning: data.showReenableWarning || false,
+              adResetTimestamp: data.adResetTimestamp ? (data.adResetTimestamp as Timestamp).toDate() : null,
+              claimedAdIds: data.claimedAdIds || [],
             };
             setUserProfile(profile);
           } else {

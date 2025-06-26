@@ -8,18 +8,35 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Film } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAds } from "@/services/user-data";
+import { useAuth } from "@/context/auth-context";
+import { isToday, startOfDay } from 'date-fns';
 
 export default function WatchAdsPage() {
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
+  const { userProfile } = useAuth(); // Get userProfile from context
 
   useEffect(() => {
     async function fetchAndFilterAds() {
       setLoading(true);
       try {
         const allAds = await getAds();
-        // This is safe because it only runs on the client after hydration
-        const unclaimedAds = allAds.filter(ad => ad.isEnabled && !localStorage.getItem(`ad_claimed_${ad.id}`));
+        
+        let availableAds = allAds.filter(ad => ad.isEnabled);
+
+        // Filter out ads that have been claimed today using server-verified data
+        if (userProfile?.claimedAdIds && userProfile.adResetTimestamp) {
+          const adResetDate = startOfDay(userProfile.adResetTimestamp);
+          if (isToday(adResetDate)) {
+            const claimedIds = userProfile.claimedAdIds;
+            availableAds = availableAds.filter(ad => !claimedIds.includes(ad.id));
+          }
+        }
+        
+        // This client-side check is a UX enhancement to hide ads that are being watched but not yet claimed
+        // across browser tabs/sessions. The source of truth is the Firestore check on claim.
+        const unclaimedAds = availableAds.filter(ad => !localStorage.getItem(`ad_watched_${ad.id}`));
+        
         setAds(unclaimedAds);
       } catch (error) {
         console.error("Failed to fetch ads:", error);
@@ -27,8 +44,15 @@ export default function WatchAdsPage() {
         setLoading(false);
       }
     }
-    fetchAndFilterAds();
-  }, []);
+    
+    // Only run when userProfile is loaded to ensure we have claim data
+    if (userProfile) {
+      fetchAndFilterAds();
+    } else if (!userProfile && !loading) {
+      // Handle case where user is logged out but auth isn't loading
+      setLoading(false);
+    }
+  }, [userProfile, loading]);
 
   const handleAdClaimed = (adId: string) => {
     setAds(prevAds => prevAds.filter(ad => ad.id !== adId));

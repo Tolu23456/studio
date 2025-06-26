@@ -4,7 +4,7 @@
 import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, SupportTicket } from '@/lib/types';
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup, serverTimestamp } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import { isYesterday, startOfDay } from 'date-fns';
+import { isYesterday, startOfDay, isToday } from 'date-fns';
 import { db, auth, storage } from '@/lib/firebase';
 
 const getCurrentUser = (): User => {
@@ -120,6 +120,8 @@ export async function createUserProfile(user: User, displayName: string, referra
         lastClaimedDate: null,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
         disableCount: 0,
+        claimedAdIds: [],
+        adResetTimestamp: null,
     };
     batch.set(userRef, { 
         uid: user.uid, 
@@ -178,6 +180,8 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
             isAdmin: data.isAdmin || false,
             disableCount: data.disableCount || 0,
             showReenableWarning: data.showReenableWarning || false,
+            adResetTimestamp: data.adResetTimestamp ? (data.adResetTimestamp as Timestamp).toDate() : null,
+            claimedAdIds: data.claimedAdIds || [],
         };
     }
     return null;
@@ -238,60 +242,115 @@ export async function createSimpleNotification(title: string, description: strin
 
 export async function claimAdReward(adId: string): Promise<void> {
   const user = getCurrentUser();
-  const adRef = doc(db, 'ads', adId);
-  const adSnap = await getDoc(adRef);
-  if (!adSnap.exists()) throw new Error("Invalid ad ID or ad not found.");
-  const adData = adSnap.data() as Ad;
-  
-  const settings = await getPlatformSettings();
-  const reward = Math.round(adData.reward * settings.globalAdRewardMultiplier);
-  const { title } = adData;
-  
   const userRef = doc(db, 'users', user.uid);
+  const adRef = doc(db, 'ads', adId);
 
-  const docSnap = await getDoc(userRef);
-  if (!docSnap.exists()) throw new Error("User profile not found, cannot claim reward.");
+  try {
+    await runTransaction(db, async (transaction) => {
+      const userDoc = await transaction.get(userRef);
+      const adDoc = await transaction.get(adRef);
+      const settingsDoc = await getPlatformSettings(); // This is not transactional but ok for settings
 
-  const batch = writeBatch(db);
-  const now = new Date();
+      if (!userDoc.exists()) throw new Error("User profile not found.");
+      if (!adDoc.exists()) throw new Error("Ad not found.");
+      
+      const userProfile = userDoc.data() as UserProfile;
+      const adData = adDoc.data() as Ad;
+      
+      const today = startOfDay(new Date());
+      const adResetDate = userProfile.adResetTimestamp ? startOfDay((userProfile.adResetTimestamp as any).toDate()) : null;
 
-  batch.update(userRef, {
-    cubeBalance: increment(reward),
-    totalEarned: increment(reward),
-  });
+      let claimedIds = userProfile.claimedAdIds || [];
 
-  const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
-  batch.set(activityRef, {
-    type: 'Ad Watch',
-    description: `Watched '${title}' ad`,
-    cubes_earned: reward,
-    date: now,
-  });
+      if (!adResetDate || !isToday(adResetDate)) {
+        // It's a new day, reset the claims
+        claimedIds = [];
+      }
 
-  const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
-  batch.set(transactionRef, {
-      type: 'reward',
-      description: `Watched '${title}' ad`,
-      amount: reward,
-      date: now,
-      status: 'completed',
-  });
-  
-  _createNotificationInBatch(batch, user.uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`);
+      if (claimedIds.includes(adId)) {
+        throw new Error("Ad already claimed today. Please try again tomorrow.");
+      }
 
-  await batch.commit();
+      // If we're here, the claim is valid.
+      const reward = Math.round(adData.reward * settingsDoc.globalAdRewardMultiplier);
+      const { title } = adData;
+      const now = new Date();
+      
+      const newClaimedIds = [...claimedIds, adId];
+
+      transaction.update(userRef, {
+        cubeBalance: increment(reward),
+        totalEarned: increment(reward),
+        claimedAdIds: newClaimedIds,
+        adResetTimestamp: now,
+      });
+
+      const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
+      transaction.set(activityRef, {
+        type: 'Ad Watch',
+        description: `Watched '${title}' ad`,
+        cubes_earned: reward,
+        date: now,
+      });
+
+      const transactionLogRef = doc(collection(db, 'users', user.uid, 'transactions'));
+      transaction.set(transactionLogRef, {
+          type: 'reward',
+          description: `Watched '${title}' ad`,
+          amount: reward,
+          date: now,
+          status: 'completed',
+      });
+      
+      const notificationRef = doc(collection(db, 'users', user.uid, 'notifications'));
+      transaction.set(notificationRef, {
+          title: "Reward Claimed!",
+          description: `You earned ${reward} Cubes for watching '${title}'.`,
+          date: now,
+          read: false,
+      });
+    });
+  } catch (error) {
+    console.error("Failed to claim ad reward in transaction:", error);
+    // Re-throw the error so the calling component can handle it (e.g., show a toast)
+    throw error;
+  }
 }
 
 const calculateGameReward = (gameId: string, scorePayload: number): number => {
-    // This logic can be customized per game
+    // This function provides basic anti-cheat by capping rewards and sanity-checking scores.
+    // A cheater can still submit a "good" but not "perfect" score.
+    // In a real-world app, this logic would be more complex and possibly obfuscated.
+    
+    // Default high score for a game if no specific logic found.
+    const GENERIC_MAX_REWARD = 25;
+
     switch (gameId) {
-        // Higher score is better
-        case 'g1': case 'g2': case 'g7': return scorePayload; 
-        // Lower score (moves/time) is better
-        case 'g3': case 'g8': case 'g9': case 'g10': return Math.max(5, 50 - scorePayload);
-        case 'g4': return Math.max(5, 40 - scorePayload); 
-        case 'g5': case 'g6': return Math.max(1, 30 - Math.floor(scorePayload / 100));
-        default: return 0;
+        // Cube Runner games: Higher score is better. Cap reward.
+        case 'g1': case 'g2': case 'g7':
+            // Cap score to prevent ridiculously high submissions.
+            const cappedScore = Math.min(scorePayload, 150);
+            return Math.round(cappedScore / 2); // e.g., max reward of 75
+
+        // Puzzle / Memory games: Lower moves are better.
+        case 'g3': case 'g8': case 'g9': case 'g10': // Puzzle Box
+            if (scorePayload < 1) return 0; // Impossible score
+            return Math.max(0, 50 - scorePayload); // Reward diminishes with more moves
+        
+        case 'g4': // Memory Match
+            if (scorePayload < 6) return 0; // Impossible score for a 12-card game
+            return Math.max(0, 40 - scorePayload);
+
+        // Reaction Time games: Lower time is better.
+        case 'g5': case 'g6':
+            if (scorePayload < 100) return 0; // Impossible reaction time
+            // Reward for being under 500ms
+            if (scorePayload > 800) return 5; // Participation reward
+            return Math.max(0, 35 - Math.floor(scorePayload / 20));
+
+        default:
+             // A generic reward for any other game, prevents giving huge rewards for unknown game IDs.
+             return Math.max(0, Math.min(scorePayload, GENERIC_MAX_REWARD));
     }
 };
 
@@ -617,10 +676,10 @@ export async function deleteGame(id: string): Promise<void> { await deleteDoc(do
 // Ad Management
 const seedAds = async () => {
     const ads: Omit<Ad, 'id'>[] = [
-        { title: "Explore the New TechGadget Pro", description: "Watch a short video about the latest innovation in personal tech.", duration: 30, reward: 15, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "tech gadget", isEnabled: true },
-        { title: "Quick & Healthy Snack Ideas", description: "Discover delicious and easy-to-make snacks for your busy lifestyle.", duration: 25, reward: 12, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "healthy food", isEnabled: true },
-        { title: "Adventure Awaits: Travel Deals", description: "Get inspired for your next vacation with these amazing travel packages.", duration: 45, reward: 20, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "travel vacation", isEnabled: true },
-        { title: "Mobile Gaming Madness", description: "Check out the hottest new mobile game that's taking the world by storm.", duration: 15, reward: 8, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "mobile game", isEnabled: true },
+        { title: "Explore the New TechGadget Pro", description: "Watch a short video about the latest innovation in personal tech.", duration: 30, reward: 15, imageUrl: "https://i.postimg.cc/zBtwMM3X/A-4.png", dataAiHint: "tech gadget", isEnabled: true },
+        { title: "Quick & Healthy Snack Ideas", description: "Discover delicious and easy-to-make snacks for your busy lifestyle.", duration: 25, reward: 12, imageUrl: "https://i.postimg.cc/zBtwMM3X/A-4.png", dataAiHint: "healthy food", isEnabled: true },
+        { title: "Adventure Awaits: Travel Deals", description: "Get inspired for your next vacation with these amazing travel packages.", duration: 45, reward: 20, imageUrl: "https://i.postimg.cc/zBtwMM3X/A-4.png", dataAiHint: "travel vacation", isEnabled: true },
+        { title: "Mobile Gaming Madness", description: "Check out the hottest new mobile game that's taking the world by storm.", duration: 15, reward: 8, imageUrl: "https://i.postimg.cc/zBtwMM3X/A-4.png", dataAiHint: "mobile game", isEnabled: true },
     ];
     const batch = writeBatch(db);
     ads.forEach(ad => {
