@@ -28,6 +28,17 @@ export function generateAdsenerId(): string {
     return result;
 }
 
+function _createNotificationInBatch(batch: any, uid: string, title: string, description: string) {
+    const notificationRef = doc(collection(db, 'users', uid, 'notifications'));
+    const newNotification: Omit<Notification, 'id'> = {
+        title,
+        description,
+        date: new Date(),
+        read: false,
+    };
+    batch.set(notificationRef, newNotification);
+}
+
 export async function createUserProfile(user: User, displayName: string, referralCode?: string): Promise<void> {
     const batch = writeBatch(db);
     const userRef = doc(db, 'users', user.uid);
@@ -80,7 +91,7 @@ export async function createUserProfile(user: User, displayName: string, referra
                     });
                     
                     // Add notification for referrer
-                    _createNotification(batch, referrerDoc.id, "Referral Success!", `You earned ${referrerReward} Cubes for referring ${displayName}!`);
+                    _createNotificationInBatch(batch, referrerDoc.id, "Referral Success!", `You earned ${referrerReward} Cubes for referring ${displayName}!`);
 
                     // Add the new user to the referrer's 'referredUsers' subcollection
                     const referredUserDocRef = doc(db, 'users', referrerDoc.id, 'referredUsers', user.uid);
@@ -139,7 +150,7 @@ export async function createUserProfile(user: User, displayName: string, referra
         });
         
         // Add notification for new user
-        _createNotification(batch, user.uid, "Welcome Bonus!", `You received ${startingBalance} Cubes for using a referral code!`);
+        _createNotificationInBatch(batch, user.uid, "Welcome Bonus!", `You received ${startingBalance} Cubes for using a referral code!`);
     }
 
     await batch.commit();
@@ -213,18 +224,6 @@ export async function updateCurrentUserProfile(data: { displayName?: string; pho
     }
 }
 
-
-function _createNotification(batch: any, uid: string, title: string, description: string) {
-    const notificationRef = doc(collection(db, 'users', uid, 'notifications'));
-    const newNotification: Omit<Notification, 'id'> = {
-        title,
-        description,
-        date: new Date(),
-        read: false,
-    };
-    batch.set(notificationRef, newNotification);
-}
-
 export async function createSimpleNotification(title: string, description: string): Promise<void> {
     const user = getCurrentUser();
     const notificationRef = doc(collection(db, 'users', user.uid, 'notifications'));
@@ -236,13 +235,6 @@ export async function createSimpleNotification(title: string, description: strin
     };
     await setDoc(notificationRef, newNotification);
 }
-
-const TRUSTED_AD_CONFIG: { [key: string]: { reward: number; title: string } } = {
-  "1": { reward: 15, title: "Explore the New TechGadget Pro" },
-  "2": { reward: 12, title: "Quick & Healthy Snack Ideas" },
-  "3": { reward: 20, title: "Adventure Awaits: Travel Deals" },
-  "4": { reward: 8, title: "Mobile Gaming Madness" },
-};
 
 export async function claimAdReward(adId: string): Promise<void> {
   const user = getCurrentUser();
@@ -285,7 +277,7 @@ export async function claimAdReward(adId: string): Promise<void> {
       status: 'completed',
   });
   
-  _createNotification(batch, user.uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`);
+  _createNotificationInBatch(batch, user.uid, "Reward Claimed!", `You earned ${reward} Cubes for watching '${title}'.`);
 
   await batch.commit();
 }
@@ -301,10 +293,6 @@ const calculateGameReward = (gameId: string, scorePayload: number): number => {
         case 'g5': case 'g6': return Math.max(1, 30 - Math.floor(scorePayload / 100));
         default: return 0;
     }
-};
-
-const getGameTitle = (gameId: string, games: Game[]): string => {
-    return games.find(g => g.id === gameId)?.title || 'a game';
 };
 
 export async function claimGameReward(gameId: string, scorePayload: number): Promise<number> {
@@ -349,7 +337,7 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
     status: 'completed',
   });
 
-  _createNotification(batch, user.uid, "Game Reward!", `You earned ${finalReward} Cubes for playing '${gameTitle}'.`);
+  _createNotificationInBatch(batch, user.uid, "Game Reward!", `You earned ${finalReward} Cubes for playing '${gameTitle}'.`);
   await batch.commit();
   return finalReward;
 }
@@ -397,7 +385,7 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
     status: 'completed',
   });
   
-  _createNotification(batch, user.uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`);
+  _createNotificationInBatch(batch, user.uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`);
   await batch.commit();
   return { success: true, message: `You earned ${reward} Cubes!` };
 }
@@ -451,39 +439,42 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
         const feePercentage = settings.transferFeePercentage || 0;
         const feeAmount = Math.ceil(amount * (feePercentage / 100));
         const totalDeduction = amount + feeAmount;
-        let senderData: UserProfile;
 
         await runTransaction(db, async (transaction) => {
             const senderRef = doc(db, 'users', sender.uid);
             const senderDoc = await transaction.get(senderRef);
             if (!senderDoc.exists()) throw new Error("Your user profile could not be found.");
             
-            senderData = senderDoc.data() as UserProfile;
+            const senderData = senderDoc.data() as UserProfile;
             if (senderData.cubeBalance < totalDeduction) throw new Error(`Insufficient balance. You need ${totalDeduction.toLocaleString()} Cubes (including a ${feeAmount.toLocaleString()} Cube fee).`);
 
             const now = new Date();
+            
+            // 1. Update sender and recipient balances
             transaction.update(senderRef, { cubeBalance: increment(-totalDeduction) });
             transaction.update(recipientDoc.ref, { cubeBalance: increment(amount) });
             
+            // 2. Update platform fee collection
             if (feeAmount > 0) {
                 const settingsRef = doc(db, 'platform_settings', 'config');
                 transaction.update(settingsRef, { totalFeesCollected: increment(feeAmount) });
             }
 
+            // 3. Create transaction logs for both users
             const senderTransactionRef = doc(collection(db, 'users', sender.uid, 'transactions'));
             transaction.set(senderTransactionRef, { type: 'withdrawal', description: `Sent to ${recipientDoc.data().displayName}`, amount: -totalDeduction, date: now, status: 'completed' });
             
             const recipientTransactionRef = doc(collection(db, 'users', recipientDoc.id, 'transactions'));
             transaction.set(recipientTransactionRef, { type: 'deposit', description: `Received from ${senderData.displayName}`, amount: amount, date: now, status: 'completed' });
             
-            const batch = writeBatch(db);
-             _createNotification(
-                batch,
-                recipientDoc.id,
-                'Cubes Received!',
-                `You have received ${amount.toLocaleString()} Cubes from ${senderData.displayName}.`
-            );
-            await batch.commit();
+            // 4. Create notification for recipient
+            const recipientNotificationRef = doc(collection(db, 'users', recipientDoc.id, 'notifications'));
+            transaction.set(recipientNotificationRef, {
+                title: 'Cubes Received!',
+                description: `You have received ${amount.toLocaleString()} Cubes from ${senderData.displayName}.`,
+                date: now,
+                read: false,
+            });
         });
         
         // After successful transaction, save beneficiary
@@ -530,9 +521,10 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 
     if (docSnap.exists()) {
         const data = docSnap.data();
+        // Provide a default for totalFeesCollected if it doesn't exist
         return {
-            totalFeesCollected: 0,
-            ...data
+            ...data,
+            totalFeesCollected: data.totalFeesCollected || 0,
         } as PlatformSettings;
     }
 
@@ -593,15 +585,15 @@ export async function sendNotificationToAllUsers(title: string, description: str
 // Game Management
 const seedGames = async () => {
     const games: Omit<Game, 'id'>[] = [
-      { title: "One Tap Dash", description: "Tap once to make a cube dash through rotating obstacles. Timing is everything.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "abstract obstacle", rewardDescription: "Higher score = more Cubes!", isEnabled: true },
-      { title: "Shadow Jump", description: "Jump between moving platforms. One misstep = fall.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "platformer game", rewardDescription: "Longer survival = more Cubes!", isEnabled: true },
-      { title: "Don’t Touch the Red", description: "Navigate through a maze where only one path is safe. Red tiles = restart.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "maze puzzle", rewardDescription: "Faster completion = more Cubes!", isEnabled: true },
-      { title: "Quick Flip", description: "A memory match game that gets faster every round. Flip, match, or fail.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "memory game", rewardDescription: "Fewer moves = more Cubes!", isEnabled: true },
-      { title: "Laser Reflex", description: "Tap only when the green laser appears. Red laser = auto fail.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "reaction test", rewardDescription: "Faster reflex = more Cubes!", isEnabled: true },
+      { id: "g1", title: "One Tap Dash", description: "Tap once to make a cube dash through rotating obstacles. Timing is everything.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "abstract obstacle", rewardDescription: "Higher score = more Cubes!", isEnabled: true },
+      { id: "g2", title: "Shadow Jump", description: "Jump between moving platforms. One misstep = fall.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "platformer game", rewardDescription: "Longer survival = more Cubes!", isEnabled: true },
+      { id: "g3", title: "Don’t Touch the Red", description: "Navigate through a maze where only one path is safe. Red tiles = restart.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "maze puzzle", rewardDescription: "Faster completion = more Cubes!", isEnabled: true },
+      { id: "g4", title: "Quick Flip", description: "A memory match game that gets faster every round. Flip, match, or fail.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "memory game", rewardDescription: "Fewer moves = more Cubes!", isEnabled: true },
+      { id: "g5", title: "Laser Reflex", description: "Tap only when the green laser appears. Red laser = auto fail.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "reaction test", rewardDescription: "Faster reflex = more Cubes!", isEnabled: true },
     ];
     const batch = writeBatch(db);
     games.forEach(game => {
-        const docRef = doc(collection(db, 'games'));
+        const docRef = doc(db, 'games', game.id);
         batch.set(docRef, game);
     });
     await batch.commit();
@@ -703,7 +695,7 @@ export async function updateSupportTicketStatus(ticketId: string, status: 'resol
     });
     
     const ticketData = ticketSnap.data();
-    _createNotification(batch, ticketData.userId, 'Support Ticket Resolved', 'Your recent support ticket has been reviewed and marked as resolved by our team.');
+    _createNotificationInBatch(batch, ticketData.userId, 'Support Ticket Resolved', 'Your recent support ticket has been reviewed and marked as resolved by our team.');
 
     await batch.commit();
 }
