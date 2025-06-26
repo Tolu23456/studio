@@ -469,6 +469,13 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
             
             const recipientTransactionRef = doc(collection(db, 'users', recipientDoc.id, 'transactions'));
             transaction.set(recipientTransactionRef, { type: 'deposit', description: `Received from ${senderData.displayName}`, amount: amount, date: now, status: 'completed' });
+            
+            _createNotification(
+                transaction,
+                recipientDoc.id,
+                'Cubes Received!',
+                `You have received ${amount.toLocaleString()} Cubes from ${senderData.displayName}.`
+            );
         });
         
         return { success: true, message: `Successfully sent ${amount.toLocaleString()} cubes.` };
