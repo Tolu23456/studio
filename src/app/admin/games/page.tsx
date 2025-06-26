@@ -55,11 +55,23 @@ const gameSchema = z.object({
     id: z.string().optional(),
     title: z.string().min(1, 'Title is required.'),
     description: z.string().min(1, 'Description is required.'),
-    rewardDescription: z.string().min(1, 'Reward description is required.'),
+    rewardDescription: z.string().optional(),
     imageUrl: z.string().url('Must be a valid URL.'),
     dataAiHint: z.string().optional(),
+    gameUrl: z.string().url({ message: 'Please enter a valid URL.' }).or(z.literal("")).optional(),
     isEnabled: z.boolean(),
+}).refine(data => {
+    // If it's a built-in game (no URL), reward description is required.
+    if (!data.gameUrl) {
+        return !!data.rewardDescription && data.rewardDescription.length > 0;
+    }
+    // If it's an embedded game, reward description is not required.
+    return true;
+}, {
+    message: "Reward description is required for built-in games.",
+    path: ["rewardDescription"],
 });
+
 
 type GameFormData = z.infer<typeof gameSchema>;
 
@@ -81,9 +93,12 @@ export default function AdminGamesPage() {
             rewardDescription: '',
             imageUrl: '',
             dataAiHint: '',
+            gameUrl: '',
             isEnabled: true,
         },
     });
+
+    const gameUrlValue = form.watch('gameUrl');
 
     const fetchGames = React.useCallback(async () => {
         try {
@@ -109,7 +124,7 @@ export default function AdminGamesPage() {
             form.reset(game);
         } else {
             form.reset({
-                title: '', description: '', rewardDescription: '', imageUrl: '', dataAiHint: '', isEnabled: true
+                title: '', description: '', rewardDescription: '', imageUrl: '', gameUrl: '', dataAiHint: '', isEnabled: true
             });
         }
         setIsDialogOpen(true);
@@ -123,11 +138,17 @@ export default function AdminGamesPage() {
     const onSubmit = async (data: GameFormData) => {
         setIsSaving(true);
         try {
+            const submissionData = { ...data };
+            if (submissionData.gameUrl) {
+                // Ensure rewardDescription is not sent for embedded games
+                delete submissionData.rewardDescription;
+            }
+
             if (selectedGame?.id) {
-                await updateGame(selectedGame.id, data);
+                await updateGame(selectedGame.id, submissionData);
                 toast({ title: 'Game Updated', description: `'${data.title}' has been updated.` });
             } else {
-                await addGame(data);
+                await addGame(submissionData);
                 toast({ title: 'Game Added', description: `'${data.title}' has been added.` });
             }
             await fetchGames();
@@ -192,7 +213,7 @@ export default function AdminGamesPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Title</TableHead>
-                                    <TableHead>Description</TableHead>
+                                    <TableHead>Type</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -201,7 +222,11 @@ export default function AdminGamesPage() {
                                 {games.map((game) => (
                                     <TableRow key={game.id}>
                                         <TableCell className="font-medium">{game.title}</TableCell>
-                                        <TableCell>{game.description}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={game.gameUrl ? 'outline' : 'secondary'}>
+                                                {game.gameUrl ? 'External' : 'Built-in'}
+                                            </Badge>
+                                        </TableCell>
                                         <TableCell>
                                             <Badge variant={game.isEnabled ? 'default' : 'secondary'}>
                                                 {game.isEnabled ? 'Enabled' : 'Disabled'}
@@ -228,7 +253,7 @@ export default function AdminGamesPage() {
                     <DialogHeader>
                         <DialogTitle>{selectedGame ? 'Edit Game' : 'Add New Game'}</DialogTitle>
                         <DialogDescription>
-                            Fill in the details for the game below. The Game ID cannot be changed after creation.
+                            Fill in the details for the game below.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1 pr-4">
@@ -242,11 +267,22 @@ export default function AdminGamesPage() {
                             <Textarea id="description" {...form.register('description')} />
                             {form.formState.errors.description && <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>}
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="rewardDescription">Reward Description</Label>
-                            <Input id="rewardDescription" placeholder="e.g. Higher score = more Cubes!" {...form.register('rewardDescription')} />
-                            {form.formState.errors.rewardDescription && <p className="text-sm text-destructive">{form.formState.errors.rewardDescription.message}</p>}
+
+                         <div className="space-y-2">
+                            <Label htmlFor="gameUrl">Game URL (Optional)</Label>
+                            <Input id="gameUrl" placeholder="https://example.com/my-game" {...form.register('gameUrl')} />
+                             <p className="text-xs text-muted-foreground">Provide a URL for an external game. Leave blank for built-in games. Rewards for external games are not automatic.</p>
+                            {form.formState.errors.gameUrl && <p className="text-sm text-destructive">{form.formState.errors.gameUrl.message}</p>}
                         </div>
+                        
+                        {!gameUrlValue && (
+                            <div className="space-y-2">
+                                <Label htmlFor="rewardDescription">Reward Description</Label>
+                                <Input id="rewardDescription" placeholder="e.g. Higher score = more Cubes!" {...form.register('rewardDescription')} />
+                                {form.formState.errors.rewardDescription && <p className="text-sm text-destructive">{form.formState.errors.rewardDescription.message}</p>}
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <Label htmlFor="imageUrl">Image URL</Label>
                             <Input id="imageUrl" placeholder="https://placehold.co/600x400.png" {...form.register('imageUrl')} />

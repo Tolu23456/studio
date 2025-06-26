@@ -56,6 +56,7 @@ export type Game = {
   dataAiHint?: string;
   rewardDescription?: string;
   isEnabled: boolean;
+  gameUrl?: string;
 };
 
 export type Notification = {
