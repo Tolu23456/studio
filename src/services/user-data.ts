@@ -645,7 +645,7 @@ export async function sendNotificationToAllUsers(title: string, description: str
 
 // Game Management
 const seedGames = async () => {
-    const games: Omit<Game, 'id' | 'isEnabled'>[] = [
+    const games: (Omit<Game, 'isEnabled'>)[] = [
       { id: "g1", title: "Cube Runner", description: "Dodge obstacles and collect valuable cubes in this fast-paced runner.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "runner game", rewardDescription: "Score is based on cubes collected." },
       { id: "g2", title: "Memory Match", description: "Test your memory by flipping cards and finding matching pairs.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "memory game", rewardDescription: "Score is based on fewer moves." },
       { id: "g3", title: "Puzzle Box", description: "Solve the light puzzle by turning all lights on or off. A true brain teaser!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "puzzle box", rewardDescription: "Score is based on fewer moves." },
