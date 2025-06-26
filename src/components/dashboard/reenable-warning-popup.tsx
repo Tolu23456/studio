@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -14,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { clearReenableWarning } from '@/services/user-data';
-import { Loader2, ShieldWarning } from 'lucide-react';
+import { Loader2, ShieldAlert } from 'lucide-react';
 
 export function ReenableWarningPopup() {
   const { userProfile, refreshUserProfile } = useAuth();
@@ -58,7 +57,7 @@ export function ReenableWarningPopup() {
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleAcknowledge()}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className='items-center text-center'>
-          <ShieldWarning className="h-12 w-12 text-destructive mb-2" />
+          <ShieldAlert className="h-12 w-12 text-destructive mb-2" />
           <DialogTitle>Account Re-enabled: Official Warning</DialogTitle>
           <DialogDescription>
             Your account access has been restored. Please review the following information carefully.
