@@ -1,8 +1,8 @@
 
 'use client';
 
-import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy } from 'firebase/firestore';
+import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad } from '@/lib/types';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay } from 'date-fns';
@@ -241,12 +241,14 @@ const TRUSTED_AD_CONFIG: { [key: string]: { reward: number; title: string } } = 
 
 export async function claimAdReward(adId: string): Promise<void> {
   const user = getCurrentUser();
-  const adConfig = TRUSTED_AD_CONFIG[adId];
-  if (!adConfig) throw new Error("Invalid ad ID or ad not found.");
+  const adRef = doc(db, 'ads', adId);
+  const adSnap = await getDoc(adRef);
+  if (!adSnap.exists()) throw new Error("Invalid ad ID or ad not found.");
+  const adData = adSnap.data() as Ad;
   
   const settings = await getPlatformSettings();
-  const reward = Math.round(adConfig.reward * settings.globalAdRewardMultiplier);
-  const { title } = adConfig;
+  const reward = Math.round(adData.reward * settings.globalAdRewardMultiplier);
+  const { title } = adData;
   
   const userRef = doc(db, 'users', user.uid);
 
@@ -284,22 +286,20 @@ export async function claimAdReward(adId: string): Promise<void> {
 }
 
 const calculateGameReward = (gameId: string, scorePayload: number): number => {
+    // This logic can be customized per game
     switch (gameId) {
-        case 'g1': case 'g2': case 'g7': return scorePayload;
+        // Higher score is better
+        case 'g1': case 'g2': case 'g7': return scorePayload; 
+        // Lower score (moves/time) is better
         case 'g3': case 'g8': case 'g9': case 'g10': return Math.max(5, 50 - scorePayload);
-        case 'g4': return Math.max(5, 40 - scorePayload);
+        case 'g4': return Math.max(5, 40 - scorePayload); 
         case 'g5': case 'g6': return Math.max(1, 30 - Math.floor(scorePayload / 100));
         default: return 0;
     }
 };
 
-const getGameTitle = (gameId: string): string => {
-    const titles: { [key: string]: string } = {
-        'g1': 'One Tap Dash', 'g2': 'Shadow Jump', 'g3': 'Don’t Touch the Red', 'g4': 'Quick Flip',
-        'g5': 'Laser Reflex', 'g6': 'Tiny Tapper', 'g7': 'Stack Tower', 'g8': 'Speed Type',
-        'g9': 'Reverse Swipe', 'g10': 'Tilt Maze',
-    };
-    return titles[gameId] || 'a game';
+const getGameTitle = (gameId: string, games: Game[]): string => {
+    return games.find(g => g.id === gameId)?.title || 'a game';
 };
 
 export async function claimGameReward(gameId: string, scorePayload: number): Promise<number> {
@@ -307,7 +307,11 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   const settings = await getPlatformSettings();
   const baseReward = calculateGameReward(gameId, scorePayload);
   const finalReward = Math.round(baseReward * settings.globalGameRewardMultiplier);
-  const gameTitle = getGameTitle(gameId);
+  
+  const gameRef = doc(db, 'games', gameId);
+  const gameSnap = await getDoc(gameRef);
+  if (!gameSnap.exists()) throw new Error("Game not found.");
+  const gameTitle = gameSnap.data().title || 'a game';
 
   if (finalReward <= 0) return 0;
   
@@ -526,3 +530,66 @@ export async function sendNotificationToAllUsers(title: string, description: str
     }
     return { successCount, errorCount };
 }
+
+// Game Management
+const seedGames = async () => {
+    const games: Omit<Game, 'id'>[] = [
+      { title: "One Tap Dash", description: "Tap once to make a cube dash through rotating obstacles. Timing is everything.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "abstract obstacle", rewardDescription: "Higher score = more Cubes!", isEnabled: true },
+      { title: "Shadow Jump", description: "Jump between moving platforms. One misstep = fall.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "platformer game", rewardDescription: "Longer survival = more Cubes!", isEnabled: true },
+      { title: "Don’t Touch the Red", description: "Navigate through a maze where only one path is safe. Red tiles = restart.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "maze puzzle", rewardDescription: "Faster completion = more Cubes!", isEnabled: true },
+      { title: "Quick Flip", description: "A memory match game that gets faster every round. Flip, match, or fail.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "memory game", rewardDescription: "Fewer moves = more Cubes!", isEnabled: true },
+      { title: "Laser Reflex", description: "Tap only when the green laser appears. Red laser = auto fail.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "reaction test", rewardDescription: "Faster reflex = more Cubes!", isEnabled: true },
+    ];
+    const batch = writeBatch(db);
+    games.forEach(game => {
+        const docRef = doc(collection(db, 'games'));
+        batch.set(docRef, game);
+    });
+    await batch.commit();
+};
+
+export async function getGames(): Promise<Game[]> {
+    const gamesRef = collection(db, 'games');
+    let querySnapshot = await getDocs(gamesRef);
+
+    if (querySnapshot.empty) {
+        await seedGames();
+        querySnapshot = await getDocs(gamesRef);
+    }
+    
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
+}
+export async function addGame(game: Omit<Game, 'id'>): Promise<void> { await addDoc(collection(db, 'games'), game); }
+export async function updateGame(id: string, game: Partial<Game>): Promise<void> { await updateDoc(doc(db, 'games', id), game); }
+export async function deleteGame(id: string): Promise<void> { await deleteDoc(doc(db, 'games', id)); }
+
+// Ad Management
+const seedAds = async () => {
+    const ads: Omit<Ad, 'id'>[] = [
+        { title: "Explore the New TechGadget Pro", description: "Watch a short video about the latest innovation in personal tech.", duration: 30, reward: 15, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "tech gadget", isEnabled: true },
+        { title: "Quick & Healthy Snack Ideas", description: "Discover delicious and easy-to-make snacks for your busy lifestyle.", duration: 25, reward: 12, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "healthy food", isEnabled: true },
+        { title: "Adventure Awaits: Travel Deals", description: "Get inspired for your next vacation with these amazing travel packages.", duration: 45, reward: 20, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "travel vacation", isEnabled: true },
+        { title: "Mobile Gaming Madness", description: "Check out the hottest new mobile game that's taking the world by storm.", duration: 15, reward: 8, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "mobile game", isEnabled: true },
+    ];
+    const batch = writeBatch(db);
+    ads.forEach(ad => {
+        const docRef = doc(collection(db, 'ads'));
+        batch.set(docRef, ad);
+    });
+    await batch.commit();
+};
+
+export async function getAds(): Promise<Ad[]> {
+    const adsRef = collection(db, 'ads');
+    let querySnapshot = await getDocs(adsRef);
+
+    if (querySnapshot.empty) {
+        await seedAds();
+        querySnapshot = await getDocs(adsRef);
+    }
+    
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
+}
+export async function addAd(ad: Omit<Ad, 'id'>): Promise<void> { await addDoc(collection(db, 'ads'), ad); }
+export async function updateAd(id: string, ad: Partial<Ad>): Promise<void> { await updateDoc(doc(db, 'ads', id), ad); }
+export async function deleteAd(id: string): Promise<void> { await deleteDoc(doc(db, 'ads', id)); }

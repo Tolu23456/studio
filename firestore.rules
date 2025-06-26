@@ -4,29 +4,55 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isUserAuthenticated(request) {
+    // Helper functions
+    function isUserAuthenticated() {
       return request.auth != null;
     }
 
-    function isUserAdmin(request) {
-      return isUserAuthenticated(request) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    function isUserProfileOwner(userId) {
+      return request.auth.uid == userId;
     }
 
+    function isUserAdmin() {
+      // Check for the existence of the user document and the isAdmin flag safely
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // User profiles
     match /users/{userId} {
-      allow read, update: if isUserAuthenticated(request) && request.auth.uid == userId;
-      allow create: if isUserAuthenticated(request) && request.auth.uid == userId;
-      allow list, get, update: if isUserAdmin(request);
+      // Admins can read/write any profile
+      // Users can read/write their own profile
+      allow read, write: if isUserAdmin() || isUserProfileOwner(userId);
+
+      // Anyone authenticated can read basic info (for transfers/referrals)
+      allow get: if isUserAuthenticated();
     }
     
-    match /users/{userId}/{document=**} {
-       allow read, write: if isUserAuthenticated(request) && request.auth.uid == userId;
-       allow read, write: if isUserAdmin(request);
+    // User subcollections
+    match /users/{userId}/{subcollection}/{docId} {
+        // Admins can access everything
+        // Users can access their own subcollections
+        allow read, write: if isUserAdmin() || isUserProfileOwner(userId);
     }
     
+    // Platform Settings
     match /platform_settings/{docId} {
-        allow get: if isUserAuthenticated(request);
-        allow write: if isUserAdmin(request);
-        allow list: if isUserAdmin(request);
+        // Anyone authenticated can read settings
+        allow read: if isUserAuthenticated();
+        // Only admins can change settings
+        allow write: if isUserAdmin();
+    }
+
+    // Games and Ads
+    match /games/{gameId} {
+      allow read: if isUserAuthenticated();
+      allow write: if isUserAdmin();
+    }
+
+    match /ads/{adId} {
+      allow read: if isUserAuthenticated();
+      allow write: if isUserAdmin();
     }
   }
 }

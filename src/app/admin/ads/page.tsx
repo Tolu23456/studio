@@ -47,171 +47,175 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Gamepad2 } from 'lucide-react';
-import type { Game } from '@/lib/types';
-import { getGames, addGame, updateGame, deleteGame } from '@/services/user-data';
+import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Film } from 'lucide-react';
+import type { Ad } from '@/lib/types';
+import { getAds, addAd, updateAd, deleteAd } from '@/services/user-data';
 
-const gameSchema = z.object({
+const adSchema = z.object({
     id: z.string().optional(),
     title: z.string().min(1, 'Title is required.'),
     description: z.string().min(1, 'Description is required.'),
-    rewardDescription: z.string().min(1, 'Reward description is required.'),
+    duration: z.coerce.number().int().positive('Duration must be a positive number.'),
+    reward: z.coerce.number().int().positive('Reward must be a positive number.'),
     imageUrl: z.string().url('Must be a valid URL.'),
     dataAiHint: z.string().optional(),
     isEnabled: z.boolean(),
 });
 
-type GameFormData = z.infer<typeof gameSchema>;
+type AdFormData = z.infer<typeof adSchema>;
 
-export default function AdminGamesPage() {
+export default function AdminAdsPage() {
     const { toast } = useToast();
-    const [games, setGames] = React.useState<Game[]>([]);
+    const [ads, setAds] = React.useState<Ad[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = React.useState(false);
-    const [selectedGame, setSelectedGame] = React.useState<Game | null>(null);
+    const [selectedAd, setSelectedAd] = React.useState<Ad | null>(null);
 
-    const form = useForm<GameFormData>({
-        resolver: zodResolver(gameSchema),
+    const form = useForm<AdFormData>({
+        resolver: zodResolver(adSchema),
         defaultValues: {
             title: '',
             description: '',
-            rewardDescription: '',
+            duration: 30,
+            reward: 10,
             imageUrl: '',
             dataAiHint: '',
             isEnabled: true,
         },
     });
 
-    const fetchGames = React.useCallback(async () => {
+    const fetchAds = React.useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const fetchedGames = await getGames();
-            setGames(fetchedGames);
+            const fetchedAds = await getAds();
+            setAds(fetchedAds);
         } catch (err) {
-            console.error('Failed to fetch games:', err);
-            setError('Could not fetch the game list. Please check your network connection and Firestore security rules.');
+            console.error('Failed to fetch ads:', err);
+            setError('Could not fetch the ad list. Please check your network connection and Firestore security rules.');
         } finally {
             setLoading(false);
         }
     }, []);
 
     React.useEffect(() => {
-        fetchGames();
-    }, [fetchGames]);
+        fetchAds();
+    }, [fetchAds]);
 
-    const handleDialogOpen = (game: Game | null = null) => {
-        setSelectedGame(game);
-        if (game) {
-            form.reset(game);
+    const handleDialogOpen = (ad: Ad | null = null) => {
+        setSelectedAd(ad);
+        if (ad) {
+            form.reset(ad);
         } else {
             form.reset({
-                title: '', description: '', rewardDescription: '', imageUrl: '', dataAiHint: '', isEnabled: true
+                title: '', description: '', duration: 30, reward: 10, imageUrl: '', dataAiHint: '', isEnabled: true
             });
         }
         setIsDialogOpen(true);
     };
 
-    const handleDeleteAlertOpen = (game: Game) => {
-        setSelectedGame(game);
+    const handleDeleteAlertOpen = (ad: Ad) => {
+        setSelectedAd(ad);
         setIsDeleteAlertOpen(true);
     };
     
-    const onSubmit = async (data: GameFormData) => {
+    const onSubmit = async (data: AdFormData) => {
         setIsSaving(true);
         try {
-            if (selectedGame?.id) {
-                await updateGame(selectedGame.id, data);
-                toast({ title: 'Game Updated', description: `'${data.title}' has been updated.` });
+            if (selectedAd?.id) {
+                await updateAd(selectedAd.id, data);
+                toast({ title: 'Ad Updated', description: `'${data.title}' has been updated.` });
             } else {
-                await addGame(data);
-                toast({ title: 'Game Added', description: `'${data.title}' has been added.` });
+                await addAd(data);
+                toast({ title: 'Ad Added', description: `'${data.title}' has been added.` });
             }
-            await fetchGames();
+            await fetchAds();
             setIsDialogOpen(false);
         } catch (err) {
-            console.error('Failed to save game:', err);
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the game.' });
+            console.error('Failed to save ad:', err);
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save the ad.' });
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleDelete = async () => {
-        if (!selectedGame?.id) return;
+        if (!selectedAd?.id) return;
         try {
-            await deleteGame(selectedGame.id);
-            toast({ title: 'Game Deleted', description: `'${selectedGame.title}' has been deleted.` });
-            await fetchGames();
+            await deleteAd(selectedAd.id);
+            toast({ title: 'Ad Deleted', description: `'${selectedAd.title}' has been deleted.` });
+            await fetchAds();
             setIsDeleteAlertOpen(false);
         } catch (err) {
-            console.error('Failed to delete game:', err);
-            toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete the game.' });
+            console.error('Failed to delete ad:', err);
+            toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete the ad.' });
         }
     };
 
     return (
         <div className="grid auto-rows-max items-start gap-4 md:gap-8">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight font-headline">Game Management</h1>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Ad Management</h1>
                 <Button onClick={() => handleDialogOpen()}>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Add New Game
+                    Add New Ad
                 </Button>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Manage Games</CardTitle>
+                    <CardTitle>Manage Ads</CardTitle>
                     <CardDescription>
-                        Add, edit, or remove games that are available for users to play.
+                        Add, edit, or remove ads available for users to watch.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {error ? (
                         <Alert variant="destructive">
                             <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Failed to Load Games</AlertTitle>
+                            <AlertTitle>Failed to Load Ads</AlertTitle>
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
                     ) : loading ? (
                         <div className="space-y-2">
                            {Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
                         </div>
-                    ) : games.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-lg">
-                            <Gamepad2 className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                            <h3 className="text-xl font-semibold">No Games Found</h3>
-                            <p className="text-muted-foreground">Click "Add New Game" to get started.</p>
+                    ) : ads.length === 0 ? (
+                         <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-lg">
+                            <Film className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                            <h3 className="text-xl font-semibold">No Ads Found</h3>
+                            <p className="text-muted-foreground">Click "Add New Ad" to get started.</p>
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Title</TableHead>
-                                    <TableHead>Description</TableHead>
+                                    <TableHead>Duration</TableHead>
+                                    <TableHead>Reward</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {games.map((game) => (
-                                    <TableRow key={game.id}>
-                                        <TableCell className="font-medium">{game.title}</TableCell>
-                                        <TableCell>{game.description}</TableCell>
+                                {ads.map((ad) => (
+                                    <TableRow key={ad.id}>
+                                        <TableCell className="font-medium">{ad.title}</TableCell>
+                                        <TableCell>{ad.duration}s</TableCell>
+                                        <TableCell>{ad.reward}</TableCell>
                                         <TableCell>
-                                            <Badge variant={game.isEnabled ? 'default' : 'secondary'}>
-                                                {game.isEnabled ? 'Enabled' : 'Disabled'}
+                                            <Badge variant={ad.isEnabled ? 'default' : 'secondary'}>
+                                                {ad.isEnabled ? 'Enabled' : 'Disabled'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => handleDialogOpen(game)}>
+                                            <Button variant="ghost" size="icon" onClick={() => handleDialogOpen(ad)}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteAlertOpen(game)}>
+                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteAlertOpen(ad)}>
                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                             </Button>
                                         </TableCell>
@@ -226,9 +230,9 @@ export default function AdminGamesPage() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>{selectedGame ? 'Edit Game' : 'Add New Game'}</DialogTitle>
+                        <DialogTitle>{selectedAd ? 'Edit Ad' : 'Add New Ad'}</DialogTitle>
                         <DialogDescription>
-                            Fill in the details for the game below. The Game ID cannot be changed after creation.
+                            Fill in the details for the ad below.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1 pr-4">
@@ -242,10 +246,17 @@ export default function AdminGamesPage() {
                             <Textarea id="description" {...form.register('description')} />
                             {form.formState.errors.description && <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>}
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="rewardDescription">Reward Description</Label>
-                            <Input id="rewardDescription" placeholder="e.g. Higher score = more Cubes!" {...form.register('rewardDescription')} />
-                            {form.formState.errors.rewardDescription && <p className="text-sm text-destructive">{form.formState.errors.rewardDescription.message}</p>}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="duration">Duration (seconds)</Label>
+                                <Input id="duration" type="number" {...form.register('duration')} />
+                                {form.formState.errors.duration && <p className="text-sm text-destructive">{form.formState.errors.duration.message}</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="reward">Reward (Cubes)</Label>
+                                <Input id="reward" type="number" {...form.register('reward')} />
+                                {form.formState.errors.reward && <p className="text-sm text-destructive">{form.formState.errors.reward.message}</p>}
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="imageUrl">Image URL</Label>
@@ -254,18 +265,18 @@ export default function AdminGamesPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="dataAiHint">Image Hint</Label>
-                            <Input id="dataAiHint" placeholder="e.g. puzzle game" {...form.register('dataAiHint')} />
+                            <Input id="dataAiHint" placeholder="e.g. tech gadget" {...form.register('dataAiHint')} />
                             {form.formState.errors.dataAiHint && <p className="text-sm text-destructive">{form.formState.errors.dataAiHint.message}</p>}
                         </div>
                         <div className="flex items-center space-x-2">
                             <Switch id="isEnabled" checked={form.watch('isEnabled')} onCheckedChange={(checked) => form.setValue('isEnabled', checked)} />
-                            <Label htmlFor="isEnabled">Enable this game for users</Label>
+                            <Label htmlFor="isEnabled">Enable this ad for users</Label>
                         </div>
                          <DialogFooter className="pt-4 !justify-end">
                             <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                             <Button type="submit" disabled={isSaving}>
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Game
+                                Save Ad
                             </Button>
                         </DialogFooter>
                     </form>
@@ -277,7 +288,7 @@ export default function AdminGamesPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the game '{selectedGame?.title}'.
+                            This action cannot be undone. This will permanently delete the ad '{selectedAd?.title}'.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

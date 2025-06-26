@@ -1,4 +1,5 @@
 
+
 export type UserProfile = {
   uid: string;
   adsenerId: string;
@@ -40,6 +41,7 @@ export type Ad = {
   reward: number;
   imageUrl: string;
   dataAiHint?: string;
+  isEnabled: boolean;
 };
 
 export type Game = {
@@ -49,6 +51,7 @@ export type Game = {
   imageUrl: string;
   dataAiHint?: string;
   rewardDescription?: string;
+  isEnabled: boolean;
 };
 
 export type Notification = {
