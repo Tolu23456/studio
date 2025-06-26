@@ -76,7 +76,7 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
   useEffect(() => {
       if (gameState !== 'playing') return;
 
-      const playerRect = { x: playerX, y: 100 - PLAYER_SIZE_PC - 5, width: PLAYER_SIZE_PC, height: PLAYER_SIZE_PC };
+      const playerRect = { x: playerX, y: 100 - PLAYER_SIZE_PC - 15, width: PLAYER_SIZE_PC, height: PLAYER_SIZE_PC };
       
       for (const obstacle of obstacles) {
         const obstacleRect = { x: obstacle.x, y: obstacle.y, width: OBSTACLE_SIZE_PC, height: OBSTACLE_SIZE_PC };
@@ -220,7 +220,7 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
                         width: `${PLAYER_SIZE_PC}%`, 
                         height: `${PLAYER_SIZE_PC}%`, 
                         left: `${playerX}%`, 
-                        bottom: '5%'
+                        bottom: '15%'
                     }}
                 >
                     <Zap className="w-full h-full text-primary animate-pulse" />
