@@ -76,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let profileUnsubscribe: (() => void) | undefined;
     let settingsUnsubscribe: (() => void) | undefined;
+    let notificationsUnsubscribe: (() => void) | undefined;
     
     const settingsRef = doc(db, 'platform_settings', 'config');
     settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
@@ -105,11 +106,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     const authUnsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      // Clean up old listeners whenever auth state changes
       if (profileUnsubscribe) profileUnsubscribe();
+      if (notificationsUnsubscribe) notificationsUnsubscribe();
       
       setUser(currentUser);
       
       if (currentUser) {
+        // Set up profile listener
         const userRef = doc(db, 'users', currentUser.uid);
         profileUnsubscribe = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -156,8 +160,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         });
 
+        // Set up notifications listener
+        const notificationsRef = collection(db, 'users', currentUser.uid, 'notifications');
+        const q = query(notificationsRef, orderBy('date', 'desc'), limit(50));
+        let isInitialQuery = true;
+
+        notificationsUnsubscribe = onSnapshot(q, (querySnapshot) => {
+            if (!isInitialQuery) {
+                querySnapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") {
+                        const newNotificationData = change.doc.data();
+                        toast({
+                            title: `🔔 ${newNotificationData.title}`,
+                            description: newNotificationData.description,
+                        });
+                    }
+                });
+            }
+            isInitialQuery = false;
+        
+            const allNotifications = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    date: (data.date as Timestamp).toDate(),
+                } as Notification;
+            });
+            setNotifications(allNotifications);
+        }, (error) => {
+            console.error("Error fetching real-time notifications: ", error);
+        });
+
       } else {
+        // User is logged out
         setUserProfile(null);
+        setNotifications([]);
         setLoading(false);
       }
     });
@@ -166,50 +204,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authUnsubscribe();
       if (profileUnsubscribe) profileUnsubscribe();
       if (settingsUnsubscribe) settingsUnsubscribe();
+      if (notificationsUnsubscribe) notificationsUnsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    if (!user?.uid || !db) {
-      setNotifications([]);
-      return;
-    }
-  
-    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
-    const q = query(notificationsRef, orderBy('date', 'desc'), limit(50));
-    
-    let isInitialQuery = true;
-  
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      if (!isInitialQuery) {
-        querySnapshot.docChanges().forEach((change) => {
-            if (change.type === "added") {
-                const newNotificationData = change.doc.data();
-                toast({
-                    title: `🔔 ${newNotificationData.title}`,
-                    description: newNotificationData.description,
-                });
-            }
-        });
-      }
-      isInitialQuery = false;
-
-      const allNotifications = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          date: (data.date as Timestamp).toDate(),
-        } as Notification;
-      });
-      setNotifications(allNotifications);
-  
-    }, (error) => {
-      console.error("Error fetching real-time notifications: ", error);
-    });
-  
-    return () => unsubscribe();
-  }, [user?.uid]);
 
   const value = useMemo(() => ({ user, userProfile, loading, notifications, platformSettings, refreshUserProfile }), [user, userProfile, loading, notifications, platformSettings, refreshUserProfile]);
 
