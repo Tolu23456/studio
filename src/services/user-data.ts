@@ -317,55 +317,57 @@ export async function claimAdReward(adId: string): Promise<void> {
   }
 }
 
-const calculateGameReward = (gameId: string, scorePayload: number): number => {
-    // This function provides basic anti-cheat by capping rewards and sanity-checking scores.
-    // A cheater can still submit a "good" but not "perfect" score.
-    // In a real-world app, this logic would be more complex and possibly obfuscated.
-    
-    // Default high score for a game if no specific logic found.
-    const GENERIC_MAX_REWARD = 25;
-
+const calculateGameScore = (gameId: string, scorePayload: number): number => {
+    // This function converts different performance metrics (like moves, time) into a unified "score".
+    // A higher return value is always better.
     switch (gameId) {
-        // Cube Runner games: Higher score is better. Cap reward.
-        case 'g1': case 'g2': case 'g7':
+        // Cube Runner games: score is direct. Higher is better.
+        case 'g1': case 'g5':
             // Cap score to prevent ridiculously high submissions.
-            const cappedScore = Math.min(scorePayload, 150);
-            return Math.round(cappedScore / 2); // e.g., max reward of 75
+            return Math.min(scorePayload, 100);
 
-        // Puzzle / Memory games: Lower moves are better.
-        case 'g3': case 'g8': case 'g9': case 'g10': // Puzzle Box
+        // Memory Match: fewer moves is better.
+        case 'g2':
+            if (scorePayload < 6) return 0; // Impossible score for a 12-card game (6 pairs)
+            return Math.max(0, 50 - scorePayload); // Base score decreases with more moves.
+
+        // Puzzle Box: fewer moves is better.
+        case 'g3':
             if (scorePayload < 1) return 0; // Impossible score
-            return Math.max(0, 50 - scorePayload); // Reward diminishes with more moves
-        
-        case 'g4': // Memory Match
-            if (scorePayload < 6) return 0; // Impossible score for a 12-card game
-            return Math.max(0, 40 - scorePayload);
+            return Math.max(0, 40 - scorePayload); // Reward diminishes with more moves
 
-        // Reaction Time games: Lower time is better.
-        case 'g5': case 'g6':
+        // Reaction Time: lower time (ms) is better.
+        case 'g4':
             if (scorePayload < 100) return 0; // Impossible reaction time
-            // Reward for being under 500ms
-            if (scorePayload > 800) return 5; // Participation reward
-            return Math.max(0, 35 - Math.floor(scorePayload / 20));
+            if (scorePayload > 1000) return 5; // Participation score
+            return Math.max(0, 50 - Math.floor(scorePayload / 20));
 
         default:
-             // A generic reward for any other game, prevents giving huge rewards for unknown game IDs.
-             return Math.max(0, Math.min(scorePayload, GENERIC_MAX_REWARD));
+             // A generic score for any other game, prevents giving huge rewards for unknown game IDs.
+             return Math.max(0, Math.min(scorePayload, 50));
     }
 };
 
 export async function claimGameReward(gameId: string, scorePayload: number): Promise<number> {
   const user = getCurrentUser();
   const settings = await getPlatformSettings();
-  const baseReward = calculateGameReward(gameId, scorePayload);
-  const finalReward = Math.round(baseReward * settings.globalGameRewardMultiplier);
+  
+  // New scoring logic
+  const baseScore = calculateGameScore(gameId, scorePayload);
+  const finalReward = Math.round(baseScore * 2 * settings.globalGameRewardMultiplier);
   
   const gameRef = doc(db, 'games', gameId);
   const gameSnap = await getDoc(gameRef);
   if (!gameSnap.exists()) throw new Error("Game not found.");
   const gameTitle = gameSnap.data().title || 'a game';
 
-  if (finalReward <= 0) return 0;
+  if (finalReward <= 0) {
+      await createSimpleNotification(
+        `'${gameTitle}' Complete`, 
+        `You didn't earn any Cubes this time. Better luck next time!`
+      );
+      return 0;
+  }
   
   const userRef = doc(db, 'users', user.uid);
   const docSnap = await getDoc(userRef);
@@ -382,7 +384,7 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
   batch.set(activityRef, {
     type: 'Game Play',
-    description: `Played '${gameTitle}'`,
+    description: `Played '${gameTitle}' and scored ${baseScore}`,
     cubes_earned: finalReward,
     date: now,
   });
@@ -390,7 +392,7 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
   batch.set(transactionRef, {
     type: 'reward',
-    description: `Reward from '${gameTitle}'`,
+    description: `Reward from '${gameTitle}' (Score: ${baseScore})`,
     amount: finalReward,
     date: now,
     status: 'completed',
@@ -643,17 +645,17 @@ export async function sendNotificationToAllUsers(title: string, description: str
 
 // Game Management
 const seedGames = async () => {
-    const games: Omit<Game, 'id'>[] = [
-      { id: "g1", title: "One Tap Dash", description: "Tap once to make a cube dash through rotating obstacles. Timing is everything.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "abstract obstacle", rewardDescription: "Higher score = more Cubes!", isEnabled: true },
-      { id: "g2", title: "Shadow Jump", description: "Jump between moving platforms. One misstep = fall.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "platformer game", rewardDescription: "Longer survival = more Cubes!", isEnabled: true },
-      { id: "g3", title: "Don’t Touch the Red", description: "Navigate through a maze where only one path is safe. Red tiles = restart.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "maze puzzle", rewardDescription: "Faster completion = more Cubes!", isEnabled: true },
-      { id: "g4", title: "Quick Flip", description: "A memory match game that gets faster every round. Flip, match, or fail.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "memory game", rewardDescription: "Fewer moves = more Cubes!", isEnabled: true },
-      { id: "g5", title: "Laser Reflex", description: "Tap only when the green laser appears. Red laser = auto fail.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "reaction test", rewardDescription: "Faster reflex = more Cubes!", isEnabled: true },
+    const games: Omit<Game, 'id' | 'isEnabled'>[] = [
+      { id: "g1", title: "Cube Runner", description: "Dodge obstacles and collect valuable cubes in this fast-paced runner.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "runner game", rewardDescription: "Score is based on cubes collected." },
+      { id: "g2", title: "Memory Match", description: "Test your memory by flipping cards and finding matching pairs.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "memory game", rewardDescription: "Score is based on fewer moves." },
+      { id: "g3", title: "Puzzle Box", description: "Solve the light puzzle by turning all lights on or off. A true brain teaser!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "puzzle box", rewardDescription: "Score is based on fewer moves." },
+      { id: "g4", title: "Reaction Time", description: "Click as fast as you can when the screen turns green. Don't jump the gun!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "reaction test", rewardDescription: "Score is based on faster reaction." },
+      { id: "g5", title: "Endless Runner", description: "A different, more challenging version of Cube Runner. How long can you last?", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "abstract running", rewardDescription: "Score is based on cubes collected." },
     ];
     const batch = writeBatch(db);
     games.forEach(game => {
         const docRef = doc(db, 'games', game.id);
-        batch.set(docRef, game);
+        batch.set(docRef, { ...game, isEnabled: true });
     });
     await batch.commit();
 };

@@ -43,15 +43,10 @@ const setGamePlays = (plays: any) => {
 
 const GameComponentMap: { [key: string]: React.ElementType } = {
   'g1': CubeRunnerGame,
-  'g2': CubeRunnerGame,
+  'g2': MemoryMatchGame,
   'g3': PuzzleBoxGame,
-  'g4': MemoryMatchGame,
-  'g5': ReactionTimeGame,
-  'g6': ReactionTimeGame,
-  'g7': CubeRunnerGame,
-  'g8': PuzzleBoxGame,
-  'g9': PuzzleBoxGame,
-  'g10': PuzzleBoxGame,
+  'g4': ReactionTimeGame,
+  'g5': CubeRunnerGame, // "Endless Runner" uses the same component
 };
 
 
@@ -137,11 +132,6 @@ export function GameCard({ game }: GameCardProps) {
             toast({
                 title: "Reward Claimed!",
                 description: `You've earned ${actualReward} Cubes for playing ${game.title}.`,
-            });
-        } else {
-            toast({
-                title: "Game Over",
-                description: "No cubes earned this time. Better luck next time!",
             });
         }
 
