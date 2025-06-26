@@ -46,7 +46,7 @@ export function TransferCubesForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       recipientId: '',
-      amount: undefined, // Use undefined to show placeholder
+      amount: '' as any,
     },
   });
   
