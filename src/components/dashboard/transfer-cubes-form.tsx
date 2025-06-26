@@ -24,9 +24,10 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { transferCubes, fetchRecipientDisplayName } from '@/services/user-data';
-import { Send, Loader2, User } from 'lucide-react';
+import { Send, Loader2, User, Zap } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Separator } from '../ui/separator';
 
 const formSchema = z.object({
   recipientId: z.string().regex(/^AC-[0-9]{6}[A-Z]$/, {
@@ -36,7 +37,7 @@ const formSchema = z.object({
 });
 
 export function TransferCubesForm() {
-  const { userProfile } = useAuth();
+  const { userProfile, platformSettings } = useAuth();
   const { toast } = useToast();
   const [recipient, setRecipient] = useState<{ displayName: string | null; photoURL: string | null; error?: string } | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -45,11 +46,16 @@ export function TransferCubesForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       recipientId: '',
-      amount: 0,
+      amount: undefined, // Use undefined to show placeholder
     },
   });
   
   const recipientIdValue = form.watch('recipientId');
+  const amountValue = form.watch('amount');
+
+  const feePercentage = platformSettings?.transferFeePercentage ?? 0;
+  const feeAmount = isNaN(amountValue) || amountValue <= 0 ? 0 : Math.ceil(amountValue * (feePercentage / 100));
+  const totalDeduction = isNaN(amountValue) || amountValue <= 0 ? 0 : amountValue + feeAmount;
 
   useEffect(() => {
     const handler = setTimeout(async () => {
@@ -88,10 +94,10 @@ export function TransferCubesForm() {
         return;
     }
     
-    if (values.amount > userProfile.cubeBalance) {
+    if (totalDeduction > userProfile.cubeBalance) {
       form.setError('amount', {
         type: 'manual',
-        message: "You don't have enough cubes for this transfer.",
+        message: `Insufficient balance. You need ${totalDeduction.toLocaleString()} Cubes for this transfer.`,
       });
       return;
     }
@@ -104,6 +110,7 @@ export function TransferCubesForm() {
           description: result.message,
         });
         form.reset();
+        setRecipient(null);
       } else {
         toast({
           variant: 'destructive',
@@ -126,7 +133,7 @@ export function TransferCubesForm() {
       <CardHeader>
         <CardTitle>Transfer Cubes</CardTitle>
         <CardDescription>
-          Send cubes to another user instantly.
+          Send cubes to another user instantly. A small fee applies.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -143,17 +150,7 @@ export function TransferCubesForm() {
                       placeholder="e.g. AC-123456A"
                       {...field}
                       onChange={(e) => {
-                        let value = e.target.value.toUpperCase();
-                
-                        if (value && !value.startsWith('AC-')) {
-                          value = 'AC-' + value;
-                        }
-                
-                        if (value === 'AC-') {
-                          value = '';
-                        }
-                
-                        field.onChange(value);
+                        field.onChange(e.target.value.toUpperCase());
                       }}
                       className="uppercase"
                     />
@@ -179,7 +176,7 @@ export function TransferCubesForm() {
                       </>
                     ) : (
                       <span>
-                        Ask your friend for their User ID.
+                        Ask your friend for their User ID from their settings page.
                       </span>
                     )}
                   </div>
@@ -192,16 +189,40 @@ export function TransferCubesForm() {
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount</FormLabel>
+                  <FormLabel>Amount to Send</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="0" {...field} />
+                    <Input type="number" placeholder="0" {...field} min="1" />
                   </FormControl>
-                  <FormMessage />
+                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={form.formState.isSubmitting} className="w-full sm:w-auto">
-              {form.formState.isSubmitting ? 'Sending...' : (
+            
+            {amountValue > 0 && (
+                <div className="p-4 border rounded-lg space-y-2 bg-secondary/50">
+                    <div className="text-sm text-muted-foreground flex justify-between items-center">
+                        <span>Amount to Send:</span>
+                        <span className="font-medium text-foreground">{amountValue.toLocaleString()} Cubes</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground flex justify-between items-center">
+                        <span>Transfer Fee ({feePercentage}%):</span>
+                        <span className="font-medium text-foreground">{feeAmount.toLocaleString()} Cubes</span>
+                    </div>
+                    <Separator />
+                    <div className="font-semibold flex justify-between items-center">
+                        <span>Total to be Deducted:</span>
+                        <span className='flex items-center gap-1'>{totalDeduction.toLocaleString()} <Zap className="h-4 w-4 text-primary" /></span>
+                    </div>
+                </div>
+            )}
+
+            <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isValid || totalDeduction <= 0} className="w-full sm:w-auto">
+              {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
                   Send Cubes
