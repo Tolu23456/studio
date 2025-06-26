@@ -30,14 +30,14 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '../ui/separator';
 
 const formSchema = z.object({
-  recipientId: z.string().regex(/^AC-[0-9]{6}[A-Z]$/, {
-    message: "Invalid User ID format. Should be e.g. AC-123456A"
+  recipientId: z.string().regex(/^[0-9]{6}[A-Z]$/, {
+    message: "Invalid ID format. Use 6 numbers and 1 letter."
   }),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
 });
 
 export function TransferCubesForm() {
-  const { userProfile, platformSettings } = useAuth();
+  const { userProfile, platformSettings, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [recipient, setRecipient] = useState<{ displayName: string | null; photoURL: string | null; error?: string } | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -51,21 +51,23 @@ export function TransferCubesForm() {
   });
   
   const recipientIdValue = form.watch('recipientId');
-  const amountValue = form.watch('amount');
+  const amountString = form.watch('amount');
+  const amountValue = Number(amountString) || 0;
 
   const feePercentage = platformSettings?.transferFeePercentage ?? 0;
-  const feeAmount = isNaN(amountValue) || amountValue <= 0 ? 0 : Math.ceil(amountValue * (feePercentage / 100));
-  const totalDeduction = isNaN(amountValue) || amountValue <= 0 ? 0 : amountValue + feeAmount;
+  const feeAmount = amountValue > 0 ? Math.ceil(amountValue * (feePercentage / 100)) : 0;
+  const totalDeduction = amountValue > 0 ? amountValue + feeAmount : 0;
 
   useEffect(() => {
     const handler = setTimeout(async () => {
-      const validFormat = /^AC-[0-9]{6}[A-Z]$/.test(recipientIdValue);
+      const validFormat = /^[0-9]{6}[A-Z]$/.test(recipientIdValue);
       if (validFormat) {
         setIsVerifying(true);
         setRecipient(null);
         form.clearErrors('recipientId');
         try {
-          const recipientInfo = await fetchRecipientDisplayName(recipientIdValue);
+          const fullRecipientId = 'AC-' + recipientIdValue;
+          const recipientInfo = await fetchRecipientDisplayName(fullRecipientId);
           setRecipient(recipientInfo);
           if (recipientInfo.error) {
               form.setError('recipientId', { type: 'manual', message: recipientInfo.error });
@@ -94,16 +96,21 @@ export function TransferCubesForm() {
         return;
     }
     
-    if (totalDeduction > userProfile.cubeBalance) {
+    // Re-check total deduction with submitted values
+    const submissionTotalDeduction = values.amount + Math.ceil(values.amount * (feePercentage / 100));
+
+    if (submissionTotalDeduction > userProfile.cubeBalance) {
       form.setError('amount', {
         type: 'manual',
-        message: `Insufficient balance. You need ${totalDeduction.toLocaleString()} Cubes for this transfer.`,
+        message: `Insufficient balance. You need ${submissionTotalDeduction.toLocaleString()} Cubes for this transfer.`,
       });
       return;
     }
+    
+    const fullRecipientId = `AC-${values.recipientId}`;
 
     try {
-      const result = await transferCubes(values.recipientId, values.amount);
+      const result = await transferCubes(fullRecipientId, values.amount);
       if (result.success) {
         toast({
           title: 'Transfer Successful',
@@ -146,14 +153,20 @@ export function TransferCubesForm() {
                 <FormItem>
                   <FormLabel>Recipient User ID</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="e.g. AC-123456A"
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e.target.value.toUpperCase());
-                      }}
-                      className="uppercase"
-                    />
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground font-mono">
+                            AC-
+                        </span>
+                        <Input
+                          placeholder="123456A"
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+                            field.onChange(value);
+                          }}
+                          className="uppercase pl-10 font-mono"
+                        />
+                    </div>
                   </FormControl>
                   <div className="h-10 pt-1 text-sm text-muted-foreground flex items-center gap-2">
                     {isVerifying ? (
@@ -216,7 +229,7 @@ export function TransferCubesForm() {
                 </div>
             )}
 
-            <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isValid || totalDeduction <= 0} className="w-full sm:w-auto">
+            <Button type="submit" disabled={authLoading || form.formState.isSubmitting || !form.formState.isValid || totalDeduction <= 0} className="w-full sm:w-auto">
               {form.formState.isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
