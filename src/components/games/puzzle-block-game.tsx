@@ -1,31 +1,33 @@
 
 'use client';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styles from './puzzle-block-game.module.css';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Trophy } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 const GRID_SIZE = 8;
 
 const PIECE_SHAPES = {
-  // Colors are Tailwind classes for hsl(var(--primary))
-  I: { shape: [[1, 1, 1, 1]], color: 'bg-primary' },
-  O: { shape: [[1, 1], [1, 1]], color: 'bg-primary' },
-  T: { shape: [[0, 1, 0], [1, 1, 1]], color: 'bg-primary' },
-  L: { shape: [[1, 0], [1, 0], [1, 1]], color: 'bg-primary' },
-  J: { shape: [[0, 1], [0, 1], [1, 1]], color: 'bg-primary' },
-  S: { shape: [[0, 1, 1], [1, 1, 0]], color: 'bg-primary' },
-  Z: { shape: [[1, 1, 0], [0, 1, 1]], color: 'bg-primary' },
-  DOT: { shape: [[1]], color: 'bg-primary' },
-  SMALL_L: { shape: [[1, 0], [1, 1]], color: 'bg-primary' },
+  I: { shape: [[1, 1, 1, 1]] },
+  O: { shape: [[1, 1], [1, 1]] },
+  T: { shape: [[0, 1, 0], [1, 1, 1]] },
+  L: { shape: [[1, 0], [1, 0], [1, 1]] },
+  J: { shape: [[0, 1], [0, 1], [1, 1]] },
+  S: { shape: [[0, 1, 1], [1, 1, 0]] },
+  Z: { shape: [[1, 1, 0], [0, 1, 1]] },
+  DOT: { shape: [[1]] },
+  SMALL_L: { shape: [[1, 0], [1, 1]] },
+  U: { shape: [[1, 0, 1], [1, 1, 1]] },
+  PLUS: { shape: [[0, 1, 0], [1, 1, 1], [0, 1, 0]] },
+  LONG_L: { shape: [[1, 0], [1, 0], [1, 0], [1, 1]] },
 };
 
 type Piece = keyof typeof PIECE_SHAPES;
-type Grid = (string | null)[][];
+type Grid = boolean[][];
 
-const createEmptyGrid = (): Grid => Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
+const createEmptyGrid = (): Grid => Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(false));
 
 type PuzzleBlockGameProps = {
   onGameComplete: () => void;
@@ -34,11 +36,11 @@ type PuzzleBlockGameProps = {
 
 export function PuzzleBlockGame({ onGameComplete, onGameWon }: PuzzleBlockGameProps) {
   const [grid, setGrid] = useState<Grid>(createEmptyGrid);
-  const [pieces, setPieces] = useState<Piece[]>([]);
+  const [pieces, setPieces] = useState<(Piece | null)[]>([]);
   const [score, setScore] = useState(0);
   const [isGameOver, setIsGameOver] = useState(false);
-  const [draggedPiece, setDraggedPiece] = useState<{ piece: Piece, index: number } | null>(null);
-  const [preview, setPreview] = useState<{ cells: { r: number, c: number }[], valid: boolean } | null>(null);
+  const [draggedPiece, setDraggedPiece] = useState<{ piece: Piece; index: number } | null>(null);
+  const [preview, setPreview] = useState<{ cells: { r: number; c: number }[]; valid: boolean } | null>(null);
   const [hasClaimed, setHasClaimed] = useState(false);
 
   const generatePieces = useCallback(() => {
@@ -67,12 +69,12 @@ export function PuzzleBlockGame({ onGameComplete, onGameWon }: PuzzleBlockGamePr
     return true;
   }, []);
   
-  const checkGameOver = useCallback((currentGrid: Grid, currentPieces: Piece[]) => {
+  const checkGameOver = useCallback((currentGrid: Grid, currentPieces: (Piece | null)[]) => {
     if (currentPieces.every(p => p === null)) return false;
     for (const piece of currentPieces) {
-      if(piece === null) continue;
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
+      if (piece === null) continue;
+      for (let r = 0; r <= GRID_SIZE; r++) {
+        for (let c = 0; c <= GRID_SIZE; c++) {
           if (canPlace(currentGrid, piece, r, c)) {
             return false;
           }
@@ -86,17 +88,23 @@ export function PuzzleBlockGame({ onGameComplete, onGameWon }: PuzzleBlockGamePr
     if (!pieces.length || pieces.every(p => p === null)) return;
     
     if (checkGameOver(grid, pieces)) {
-      setIsGameOver(true);
-      if (!hasClaimed) {
-        onGameWon(score);
-        setHasClaimed(true);
+      if (!isGameOver) {
+        setIsGameOver(true);
       }
     }
-  }, [grid, pieces, checkGameOver, onGameWon, score, hasClaimed]);
+  }, [grid, pieces, checkGameOver, isGameOver]);
+
+  useEffect(() => {
+    if (isGameOver && !hasClaimed) {
+        onGameWon(score);
+        setHasClaimed(true);
+    }
+  }, [isGameOver, score, onGameWon, hasClaimed]);
 
   const handleDrop = (r: number, c: number) => {
     if (!draggedPiece || !preview?.valid) {
       setPreview(null);
+      setDraggedPiece(null);
       return;
     }
 
@@ -108,7 +116,7 @@ export function PuzzleBlockGame({ onGameComplete, onGameWon }: PuzzleBlockGamePr
     for (let i = 0; i < shape.length; i++) {
       for (let j = 0; j < shape[i].length; j++) {
         if (shape[i][j]) {
-          newGrid[r + i][c + j] = PIECE_SHAPES[piece].color;
+          newGrid[r + i][c + j] = true;
           blocksPlaced++;
         }
       }
@@ -118,22 +126,22 @@ export function PuzzleBlockGame({ onGameComplete, onGameWon }: PuzzleBlockGamePr
     let rowsToClear: number[] = [];
     let colsToClear: number[] = [];
     for (let i = 0; i < GRID_SIZE; i++) {
-      if (newGrid[i].every(cell => cell !== null)) rowsToClear.push(i);
-      if (newGrid.every(row => row[i] !== null)) colsToClear.push(i);
+      if (newGrid[i].every(cell => cell)) rowsToClear.push(i);
+      if (newGrid.every(row => row[i])) colsToClear.push(i);
     }
     
-    let linesCleared = 0;
-    if (rowsToClear.length > 0 || colsToClear.length > 0) {
-        linesCleared = rowsToClear.length + colsToClear.length;
+    let linesCleared = rowsToClear.length + colsToClear.length;
+    if (linesCleared > 0) {
         const clearedGrid = newGrid.map((row, rowIndex) => 
-            rowsToClear.includes(rowIndex) ? Array(GRID_SIZE).fill(null) : row.map((cell, colIndex) => 
-                colsToClear.includes(colIndex) ? null : cell
+            rowsToClear.includes(rowIndex) ? Array(GRID_SIZE).fill(false) : row.map((cell, colIndex) => 
+                colsToClear.includes(colIndex) ? false : cell
             )
         );
         newGrid = clearedGrid;
     }
     
-    const newScore = score + blocksPlaced + (linesCleared * 20 * linesCleared);
+    const lineBonus = linesCleared > 1 ? linesCleared * 10 * linesCleared : linesCleared * 10;
+    const newScore = score + blocksPlaced + lineBonus;
     setScore(newScore);
     setGrid(newGrid);
 
@@ -166,6 +174,13 @@ export function PuzzleBlockGame({ onGameComplete, onGameWon }: PuzzleBlockGamePr
     }
     setPreview({ cells, valid });
   };
+  
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, piece: Piece, index: number) => {
+    setDraggedPiece({ piece, index });
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(img, 0, 0);
+  };
 
   const resetGame = () => {
     setGrid(createEmptyGrid());
@@ -175,20 +190,20 @@ export function PuzzleBlockGame({ onGameComplete, onGameWon }: PuzzleBlockGamePr
     setHasClaimed(false);
   }
 
-  const renderPiece = (piece: Piece, index: number) => {
+  const renderPiece = (piece: Piece | null, index: number) => {
     if (!piece) return <div key={index} className={styles.piece} />;
-    const { shape, color } = PIECE_SHAPES[piece];
+    const { shape } = PIECE_SHAPES[piece];
     return (
       <div
         key={index}
         className={cn(styles.piece, draggedPiece?.index === index && styles.dragging)}
         draggable
-        onDragStart={() => setDraggedPiece({ piece, index })}
+        onDragStart={(e) => handleDragStart(e, piece, index)}
         onDragEnd={() => { setDraggedPiece(null); setPreview(null); }}
       >
         {shape.map((row, r) =>
           row.map((cell, c) =>
-            cell ? <div key={`${r}-${c}`} className={cn(styles.block, color)} /> : <div key={`${r}-${c}`} />
+            cell ? <div key={`${r}-${c}`} className={styles.block} /> : <div key={`${r}-${c}`} />
           )
         )}
       </div>
@@ -220,7 +235,7 @@ export function PuzzleBlockGame({ onGameComplete, onGameWon }: PuzzleBlockGamePr
       
         <div className='text-center'>
             <h1 className={styles.title}>Puzzle Block</h1>
-            <div id="scoreBoard" className={styles.scoreBoard}>Score: <span id="score">{score}</span></div>
+            <div id="scoreBoard" className={styles.scoreBoard}>Score: {score}</div>
         </div>
       
         <div className={styles.gameBoard} onDragLeave={() => setPreview(null)}>
@@ -231,10 +246,9 @@ export function PuzzleBlockGame({ onGameComplete, onGameWon }: PuzzleBlockGamePr
                 <div
                     key={`${r}-${c}`}
                     className={cn(styles.cell, cell && styles.filled, isPreview && (preview.valid ? styles.previewValid : styles.previewInvalid))}
-                    style={cell ? { backgroundColor: '' } : {}}
                     onDrop={() => handleDrop(r, c)}
                     onDragOver={(e) => handleDragOver(e, r, c)}
-                ></div>
+                />
                 );
             })
             )}
