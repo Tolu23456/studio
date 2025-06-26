@@ -1,11 +1,12 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Apple, Banana, Carrot, Grape, Pizza, Sandwich, CheckCircle, BrainCircuit, PartyPopper } from 'lucide-react';
+import { Apple, Banana, Carrot, Grape, Pizza, Sandwich } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { BrainCircuit, PartyPopper } from 'lucide-react';
+
 
 type MemoryMatchGameProps = {
   onGameComplete: () => void;
@@ -113,37 +114,43 @@ export function MemoryMatchGame({ onGameComplete, onGameWon }: MemoryMatchGamePr
   };
 
   return (
-    <div className="text-center p-4 space-y-4 bg-background rounded-lg">
-      <h3 className="text-xl font-bold font-headline">Memory Match</h3>
-      <p className="text-sm text-muted-foreground">Find all the matching pairs!</p>
-
-      <div className="grid grid-cols-4 gap-3 mx-auto w-fit [perspective:1000px]">
-        {cards.map((card, index) => (
-          <div key={card.id} className="w-16 h-16 group" onClick={() => handleCardClick(index)}>
-            <div
-                className={cn(
-                    "relative w-full h-full rounded-lg transition-transform duration-500 [transform-style:preserve-3d]",
-                    card.isFlipped || card.isMatched ? '[transform:rotateY(180deg)]' : '',
-                    !isWon && 'cursor-pointer'
-                )}
-            >
-                {/* Back of Card */}
-                <div className="absolute w-full h-full rounded-lg flex items-center justify-center bg-primary/20 hover:bg-primary/30 [backface-visibility:hidden]">
-                    <BrainCircuit className="w-8 h-8 text-primary/50" />
-                </div>
-                {/* Front of Card */}
-                <div className={cn(
-                    "absolute w-full h-full rounded-lg flex items-center justify-center [backface-visibility:hidden] [transform:rotateY(180deg)]",
-                    card.isMatched ? 'bg-success/20' : 'bg-secondary'
-                )}>
-                    <card.Icon className={cn('w-8 h-8', card.isMatched ? 'text-success' : 'text-secondary-foreground')} />
-                </div>
-            </div>
-          </div>
-        ))}
+    <div className="flex flex-col items-center justify-center text-center p-4 space-y-4 bg-background rounded-lg h-full">
+      <div className="flex-shrink-0">
+        <h3 className="text-xl font-bold font-headline">Memory Match</h3>
+        <p className="text-sm text-muted-foreground">Find all the matching pairs!</p>
       </div>
 
-      <p className="font-semibold text-lg">Moves: {moves}</p>
+      <div className="flex-grow flex items-center justify-center w-full">
+        <div className="grid grid-cols-4 gap-3 mx-auto w-fit [perspective:1000px]">
+            {cards.map((card, index) => (
+            <div key={card.id} className="w-16 h-16 sm:w-20 sm:h-20 group" onClick={() => handleCardClick(index)}>
+                <div
+                    className={cn(
+                        "relative w-full h-full rounded-lg transition-transform duration-500 [transform-style:preserve-3d]",
+                        card.isFlipped || card.isMatched ? '[transform:rotateY(180deg)]' : '',
+                        !isWon && 'cursor-pointer'
+                    )}
+                >
+                    {/* Back of Card */}
+                    <div className="absolute w-full h-full rounded-lg flex items-center justify-center bg-primary/20 hover:bg-primary/30 [backface-visibility:hidden]">
+                        <BrainCircuit className="w-1/2 h-1/2 text-primary/50" />
+                    </div>
+                    {/* Front of Card */}
+                    <div className={cn(
+                        "absolute w-full h-full rounded-lg flex items-center justify-center [backface-visibility:hidden] [transform:rotateY(180deg)]",
+                        card.isMatched ? 'bg-success/20' : 'bg-secondary'
+                    )}>
+                        <card.Icon className={cn('w-1/2 h-1/2', card.isMatched ? 'text-success' : 'text-secondary-foreground')} />
+                    </div>
+                </div>
+            </div>
+            ))}
+        </div>
+      </div>
+      
+      <div className="flex-shrink-0">
+        <p className="font-semibold text-lg">Moves: {moves}</p>
+      </div>
 
       {isWon && (
          <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/70 p-4">

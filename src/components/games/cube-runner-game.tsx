@@ -1,35 +1,32 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Zap, ShieldAlert, Box, AlertTriangle, PartyPopper } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Zap, ShieldAlert, Box, AlertTriangle } from 'lucide-react';
 
 type CubeRunnerGameProps = {
   onGameComplete: () => void;
   onGameWon: (reward: number) => void;
 };
 
-const GAME_WIDTH = 320;
-const GAME_HEIGHT = 500;
-const PLAYER_SIZE = 30;
-const OBSTACLE_SIZE = 30;
-const CUBE_SIZE = 20;
-const PLAYER_SPEED = 10;
-const ENTITY_SPEED = 5;
+// Relative sizes
+const PLAYER_SIZE_PC = 8; // Percentage of game width
+const OBSTACLE_SIZE_PC = 8;
+const CUBE_SIZE_PC = 6;
+const PLAYER_SPEED_PC = 3; // Speed as percentage of width per frame
+const ENTITY_SPEED_PC = 0.8; // Speed as percentage of height per frame
 
 type Entity = {
   id: number;
-  x: number;
-  y: number;
+  x: number; // as percentage
+  y: number; // as percentage
 };
 
 export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProps) {
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
   const [score, setScore] = useState(0);
-  const [playerX, setPlayerX] = useState(GAME_WIDTH / 2 - PLAYER_SIZE / 2);
+  const [playerX, setPlayerX] = useState(50 - PLAYER_SIZE_PC / 2); // Percentage
   const [obstacles, setObstacles] = useState<Entity[]>([]);
   const [cubes, setCubes] = useState<Entity[]>([]);
   const [hasClaimed, setHasClaimed] = useState(false);
@@ -38,9 +35,11 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const touchStartX = useRef(0);
   const playerStartX = useRef(0);
+  const gameAreaRef = useRef<HTMLDivElement>(null);
+
 
   const resetGame = useCallback(() => {
-    setPlayerX(GAME_WIDTH / 2 - PLAYER_SIZE / 2);
+    setPlayerX(50 - PLAYER_SIZE_PC / 2);
     setObstacles([]);
     setCubes([]);
     setScore(0);
@@ -53,22 +52,22 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
 
     setPlayerX((currentX) => {
         if (keysPressed.current['ArrowLeft'] && currentX > 0) {
-            return Math.max(0, currentX - PLAYER_SPEED);
+            return Math.max(0, currentX - PLAYER_SPEED_PC);
         }
-        if (keysPressed.current['ArrowRight'] && currentX < GAME_WIDTH - PLAYER_SIZE) {
-            return Math.min(GAME_WIDTH - PLAYER_SIZE, currentX + PLAYER_SPEED);
+        if (keysPressed.current['ArrowRight'] && currentX < 100 - PLAYER_SIZE_PC) {
+            return Math.min(100 - PLAYER_SIZE_PC, currentX + PLAYER_SPEED_PC);
         }
         return currentX;
     });
     
-    setObstacles((prev) => prev.map(o => ({...o, y: o.y + ENTITY_SPEED})).filter(o => o.y < GAME_HEIGHT));
-    setCubes((prev) => prev.map(c => ({...c, y: c.y + ENTITY_SPEED})).filter(c => c.y < GAME_HEIGHT));
+    setObstacles((prev) => prev.map(o => ({...o, y: o.y + ENTITY_SPEED_PC})).filter(o => o.y < 100));
+    setCubes((prev) => prev.map(c => ({...c, y: c.y + ENTITY_SPEED_PC})).filter(c => c.y < 100));
 
     if (Math.random() < 0.03) {
-      setObstacles((prev) => [...prev, { id: Date.now() + Math.random(), x: Math.random() * (GAME_WIDTH - OBSTACLE_SIZE), y: -OBSTACLE_SIZE }]);
+      setObstacles((prev) => [...prev, { id: Date.now() + Math.random(), x: Math.random() * (100 - OBSTACLE_SIZE_PC), y: -OBSTACLE_SIZE_PC }]);
     }
      if (Math.random() < 0.02) {
-      setCubes((prev) => [...prev, { id: Date.now() + Math.random(), x: Math.random() * (GAME_WIDTH - CUBE_SIZE), y: -CUBE_SIZE }]);
+      setCubes((prev) => [...prev, { id: Date.now() + Math.random(), x: Math.random() * (100 - CUBE_SIZE_PC), y: -CUBE_SIZE_PC }]);
     }
     
     gameLoopRef.current = requestAnimationFrame(gameTick);
@@ -77,10 +76,10 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
   useEffect(() => {
       if (gameState !== 'playing') return;
 
-      const playerRect = { x: playerX, y: GAME_HEIGHT - PLAYER_SIZE - 20, width: PLAYER_SIZE, height: PLAYER_SIZE };
+      const playerRect = { x: playerX, y: 100 - PLAYER_SIZE_PC - 5, width: PLAYER_SIZE_PC, height: PLAYER_SIZE_PC };
       
       for (const obstacle of obstacles) {
-        const obstacleRect = { x: obstacle.x, y: obstacle.y, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE };
+        const obstacleRect = { x: obstacle.x, y: obstacle.y, width: OBSTACLE_SIZE_PC, height: OBSTACLE_SIZE_PC };
         if (
           playerRect.x < obstacleRect.x + obstacleRect.width &&
           playerRect.x + playerRect.width > obstacleRect.x &&
@@ -93,7 +92,7 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
       }
       
       const newCubes = cubes.filter(cube => {
-         const cubeRect = { x: cube.x, y: cube.y, width: CUBE_SIZE, height: CUBE_SIZE };
+         const cubeRect = { x: cube.x, y: cube.y, width: CUBE_SIZE_PC, height: CUBE_SIZE_PC };
           if (
               playerRect.x < cubeRect.x + cubeRect.width &&
               playerRect.x + playerRect.width > cubeRect.x &&
@@ -158,23 +157,28 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     if (gameState !== 'playing') return;
+    if (!gameAreaRef.current) return;
     e.preventDefault();
+    
+    const gameWidth = gameAreaRef.current.offsetWidth;
     const currentTouchX = e.touches[0].clientX;
     const deltaX = currentTouchX - touchStartX.current;
     
-    const newPlayerX = playerStartX.current + deltaX;
+    const deltaX_pc = (deltaX / gameWidth) * 100;
+
+    const newPlayerX = playerStartX.current + deltaX_pc;
     
-    const clampedX = Math.max(0, Math.min(GAME_WIDTH - PLAYER_SIZE, newPlayerX));
+    const clampedX = Math.max(0, Math.min(100 - PLAYER_SIZE_PC, newPlayerX));
     setPlayerX(clampedX);
   };
 
 
   return (
-    <div className="flex flex-col items-center p-4 space-y-4 bg-background rounded-lg w-full">
+    <div className="flex flex-col items-center p-4 space-y-4 bg-background rounded-lg w-full h-full">
       <h3 className="text-xl font-bold font-headline">Cube Runner</h3>
       <div 
-        className="relative bg-secondary overflow-hidden border-2 border-primary/20 rounded-lg touch-none w-full" 
-        style={{ height: GAME_HEIGHT, maxWidth: GAME_WIDTH }}
+        ref={gameAreaRef}
+        className="relative bg-secondary overflow-hidden border-2 border-primary/20 rounded-lg touch-none w-full flex-1 aspect-[9/16] max-w-sm mx-auto"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
       >
@@ -213,10 +217,10 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
                 <div 
                     className="absolute flex items-center justify-center text-primary-foreground"
                     style={{ 
-                        width: PLAYER_SIZE, 
-                        height: PLAYER_SIZE, 
-                        left: playerX, 
-                        bottom: 20
+                        width: `${PLAYER_SIZE_PC}%`, 
+                        height: `${PLAYER_SIZE_PC}%`, 
+                        left: `${playerX}%`, 
+                        bottom: '5%'
                     }}
                 >
                     <Zap className="w-full h-full text-primary animate-pulse" />
@@ -226,10 +230,10 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
                         key={o.id}
                         className="absolute flex items-center justify-center"
                         style={{
-                            width: OBSTACLE_SIZE,
-                            height: OBSTACLE_SIZE,
-                            left: o.x,
-                            top: o.y,
+                            width: `${OBSTACLE_SIZE_PC}%`,
+                            height: `${OBSTACLE_SIZE_PC}%`,
+                            left: `${o.x}%`,
+                            top: `${o.y}%`,
                         }}
                     >
                         <ShieldAlert className="w-full h-full text-destructive" />
@@ -240,10 +244,10 @@ export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProp
                         key={c.id}
                         className="absolute flex items-center justify-center"
                         style={{
-                            width: CUBE_SIZE,
-                            height: CUBE_SIZE,
-                            left: c.x,
-                            top: c.y,
+                            width: `${CUBE_SIZE_PC}%`,
+                            height: `${CUBE_SIZE_PC}%`,
+                            left: `${c.x}%`,
+                            top: `${c.y}%`,
                         }}
                     >
                         <Box className="w-full h-full text-accent" />

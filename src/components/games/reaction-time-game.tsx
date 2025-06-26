@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -113,18 +112,20 @@ export function ReactionTimeGame({ onGameComplete, onGameWon }: ReactionTimeGame
   const { bg, content } = renderContent();
 
   return (
-    <div className="text-center p-4 space-y-4 bg-background rounded-lg">
-        <h3 className="text-xl font-bold mb-4 font-headline">Reaction Time Test</h3>
-        <div
-            onClick={handleClick}
-            className={cn(
-            "w-full h-64 rounded-lg flex items-center justify-center text-center font-bold transition-colors duration-200 cursor-pointer",
-            bg
-            )}
-        >
-           {content}
+    <div className="flex flex-col items-center justify-center text-center p-4 space-y-4 bg-background rounded-lg h-full">
+        <h3 className="text-xl font-bold mb-4 font-headline flex-shrink-0">Reaction Time Test</h3>
+        <div className="w-full flex-grow flex items-center justify-center">
+            <div
+                onClick={handleClick}
+                className={cn(
+                "w-full h-64 max-w-md rounded-lg flex items-center justify-center text-center font-bold transition-colors duration-200 cursor-pointer",
+                bg
+                )}
+            >
+            {content}
+            </div>
         </div>
-        <div className="h-24 flex items-center justify-center">
+        <div className="h-24 flex items-center justify-center flex-shrink-0">
             {gameState === 'idle' && <Button onClick={startGame}>Start Game</Button>}
             {(gameState === 'result' || gameState === 'too_soon') && (
                 <div className='flex flex-col sm:flex-row gap-2 justify-center pt-2'>

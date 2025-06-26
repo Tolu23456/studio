@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
@@ -119,34 +118,36 @@ export function GameCard({ game }: GameCardProps) {
   }, [cooldownTime, game.id, user, game.title, isEmbedded]);
 
   const handleStartGame = () => {
-    // Consume one play for the entire session
     const allPlays = getGamePlays();
-    const currentCount = (allPlays[game.id]?.count || 0) + 1;
-    
-    let newCooldownUntil = allPlays[game.id]?.cooldownUntil || null;
-    if (currentCount >= MAX_PLAYS) {
-        newCooldownUntil = new Date().getTime() + COOLDOWN_HOURS * 60 * 60 * 1000;
-        setCooldownTime(newCooldownUntil);
-        toast({
-            title: "Play limit reached",
-            description: `You can play this game again in ${COOLDOWN_HOURS} hour.`,
+    const gameData = allPlays[game.id];
+
+    if (!gameData || gameData.count === 0) {
+        const currentCount = (allPlays[game.id]?.count || 0) + 1;
+        
+        let newCooldownUntil = allPlays[game.id]?.cooldownUntil || null;
+        if (currentCount >= MAX_PLAYS) {
+            newCooldownUntil = new Date().getTime() + COOLDOWN_HOURS * 60 * 60 * 1000;
+            setCooldownTime(newCooldownUntil);
+            toast({
+                title: "Play limit reached",
+                description: `You can play this game again in ${COOLDOWN_HOURS} hour.`,
+            });
+        }
+        
+        setPlayCount(currentCount);
+        setGamePlays({
+            ...allPlays,
+            [game.id]: {
+                count: currentCount,
+                cooldownUntil: newCooldownUntil,
+            },
         });
     }
-    
-    setPlayCount(currentCount);
-    setGamePlays({
-        ...allPlays,
-        [game.id]: {
-            count: currentCount,
-            cooldownUntil: newCooldownUntil,
-        },
-    });
 
     setIsGameOpen(true);
   };
 
   const handleGameWon = async (scorePayload: number) => {
-    // "Play" has already been consumed. This function now only claims rewards.
     if (isEmbedded || !user) {
         if (!user) toast({ variant: "destructive", title: "You must be logged in to claim rewards." });
         return;
@@ -258,7 +259,7 @@ export function GameCard({ game }: GameCardProps) {
             "flex items-center justify-center",
             isEmbedded
               ? "h-full w-full border-0 bg-transparent p-0 shadow-none sm:h-[90vh] sm:w-auto sm:max-w-4xl"
-              : "sm:max-w-md"
+              : "p-0 sm:max-w-2xl"
           )}
         >
           <DialogHeader className="sr-only">
@@ -276,7 +277,9 @@ export function GameCard({ game }: GameCardProps) {
               />
             </div>
           ) : GameComponent ? (
-            <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} />
+            <div className="w-full h-full bg-background sm:rounded-lg">
+              <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} />
+            </div>
           ) : (
             <div className="p-8 text-center">
               <h3 className="text-lg font-semibold">Game Not Available</h3>
