@@ -5,11 +5,11 @@ import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { User, Zap, Award, Users, Loader2, Save } from 'lucide-react';
+import { User, Zap, Award, Users, Loader2, Save, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { updateCurrentUserProfile } from '@/services/user-data';
 import { format } from 'date-fns';
@@ -19,7 +19,7 @@ import * as z from "zod";
 
 const profileSchema = z.object({
   displayName: z.string().min(3, "Display name must be at least 3 characters.").max(30, "Display name cannot exceed 30 characters."),
-  photoURL: z.string().url("Please enter a valid URL.").or(z.literal("")),
+  photoURL: z.string().or(z.literal("")),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -29,6 +29,7 @@ export default function ProfilePage() {
   const { user, userProfile, loading, refreshUserProfile } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -46,6 +47,31 @@ export default function ProfilePage() {
       });
     }
   }, [userProfile, form]);
+  
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1 * 1024 * 1024) { // 1MB limit for data URI
+      toast({
+        variant: 'destructive',
+        title: 'File Too Large',
+        description: 'Please select an image smaller than 1MB.',
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUri = e.target?.result as string;
+      form.setValue('photoURL', dataUri, { shouldDirty: true });
+    };
+    reader.readAsDataURL(file);
+  };
 
 
   const handleProfileSave = async (data: ProfileFormData) => {
@@ -57,6 +83,7 @@ export default function ProfilePage() {
         title: 'Profile Updated',
         description: 'Your changes have been saved.',
       });
+      form.reset(data); // Reset dirty state
     } catch (error: any) {
       console.error('Failed to update profile:', error);
       toast({
@@ -95,10 +122,26 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-6">
             <div className="flex flex-col sm:flex-row items-center gap-6">
-                <Avatar className="h-24 w-24">
-                    <AvatarImage src={form.watch('photoURL') || userProfile.photoURL || undefined} alt="User Avatar" />
-                    <AvatarFallback><User className="w-12 h-12" /></AvatarFallback>
-                </Avatar>
+                 <div className="relative group">
+                    <Avatar className="h-24 w-24">
+                        <AvatarImage src={form.watch('photoURL') || userProfile.photoURL || undefined} alt="User Avatar" />
+                        <AvatarFallback><User className="w-12 h-12" /></AvatarFallback>
+                    </Avatar>
+                     <div 
+                        onClick={handleAvatarClick}
+                        className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-xs font-semibold rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                       <Upload className="w-6 h-6 mb-1" />
+                       Change
+                    </div>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                        accept="image/png, image/jpeg, image/webp"
+                    />
+                </div>
                 
                 <div className="space-y-1 text-center sm:text-left">
                     <h2 className="text-2xl font-semibold">{userProfile.displayName}</h2>
@@ -107,16 +150,11 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-1 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="displayName">Display Name</Label>
                     <Input id="displayName" {...form.register('displayName')} />
                     {form.formState.errors.displayName && <p className="text-sm text-destructive">{form.formState.errors.displayName.message}</p>}
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="photoURL">Photo URL</Label>
-                    <Input id="photoURL" placeholder="https://example.com/avatar.png" {...form.register('photoURL')} />
-                    {form.formState.errors.photoURL && <p className="text-sm text-destructive">{form.formState.errors.photoURL.message}</p>}
                 </div>
             </div>
             
