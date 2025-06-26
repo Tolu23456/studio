@@ -24,8 +24,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { transferCubes, fetchRecipientDisplayName } from '@/services/user-data';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 const formSchema = z.object({
   recipientId: z.string().regex(/^AC-[0-9]{6}[A-Z]$/, {
@@ -37,7 +38,7 @@ const formSchema = z.object({
 export function TransferCubesForm() {
   const { userProfile } = useAuth();
   const { toast } = useToast();
-  const [recipientName, setRecipientName] = useState<string | null>(null);
+  const [recipient, setRecipient] = useState<{ displayName: string | null; photoURL: string | null; error?: string } | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -55,25 +56,30 @@ export function TransferCubesForm() {
       const validFormat = /^AC-[0-9]{6}[A-Z]$/.test(recipientIdValue);
       if (validFormat) {
         setIsVerifying(true);
-        setRecipientName(null);
+        setRecipient(null);
+        form.clearErrors('recipientId');
         try {
-          const name = await fetchRecipientDisplayName(recipientIdValue);
-          setRecipientName(name);
+          const recipientInfo = await fetchRecipientDisplayName(recipientIdValue);
+          setRecipient(recipientInfo);
+          if (recipientInfo.error) {
+              form.setError('recipientId', { type: 'manual', message: recipientInfo.error });
+          }
         } catch (error) {
-          console.error("Error fetching recipient name:", error);
-          setRecipientName("Error finding user.");
+          console.error("Error fetching recipient info:", error);
+          setRecipient({ displayName: null, photoURL: null, error: "Error finding user." });
+          form.setError('recipientId', { type: 'manual', message: "Error finding user." });
         } finally {
           setIsVerifying(false);
         }
       } else {
-        setRecipientName(null);
+        setRecipient(null);
       }
     }, 500); // 500ms debounce
 
     return () => {
       clearTimeout(handler);
     };
-  }, [recipientIdValue]);
+  }, [recipientIdValue, form]);
 
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -152,19 +158,25 @@ export function TransferCubesForm() {
                       className="uppercase"
                     />
                   </FormControl>
-                  <div className="h-5 pt-1 text-sm text-muted-foreground">
+                  <div className="h-10 pt-1 text-sm text-muted-foreground flex items-center gap-2">
                     {isVerifying ? (
-                      <span className="flex items-center">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying ID...
-                      </span>
-                    ) : recipientName ? (
-                      <span>
-                        Recipient:{" "}
-                        <span className="font-semibold text-foreground">
-                          {recipientName}
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Verifying ID...</span>
+                      </>
+                    ) : recipient?.displayName && !recipient.error ? (
+                      <>
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={recipient.photoURL ?? undefined} alt={recipient.displayName ?? 'Recipient Avatar'} />
+                            <AvatarFallback><User className="h-4 w-4" /></AvatarFallback>
+                        </Avatar>
+                        <span>
+                          Recipient:{" "}
+                          <span className="font-semibold text-foreground">
+                            {recipient.displayName}
+                          </span>
                         </span>
-                      </span>
+                      </>
                     ) : (
                       <span>
                         Ask your friend for their User ID.

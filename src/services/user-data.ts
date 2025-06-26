@@ -402,20 +402,35 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   return { success: true, message: `You earned ${reward} Cubes!` };
 }
 
-export async function fetchRecipientDisplayName(adsenerId: string): Promise<string | null> {
+export async function fetchRecipientDisplayName(adsenerId: string): Promise<{ displayName: string | null; photoURL: string | null; error?: string }> {
     const formattedId = adsenerId.trim().toUpperCase();
-    if (!formattedId || !/^AC-[0-9]{6}[A-Z]$/.test(formattedId)) return null;
-    
+    if (!formattedId || !/^AC-[0-9]{6}[A-Z]$/.test(formattedId)) {
+        return { displayName: null, photoURL: null };
+    }
+
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where("adsenerId", "==", formattedId));
     
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) return "User not found";
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            return { displayName: null, photoURL: null, error: "User not found" };
+        }
 
-    const userDoc = querySnapshot.docs[0];
-    if (auth.currentUser && auth.currentUser.uid === userDoc.id) return "You cannot send cubes to yourself.";
-
-    return userDoc.data().displayName || 'Unnamed User';
+        const userDoc = querySnapshot.docs[0];
+        if (auth.currentUser && auth.currentUser.uid === userDoc.id) {
+            return { displayName: null, photoURL: null, error: "You cannot send cubes to yourself." };
+        }
+        
+        const data = userDoc.data();
+        return { 
+            displayName: data.displayName || 'Unnamed User',
+            photoURL: data.photoURL || null
+        };
+    } catch (e) {
+        console.error("Error fetching recipient display name:", e);
+        return { displayName: null, photoURL: null, error: "An error occurred while fetching user data." };
+    }
 }
 
 export async function transferCubes(recipientAdsenerId: string, amount: number): Promise<{ success: boolean; message: string }> {

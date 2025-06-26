@@ -65,12 +65,16 @@ export default function AdminNotificationsPage() {
             setIsVerifying(true);
             setRecipientName(null);
             try {
-              const name = await fetchRecipientDisplayName(userIdValue);
-              setRecipientName(name);
-              if (name === 'User not found' || name === "You cannot send cubes to yourself.") {
-                form.setError('userId', { type: 'manual', message: name });
-              } else {
+              const { displayName, error } = await fetchRecipientDisplayName(userIdValue);
+              if (error) {
+                setRecipientName(error); // This will just display the error string. Fine for this page.
+                form.setError('userId', { type: 'manual', message: error });
+              } else if (displayName) {
+                setRecipientName(displayName);
                 form.clearErrors('userId');
+              } else {
+                 setRecipientName("Error finding user.");
+                 form.setError('userId', { type: 'manual', message: 'Error finding user.' });
               }
             } catch (error) {
               setRecipientName("Error finding user.");
@@ -184,7 +188,7 @@ export default function AdminNotificationsPage() {
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         Verifying ID...
                                     </span>
-                                    ) : recipientName ? (
+                                    ) : recipientName && !form.formState.errors.userId ? (
                                     <span>
                                         Recipient:{" "}
                                         <span className="font-semibold text-foreground">
