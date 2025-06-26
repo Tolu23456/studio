@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -21,13 +21,14 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Game } from "@/lib/types";
-import { Gamepad2, Zap, Clock, ExternalLink } from "lucide-react";
+import { Gamepad2, Zap, Clock } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { claimGameReward, createSimpleNotification } from "@/services/user-data";
 import { ReactionTimeGame } from "@/components/games/reaction-time-game";
 import { MemoryMatchGame } from "@/components/games/memory-match-game";
 import { CubeRunnerGame } from "@/components/games/cube-runner-game";
 import { PuzzleBoxGame } from "@/components/games/puzzle-box-game";
+import { cn } from "@/lib/utils";
 
 const getGamePlays = () => {
     if (typeof window === 'undefined') return {};
@@ -192,46 +193,8 @@ export function GameCard({ game }: GameCardProps) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
   
-  const onCooldown = cooldownTime > 0 && new Date().getTime() < cooldownTime;
+  const onCooldown = !isEmbedded && cooldownTime > 0 && new Date().getTime() < cooldownTime;
   const playsLeft = MAX_PLAYS - playCount;
-
-  if (isEmbedded) {
-    return (
-      <Card className="overflow-hidden flex flex-col transition-all duration-200 ease-in-out hover:shadow-xl hover:-translate-y-1.5">
-        <CardHeader className="p-0 relative">
-          <Image
-            src={game.imageUrl}
-            alt={game.title}
-            width={600}
-            height={400}
-            className="object-cover aspect-video"
-            data-ai-hint={game.dataAiHint}
-          />
-        </CardHeader>
-        <CardContent className="p-4 flex-grow">
-          <CardTitle className="font-headline text-lg">{game.title}</CardTitle>
-          <CardDescription className="mt-1">{game.description}</CardDescription>
-        </CardContent>
-        <CardFooter className="p-4 bg-muted/50 flex justify-between items-center gap-2">
-           <div className="text-sm text-muted-foreground flex-shrink min-w-0">
-            <div className="flex items-center gap-1 font-bold text-primary">
-              <Zap className="w-5 h-5 flex-shrink-0" />
-              <span className="truncate">External Game</span>
-            </div>
-             <div className="text-xs mt-1">
-                Rewards not tracked
-              </div>
-          </div>
-          <Button asChild>
-            <a href={game.gameUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Play Now
-            </a>
-          </Button>
-        </CardFooter>
-      </Card>
-    );
-  }
 
   return (
     <>
@@ -251,19 +214,31 @@ export function GameCard({ game }: GameCardProps) {
           <CardDescription className="mt-1">{game.description}</CardDescription>
         </CardContent>
         <CardFooter className="p-4 bg-muted/50 flex justify-between items-center gap-2">
-          <div className="text-sm text-muted-foreground flex-shrink min-w-0">
-            <div className="flex items-center gap-1 font-bold text-primary">
-              <Zap className="w-5 h-5 flex-shrink-0" />
-              <span className="truncate">{game.rewardDescription || "Performance-based"}</span>
-            </div>
-            {!onCooldown && (
-              <div className="text-xs mt-1">
-                {playsLeft} {playsLeft === 1 ? 'play' : 'plays'} left
+          {isEmbedded ? (
+             <div className="text-sm text-muted-foreground flex-shrink min-w-0">
+                <div className="flex items-center gap-1 font-bold text-primary">
+                  <Zap className="w-5 h-5 flex-shrink-0" />
+                  <span className="truncate">External Game</span>
+                </div>
+                 <div className="text-xs mt-1">
+                    Rewards not tracked
+                  </div>
               </div>
-            )}
-          </div>
+          ) : (
+            <div className="text-sm text-muted-foreground flex-shrink min-w-0">
+                <div className="flex items-center gap-1 font-bold text-primary">
+                <Zap className="w-5 h-5 flex-shrink-0" />
+                <span className="truncate">{game.rewardDescription || "Performance-based"}</span>
+                </div>
+                {!onCooldown && (
+                <div className="text-xs mt-1">
+                    {playsLeft} {playsLeft === 1 ? 'play' : 'plays'} left
+                </div>
+                )}
+            </div>
+          )}
           
-          <Button onClick={() => setIsGameOpen(true)} disabled={onCooldown || playsLeft <= 0} className="flex-shrink-0">
+          <Button onClick={() => setIsGameOpen(true)} disabled={onCooldown || (!isEmbedded && playsLeft <= 0)} className="flex-shrink-0">
             {onCooldown ? (
                 <>
                     <Clock className="mr-2 h-4 w-4" />
@@ -280,19 +255,38 @@ export function GameCard({ game }: GameCardProps) {
       </Card>
 
       <Dialog open={isGameOpen} onOpenChange={setIsGameOpen}>
-        <DialogContent className="p-0 sm:p-6 flex items-center justify-center">
-           <DialogHeader className="sr-only">
-             <RadixDialogTitle>{game.title}</RadixDialogTitle>
-             <RadixDialogDescription>{game.description}</RadixDialogDescription>
-           </DialogHeader>
-           {GameComponent ? (
-             <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} playsLeft={playsLeft} />
-           ) : (
-             <div className='p-8 text-center'>
-                <h3 className='text-lg font-semibold'>Game Not Available</h3>
-                <p className='text-muted-foreground'>This game component could not be loaded. It may not be configured correctly.</p>
-             </div>
-           )}
+        <DialogContent
+          className={cn(
+            "flex items-center justify-center",
+            isEmbedded
+              ? "h-full w-full border-0 bg-transparent p-0 shadow-none sm:h-[90vh] sm:w-auto sm:max-w-4xl"
+              : "sm:max-w-md"
+          )}
+        >
+          <DialogHeader className="sr-only">
+            <RadixDialogTitle>{game.title}</RadixDialogTitle>
+            <RadixDialogDescription>{game.description}</RadixDialogDescription>
+          </DialogHeader>
+          {isEmbedded ? (
+            <div className="h-full w-full overflow-hidden sm:rounded-lg bg-black">
+              <iframe
+                src={game.gameUrl}
+                title={game.title}
+                className="h-full w-full border-0"
+                allow="fullscreen"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </div>
+          ) : GameComponent ? (
+            <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} playsLeft={playsLeft} />
+          ) : (
+            <div className="p-8 text-center">
+              <h3 className="text-lg font-semibold">Game Not Available</h3>
+              <p className="text-muted-foreground">
+                This game component could not be loaded. It may not be configured correctly.
+              </p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
