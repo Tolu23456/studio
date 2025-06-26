@@ -45,12 +45,12 @@ export default function ProfilePage() {
         title: 'Profile Picture Updated',
         description: 'Your new avatar has been saved.',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to upload profile picture:', error);
       toast({
         variant: 'destructive',
         title: 'Upload Failed',
-        description: 'Could not update your profile picture. Please try again.',
+        description: error.message || 'Could not update profile picture. Please try again.',
       });
     } finally {
       setIsUploading(false);
@@ -121,7 +121,7 @@ export default function ProfilePage() {
                     ref={fileInputRef}
                     onChange={handleFileChange}
                     className="hidden"
-                    accept="image/png, image/jpeg, image-webp"
+                    accept="image/png, image/jpeg, image/webp"
                     disabled={isUploading}
                 />
             </div>

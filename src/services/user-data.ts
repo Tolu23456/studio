@@ -198,18 +198,28 @@ export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
 
 
 export async function uploadProfilePicture(file: File): Promise<string> {
+    if (!storage) {
+        throw new Error("Firebase Storage is not configured. Please ensure NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is set in your environment variables.");
+    }
     const user = getCurrentUser();
     const filePath = `profile-pictures/${user.uid}/profile.jpg`;
     const storageRef = ref(storage, filePath);
 
-    await uploadBytes(storageRef, file);
-    
-    const downloadURL = await getDownloadURL(storageRef);
-    
-    const userRef = doc(db, 'users', user.uid);
-    await updateDoc(userRef, { photoURL: downloadURL });
-    
-    return downloadURL;
+    try {
+        await uploadBytes(storageRef, file);
+        
+        const downloadURL = await getDownloadURL(storageRef);
+        
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { photoURL: downloadURL });
+        
+        return downloadURL;
+    } catch (error: any) {
+        if (error.code === 'storage/unauthorized') {
+            throw new Error("Permission denied. Please check your Firebase Storage security rules to allow writes.");
+        }
+        throw error;
+    }
 }
 
 function _createNotification(batch: any, uid: string, title: string, description: string) {
