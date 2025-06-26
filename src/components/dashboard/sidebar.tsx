@@ -20,10 +20,8 @@ import {
   Settings,
   Users,
   Gamepad2,
-  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/auth-context";
 
 
 export default function DashboardSidebar() {
@@ -35,7 +33,6 @@ export default function DashboardSidebar() {
     { href: "/dashboard/games", icon: Gamepad2, label: "Games" },
     { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
     { href: "/dashboard/referrals", icon: Users, label: "Referrals" },
-    { href: "/dashboard/notifications", icon: Bell, label: "Notifications" },
     { href: "/dashboard/settings", icon: Settings, label: "Settings" },
   ];
 
@@ -67,10 +64,10 @@ export default function DashboardSidebar() {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg transition-all hover:scale-110 md:h-8 md:w-8",
+                      "flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200 ease-in-out hover:scale-110 md:h-8 md:w-8",
                       isLinkActive(item.href)
                         ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:text-foreground"
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                     )}
                   >
                     <item.icon className="h-5 w-5" />
@@ -86,7 +83,7 @@ export default function DashboardSidebar() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => signOut(auth)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-110 hover:text-foreground md:h-8 md:w-8"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-all duration-200 ease-in-out hover:scale-110 hover:bg-accent/50 hover:text-foreground md:h-8 md:w-8"
                 >
                   <LogOut className="h-5 w-5" />
                   <span className="sr-only">Logout</span>
@@ -99,16 +96,16 @@ export default function DashboardSidebar() {
       </aside>
 
       {/* Mobile Bottom Bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t bg-background p-1 sm:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t bg-background p-1 sm:hidden">
           {navItems.map((item) => (
               <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                      "flex flex-col items-center justify-center gap-1 rounded-lg p-2 text-xs font-medium transition-colors active:scale-95",
+                      "flex flex-col items-center justify-center gap-1 rounded-lg p-2 text-xs font-medium transition-all duration-200 ease-in-out active:scale-95",
                       isLinkActive(item.href)
                           ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:bg-accent/80"
+                          : "text-muted-foreground hover:bg-accent/80 hover:text-accent-foreground"
                   )}
               >
                   <item.icon className="h-5 w-5" />
