@@ -359,7 +359,9 @@ const calculateGameScore = (gameId: string, scorePayload: number): number => {
         
         // Puzzle Block: higher score is better
         case 'g9':
-            return Math.max(0, Math.min(scorePayload, 2000)); // Cap score
+            // Convert raw game score into a more balanced base score for rewards.
+            // A raw score of 100 translates to a base score of 20.
+            return Math.round(Math.max(0, Math.min(scorePayload, 2000)) / 5);
 
         default:
              // A generic score for any other game, prevents giving huge rewards for unknown game IDs.
@@ -403,7 +405,7 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
   batch.set(activityRef, {
     type: 'Game Play',
-    description: `Played '${gameTitle}' and scored ${baseScore}`,
+    description: `Played '${gameTitle}' and scored ${scorePayload}`,
     cubes_earned: finalReward,
     date: now,
   });
@@ -411,7 +413,7 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
   batch.set(transactionRef, {
     type: 'reward',
-    description: `Reward from '${gameTitle}' (Score: ${baseScore})`,
+    description: `Reward from '${gameTitle}' (Score: ${scorePayload})`,
     amount: finalReward,
     date: now,
     status: 'completed',
