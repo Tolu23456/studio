@@ -13,6 +13,10 @@ export type UserProfile = {
   lastClaimedDate: Date | null;
   createdAt: Date;
   status: 'Active' | 'Disabled';
+  notificationPreferences: {
+    rewardNotifications: boolean;
+    promotionalUpdates: boolean;
+  };
   isAdmin?: boolean;
   disableCount: number;
   showReenableWarning?: boolean;

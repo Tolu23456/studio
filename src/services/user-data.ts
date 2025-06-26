@@ -119,6 +119,10 @@ export async function createUserProfile(user: User, displayName: string, referra
         loginStreak: 0,
         lastClaimedDate: null,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
+        notificationPreferences: {
+            rewardNotifications: true,
+            promotionalUpdates: true,
+        },
         disableCount: 0,
         claimedAdIds: [],
         adResetTimestamp: null,
@@ -177,6 +181,7 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
             lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
             createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(docSnap.createTime!.seconds * 1000),
             status: data.status || 'Active',
+            notificationPreferences: data.notificationPreferences || { rewardNotifications: true, promotionalUpdates: true },
             isAdmin: data.isAdmin || false,
             disableCount: data.disableCount || 0,
             showReenableWarning: data.showReenableWarning || false,
@@ -210,7 +215,14 @@ export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
     return users;
 }
 
-export async function updateCurrentUserProfile(data: { displayName?: string; photoURL?: string }): Promise<void> {
+export async function updateCurrentUserProfile(data: {
+    displayName?: string;
+    photoURL?: string;
+    notificationPreferences?: {
+        rewardNotifications: boolean;
+        promotionalUpdates: boolean;
+    };
+}): Promise<void> {
     const user = getCurrentUser();
     const userRef = doc(db, 'users', user.uid);
 
@@ -218,15 +230,18 @@ export async function updateCurrentUserProfile(data: { displayName?: string; pho
     if (data.displayName) {
         updateData.displayName = data.displayName;
     }
-    // Allow setting an empty string to remove the photo
     if (typeof data.photoURL === 'string') {
         updateData.photoURL = data.photoURL;
+    }
+    if (data.notificationPreferences) {
+        updateData.notificationPreferences = data.notificationPreferences;
     }
 
     if (Object.keys(updateData).length > 0) {
         await updateDoc(userRef, updateData);
     }
 }
+
 
 export async function createSimpleNotification(title: string, description: string): Promise<void> {
     const user = getCurrentUser();
