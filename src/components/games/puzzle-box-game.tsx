@@ -4,12 +4,12 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Lightbulb } from 'lucide-react';
+import { CheckCircle, Lightbulb, PartyPopper } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 type PuzzleBoxGameProps = {
   onGameComplete: () => void;
   onGameWon: (moves: number) => void;
-  playsLeft: number;
 };
 
 const GRID_SIZE = 3;
@@ -46,7 +46,7 @@ const createInitialBoard = () => {
     return board;
 }
 
-export function PuzzleBoxGame({ onGameComplete, onGameWon, playsLeft }: PuzzleBoxGameProps) {
+export function PuzzleBoxGame({ onGameComplete, onGameWon }: PuzzleBoxGameProps) {
     const [board, setBoard] = useState(createInitialBoard);
     const [moves, setMoves] = useState(0);
     const [isWon, setIsWon] = useState(false);
@@ -92,7 +92,7 @@ export function PuzzleBoxGame({ onGameComplete, onGameWon, playsLeft }: PuzzleBo
     }
 
     return (
-        <div className="text-center p-4 space-y-4">
+        <div className="text-center p-4 space-y-4 bg-background rounded-lg">
             <h3 className="text-xl font-bold font-headline">Puzzle Box</h3>
             <p className="text-sm text-muted-foreground">Turn all lights ON or OFF to unlock the box!</p>
 
@@ -107,33 +107,40 @@ export function PuzzleBoxGame({ onGameComplete, onGameWon, playsLeft }: PuzzleBo
                             onClick={() => handleTileClick(rIdx, cIdx)}
                             disabled={isWon}
                             className={cn(
-                                "w-20 h-20 rounded-lg border-2 transition-all",
-                                isLit ? 'bg-primary/80 border-primary shadow-lg shadow-primary/30' : 'bg-muted border-border',
+                                "w-20 h-20 rounded-lg border-2 transition-all duration-300",
+                                isLit 
+                                    ? 'bg-primary/80 border-primary shadow-[0_0_15px_hsl(var(--primary))]' 
+                                    : 'bg-muted border-border shadow-inner',
                                 "disabled:opacity-70 disabled:cursor-not-allowed"
                             )}
                             aria-label={`Tile at row ${rIdx + 1}, column ${cIdx + 1}. Status: ${isLit ? 'On' : 'Off'}`}
                         >
-                            <Lightbulb className={cn("w-8 h-8 mx-auto", isLit ? 'text-primary-foreground' : 'text-muted-foreground/50')} />
+                            <Lightbulb className={cn("w-8 h-8 mx-auto transition-colors", isLit ? 'text-primary-foreground' : 'text-muted-foreground/50')} />
                         </button>
                     ))
                 )}
             </div>
 
-            <p className="font-semibold">Moves: {moves}</p>
+            <p className="font-semibold text-lg">Moves: {moves}</p>
 
             {isWon && (
-                <div className="flex flex-col items-center gap-4 animate-in fade-in pt-4">
-                    <div className="flex items-center gap-2 text-lg font-bold text-success">
-                        <CheckCircle className="w-6 h-6" />
-                        <span>Puzzle Solved!</span>
-                    </div>
-                     {playsLeft <= 0 && (
-                        <p className="text-sm text-destructive font-semibold">No more plays left.</p>
-                    )}
-                    <div className='flex flex-col sm:flex-row gap-2 justify-center w-full'>
-                        <Button onClick={resetGame} variant="secondary" disabled={playsLeft <= 0}>Play Again</Button>
-                        <Button onClick={onGameComplete}>Finish Game</Button>
-                    </div>
+                <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/70 p-4">
+                     <Card className="w-full max-w-sm text-center animate-in fade-in zoom-in-95">
+                        <CardHeader>
+                             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mb-2">
+                                <PartyPopper className="h-8 w-8 text-success" />
+                            </div>
+                            <CardTitle className="text-2xl font-headline">Puzzle Solved!</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-4xl font-bold">{moves}</p>
+                            <CardDescription>Moves Taken</CardDescription>
+                        </CardContent>
+                        <CardFooter className="flex flex-col gap-2">
+                             <Button onClick={resetGame} className="w-full" variant="secondary">Play Again</Button>
+                             <Button onClick={onGameComplete} className="w-full">Finish Game</Button>
+                        </CardFooter>
+                     </Card>
                 </div>
             )}
         </div>

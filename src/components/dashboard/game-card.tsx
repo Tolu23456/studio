@@ -118,8 +118,35 @@ export function GameCard({ game }: GameCardProps) {
     return () => clearInterval(interval);
   }, [cooldownTime, game.id, user, game.title, isEmbedded]);
 
+  const handleStartGame = () => {
+    // Consume one play for the entire session
+    const allPlays = getGamePlays();
+    const currentCount = (allPlays[game.id]?.count || 0) + 1;
+    
+    let newCooldownUntil = allPlays[game.id]?.cooldownUntil || null;
+    if (currentCount >= MAX_PLAYS) {
+        newCooldownUntil = new Date().getTime() + COOLDOWN_HOURS * 60 * 60 * 1000;
+        setCooldownTime(newCooldownUntil);
+        toast({
+            title: "Play limit reached",
+            description: `You can play this game again in ${COOLDOWN_HOURS} hour.`,
+        });
+    }
+    
+    setPlayCount(currentCount);
+    setGamePlays({
+        ...allPlays,
+        [game.id]: {
+            count: currentCount,
+            cooldownUntil: newCooldownUntil,
+        },
+    });
+
+    setIsGameOpen(true);
+  };
 
   const handleGameWon = async (scorePayload: number) => {
+    // "Play" has already been consumed. This function now only claims rewards.
     if (isEmbedded || !user) {
         if (!user) toast({ variant: "destructive", title: "You must be logged in to claim rewards." });
         return;
@@ -134,29 +161,6 @@ export function GameCard({ game }: GameCardProps) {
                 description: `You've earned ${actualReward} Cubes for playing ${game.title}.`,
             });
         }
-
-        const allPlays = getGamePlays();
-        const currentCount = (allPlays[game.id]?.count || 0) + 1;
-        
-        let newCooldownUntil = allPlays[game.id]?.cooldownUntil || null;
-        if (currentCount >= MAX_PLAYS) {
-            newCooldownUntil = new Date().getTime() + COOLDOWN_HOURS * 60 * 60 * 1000;
-            setCooldownTime(newCooldownUntil);
-            toast({
-                title: "Play limit reached",
-                description: `You can play this game again in ${COOLDOWN_HOURS} hour.`,
-            });
-        }
-        
-        setPlayCount(currentCount);
-        setGamePlays({
-            ...allPlays,
-            [game.id]: {
-                count: currentCount,
-                cooldownUntil: newCooldownUntil,
-            },
-        });
-
     } catch (error) {
         console.error("Failed to claim game reward", error);
         toast({ variant: "destructive", title: "Claiming failed", description: "Could not claim your reward. Please try again." });
@@ -228,7 +232,11 @@ export function GameCard({ game }: GameCardProps) {
             </div>
           )}
           
-          <Button onClick={() => setIsGameOpen(true)} disabled={onCooldown || (!isEmbedded && playsLeft <= 0)} className="flex-shrink-0">
+          <Button 
+             onClick={isEmbedded ? () => setIsGameOpen(true) : handleStartGame}
+             disabled={onCooldown || (!isEmbedded && playsLeft <= 0)} 
+             className="flex-shrink-0"
+           >
             {onCooldown ? (
                 <>
                     <Clock className="mr-2 h-4 w-4" />
@@ -268,7 +276,7 @@ export function GameCard({ game }: GameCardProps) {
               />
             </div>
           ) : GameComponent ? (
-            <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} playsLeft={playsLeft} />
+            <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} />
           ) : (
             <div className="p-8 text-center">
               <h3 className="text-lg font-semibold">Game Not Available</h3>

@@ -4,12 +4,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Apple, Banana, Carrot, Grape, Pizza, Sandwich, CheckCircle, BrainCircuit } from 'lucide-react';
+import { Apple, Banana, Carrot, Grape, Pizza, Sandwich, CheckCircle, BrainCircuit, PartyPopper } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 type MemoryMatchGameProps = {
   onGameComplete: () => void;
   onGameWon: (moves: number) => void;
-  playsLeft: number;
 };
 
 const ICONS = [Apple, Banana, Carrot, Grape, Pizza, Sandwich];
@@ -34,7 +34,7 @@ const createShuffledBoard = (): CardType[] => {
     }));
 };
 
-export function MemoryMatchGame({ onGameComplete, onGameWon, playsLeft }: MemoryMatchGameProps) {
+export function MemoryMatchGame({ onGameComplete, onGameWon }: MemoryMatchGameProps) {
   const [cards, setCards] = useState<CardType[]>(createShuffledBoard);
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
@@ -113,49 +113,57 @@ export function MemoryMatchGame({ onGameComplete, onGameWon, playsLeft }: Memory
   };
 
   return (
-    <div className="text-center p-4 space-y-4">
+    <div className="text-center p-4 space-y-4 bg-background rounded-lg">
       <h3 className="text-xl font-bold font-headline">Memory Match</h3>
       <p className="text-sm text-muted-foreground">Find all the matching pairs!</p>
 
-      <div className="grid grid-cols-4 gap-3 mx-auto w-fit">
+      <div className="grid grid-cols-4 gap-3 mx-auto w-fit [perspective:1000px]">
         {cards.map((card, index) => (
-          <button
-            key={card.id}
-            onClick={() => handleCardClick(index)}
-            disabled={isWon || isChecking || card.isFlipped}
-            className={cn(
-              'w-16 h-16 rounded-lg flex items-center justify-center transition-colors duration-300',
-              card.isFlipped || card.isMatched
-                ? 'bg-secondary'
-                : 'bg-primary/20 hover:bg-primary/30',
-              card.isMatched && 'bg-success/20 !cursor-default'
-            )}
-          >
-            {(card.isFlipped || card.isMatched) ? (
-              <card.Icon className={cn('w-8 h-8', card.isMatched ? 'text-success' : 'text-secondary-foreground')} />
-            ) : (
-               <BrainCircuit className="w-8 h-8 text-primary/50" />
-            )}
-          </button>
+          <div key={card.id} className="w-16 h-16 group" onClick={() => handleCardClick(index)}>
+            <div
+                className={cn(
+                    "relative w-full h-full rounded-lg transition-transform duration-500 [transform-style:preserve-3d]",
+                    card.isFlipped || card.isMatched ? '[transform:rotateY(180deg)]' : '',
+                    !isWon && 'cursor-pointer'
+                )}
+            >
+                {/* Back of Card */}
+                <div className="absolute w-full h-full rounded-lg flex items-center justify-center bg-primary/20 hover:bg-primary/30 [backface-visibility:hidden]">
+                    <BrainCircuit className="w-8 h-8 text-primary/50" />
+                </div>
+                {/* Front of Card */}
+                <div className={cn(
+                    "absolute w-full h-full rounded-lg flex items-center justify-center [backface-visibility:hidden] [transform:rotateY(180deg)]",
+                    card.isMatched ? 'bg-success/20' : 'bg-secondary'
+                )}>
+                    <card.Icon className={cn('w-8 h-8', card.isMatched ? 'text-success' : 'text-secondary-foreground')} />
+                </div>
+            </div>
+          </div>
         ))}
       </div>
 
-      <p className="font-semibold">Moves: {moves}</p>
+      <p className="font-semibold text-lg">Moves: {moves}</p>
 
       {isWon && (
-        <div className="flex flex-col items-center gap-4 animate-in fade-in pt-4">
-          <div className="flex items-center gap-2 text-lg font-bold text-success">
-            <CheckCircle className="w-6 h-6" />
-            <span>You Won!</span>
+         <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/70 p-4">
+             <Card className="w-full max-w-sm text-center animate-in fade-in zoom-in-95">
+                <CardHeader>
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mb-2">
+                        <PartyPopper className="h-8 w-8 text-success" />
+                    </div>
+                    <CardTitle className="text-2xl font-headline">You Won!</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-4xl font-bold">{moves}</p>
+                    <CardDescription>Moves Taken</CardDescription>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2">
+                    <Button onClick={resetGame} className="w-full" variant="secondary">Play Again</Button>
+                    <Button onClick={onGameComplete} className="w-full">Finish Game</Button>
+                </CardFooter>
+             </Card>
           </div>
-          {playsLeft <= 0 && (
-            <p className="text-sm text-destructive font-semibold">No more plays left.</p>
-          )}
-          <div className='flex flex-col sm:flex-row gap-2 justify-center w-full'>
-            <Button onClick={resetGame} variant="secondary" disabled={playsLeft <= 0}>Play Again</Button>
-            <Button onClick={onGameComplete}>Finish Game</Button>
-          </div>
-        </div>
       )}
     </div>
   );

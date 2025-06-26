@@ -3,14 +3,16 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Zap, ShieldAlert, Box, AlertTriangle, PartyPopper } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type CubeRunnerGameProps = {
   onGameComplete: () => void;
   onGameWon: (reward: number) => void;
-  playsLeft: number;
 };
 
-const GAME_WIDTH = 300;
+const GAME_WIDTH = 320;
 const GAME_HEIGHT = 500;
 const PLAYER_SIZE = 30;
 const OBSTACLE_SIZE = 30;
@@ -24,7 +26,7 @@ type Entity = {
   y: number;
 };
 
-export function CubeRunnerGame({ onGameComplete, onGameWon, playsLeft }: CubeRunnerGameProps) {
+export function CubeRunnerGame({ onGameComplete, onGameWon }: CubeRunnerGameProps) {
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
   const [score, setScore] = useState(0);
   const [playerX, setPlayerX] = useState(GAME_WIDTH / 2 - PLAYER_SIZE / 2);
@@ -75,7 +77,7 @@ export function CubeRunnerGame({ onGameComplete, onGameWon, playsLeft }: CubeRun
   useEffect(() => {
       if (gameState !== 'playing') return;
 
-      const playerRect = { x: playerX, y: GAME_HEIGHT - PLAYER_SIZE - 10, width: PLAYER_SIZE, height: PLAYER_SIZE };
+      const playerRect = { x: playerX, y: GAME_HEIGHT - PLAYER_SIZE - 20, width: PLAYER_SIZE, height: PLAYER_SIZE };
       
       for (const obstacle of obstacles) {
         const obstacleRect = { x: obstacle.x, y: obstacle.y, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE };
@@ -168,74 +170,91 @@ export function CubeRunnerGame({ onGameComplete, onGameWon, playsLeft }: CubeRun
 
 
   return (
-    <div className="flex flex-col items-center p-4 space-y-4">
+    <div className="flex flex-col items-center p-4 space-y-4 bg-background rounded-lg w-full">
       <h3 className="text-xl font-bold font-headline">Cube Runner</h3>
       <div 
-        className="relative bg-secondary overflow-hidden border-2 border-primary/20 rounded-lg touch-none" 
-        style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
+        className="relative bg-secondary overflow-hidden border-2 border-primary/20 rounded-lg touch-none w-full" 
+        style={{ height: GAME_HEIGHT, maxWidth: GAME_WIDTH }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
       >
+        <div className="absolute inset-0 h-full w-full bg-grid-slate-700/[0.1] [background-position:10px_10px]"></div>
+
         {gameState === 'idle' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/50 p-4 text-center">
-            <p className="text-white text-lg font-bold mb-4">Use Arrow Keys or Drag to Move</p>
+            <p className="text-white text-lg font-bold mb-4">Dodge alerts and collect cubes!</p>
+            <p className="text-white/80 text-sm mb-6">Use Arrow Keys or Drag to Move</p>
             <Button onClick={resetGame}>Start Game</Button>
           </div>
         )}
         {gameState === 'gameover' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/70 text-white p-4 text-center">
-            <h4 className="text-3xl font-bold">Game Over</h4>
-            <p className="text-lg mt-2">Your Score: {score}</p>
-             <p className="text-lg mt-1">Cubes Earned: {score}</p>
-            {playsLeft <= 0 && (
-                <p className="text-sm text-destructive font-semibold mt-4">No more plays left.</p>
-            )}
-            <div className="flex gap-4 mt-4">
-                <Button onClick={resetGame} variant="secondary" disabled={playsLeft <= 0}>Play Again</Button>
-                <Button onClick={onGameComplete}>Finish Game</Button>
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/70 p-4">
+             <Card className="w-full max-w-sm text-center animate-in fade-in zoom-in-95">
+                <CardHeader>
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 mb-2">
+                        <AlertTriangle className="h-8 w-8 text-destructive" />
+                    </div>
+                    <CardTitle className="text-2xl font-headline">Game Over</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-4xl font-bold">{score}</p>
+                    <CardDescription>Cubes Collected</CardDescription>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2">
+                    <Button onClick={resetGame} className="w-full" variant="secondary">Play Again</Button>
+                    <Button onClick={onGameComplete} className="w-full">Finish Game</Button>
+                </CardFooter>
+             </Card>
           </div>
         )}
 
         {gameState === 'playing' && (
             <>
                 <div 
-                    className="absolute bg-primary rounded-md"
+                    className="absolute flex items-center justify-center text-primary-foreground"
                     style={{ 
                         width: PLAYER_SIZE, 
                         height: PLAYER_SIZE, 
                         left: playerX, 
-                        bottom: 10
+                        bottom: 20
                     }}
-                />
+                >
+                    <Zap className="w-full h-full text-primary animate-pulse" />
+                </div>
                 {obstacles.map(o => (
                     <div 
                         key={o.id}
-                        className="absolute bg-destructive rounded-md"
+                        className="absolute flex items-center justify-center"
                         style={{
                             width: OBSTACLE_SIZE,
                             height: OBSTACLE_SIZE,
                             left: o.x,
                             top: o.y,
                         }}
-                    />
+                    >
+                        <ShieldAlert className="w-full h-full text-destructive" />
+                    </div>
                 ))}
                 {cubes.map(c => (
                     <div 
                         key={c.id}
-                        className="absolute bg-accent rounded-sm"
+                        className="absolute flex items-center justify-center"
                         style={{
                             width: CUBE_SIZE,
                             height: CUBE_SIZE,
                             left: c.x,
                             top: c.y,
                         }}
-                    />
+                    >
+                        <Box className="w-full h-full text-accent" />
+                    </div>
                 ))}
             </>
         )}
+         <div className="absolute top-2 right-2 bg-primary/80 text-primary-foreground px-3 py-1 rounded-full text-lg font-bold shadow-lg">
+            {score}
+        </div>
       </div>
-       <p className="text-lg font-bold">Score: {score}</p>
     </div>
   );
 }
