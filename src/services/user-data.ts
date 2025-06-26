@@ -3,7 +3,6 @@
 
 import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, SupportTicket } from '@/lib/types';
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay } from 'date-fns';
 import { db, auth, storage } from '@/lib/firebase';
@@ -196,31 +195,24 @@ export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
     return users;
 }
 
-
-export async function uploadProfilePicture(file: File): Promise<string> {
-    if (!storage) {
-        throw new Error("Firebase Storage is not configured. Please ensure NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is set in your environment variables.");
-    }
+export async function updateCurrentUserProfile(data: { displayName?: string; photoURL?: string }): Promise<void> {
     const user = getCurrentUser();
-    const filePath = `profile-pictures/${user.uid}/profile.jpg`;
-    const storageRef = ref(storage, filePath);
+    const userRef = doc(db, 'users', user.uid);
 
-    try {
-        await uploadBytes(storageRef, file);
-        
-        const downloadURL = await getDownloadURL(storageRef);
-        
-        const userRef = doc(db, 'users', user.uid);
-        await updateDoc(userRef, { photoURL: downloadURL });
-        
-        return downloadURL;
-    } catch (error: any) {
-        if (error.code === 'storage/unauthorized') {
-            throw new Error("Permission denied. Please check your Firebase Storage security rules to allow writes.");
-        }
-        throw error;
+    const updateData: { [key: string]: any } = {};
+    if (data.displayName) {
+        updateData.displayName = data.displayName;
+    }
+    // Allow setting an empty string to remove the photo
+    if (typeof data.photoURL === 'string') {
+        updateData.photoURL = data.photoURL;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+        await updateDoc(userRef, updateData);
     }
 }
+
 
 function _createNotification(batch: any, uid: string, title: string, description: string) {
     const notificationRef = doc(collection(db, 'users', uid, 'notifications'));
