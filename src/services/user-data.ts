@@ -651,9 +651,9 @@ const seedGames = async () => {
       { id: "g3", title: "Puzzle Box", description: "Solve the light puzzle by turning all lights on or off. A true brain teaser!", imageUrl: "https://i.postimg.cc/L8pQ0g2z/D-3.png", dataAiHint: "glowing puzzle", rewardDescription: "Score is based on fewer moves." },
       { id: "g4", title: "Reaction Time", description: "Click as fast as you can when the screen turns green. Don't jump the gun!", imageUrl: "https://i.postimg.cc/k4GzZxyw/D-4.png", dataAiHint: "stopwatch speed", rewardDescription: "Score is based on faster reaction." },
       { id: "g5", title: "Endless Runner", description: "A different, more challenging version of Cube Runner. How long can you last?", imageUrl: "https://i.postimg.cc/PqD3GqR9/D-5.png", dataAiHint: "abstract space", rewardDescription: "Score is based on cubes collected." },
-      { id: "g6", title: "Speed Match", description: "Find the pairs as quickly as you can in this fast-paced memory challenge.", imageUrl: "https://i.postimg.cc/7ZXvWx9y/D-6.png", dataAiHint: "fast cards", rewardDescription: "Score is based on fewer moves." },
-      { id: "g7", title: "Lights Out", description: "A classic light puzzle with a twist. Can you solve it?", imageUrl: "https://i.postimg.cc/j2p0VzYj/D-7.png", dataAiHint: "glowing grid", rewardDescription: "Score is based on fewer moves." },
-      { id: "g8", title: "Sprint Runner", description: "A high-speed version of Cube Runner for the ultimate challenge.", imageUrl: "https://i.postimg.cc/wMPb9V8G/D-8.png", dataAiHint: "fast motion", rewardDescription: "Score is based on cubes collected." },
+      { id: "g6", title: "Dot Connect", description: "Connect the matching dots by finding their pairs. A test of memory and speed.", imageUrl: "https://i.postimg.cc/mD3tZ6yM/D-6.png", dataAiHint: "connecting dots", rewardDescription: "Score is based on fewer moves." },
+      { id: "g7", title: "Bubble Pop", description: "Pop the bubbles as they appear! Test your reaction speed in this fun challenge.", imageUrl: "https://i.postimg.cc/4N5dLBXf/D-7.png", dataAiHint: "soap bubbles", rewardDescription: "Score is based on faster reaction." },
+      { id: "g8", title: "Zuma Dash", description: "Dash through a winding tunnel, collecting cubes in this high-speed challenge.", imageUrl: "https://i.postimg.cc/d1hKzZ2B/D-8.png", dataAiHint: "abstract tunnel", rewardDescription: "Score is based on cubes collected." },
     ];
     const batch = writeBatch(db);
     games.forEach(game => {

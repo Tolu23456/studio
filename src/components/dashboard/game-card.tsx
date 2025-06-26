@@ -47,9 +47,9 @@ const GameComponentMap: { [key: string]: React.ElementType } = {
   'g3': PuzzleBoxGame,
   'g4': ReactionTimeGame,
   'g5': CubeRunnerGame, // "Endless Runner" uses the same component
-  'g6': MemoryMatchGame,
-  'g7': PuzzleBoxGame,
-  'g8': CubeRunnerGame,
+  'g6': MemoryMatchGame, // Dot Connect
+  'g7': ReactionTimeGame, // Bubble Pop
+  'g8': CubeRunnerGame, // Zuma Dash
 };
 
 
@@ -61,6 +61,7 @@ export function GameCard({ game }: GameCardProps) {
   const [isGameOpen, setIsGameOpen] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(0);
   const [playCount, setPlayCount] = useState(0);
+  const [isNewSession, setIsNewSession] = useState(true);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -122,10 +123,8 @@ export function GameCard({ game }: GameCardProps) {
   }, [cooldownTime, game.id, user, game.title, isEmbedded]);
 
   const handleStartGame = () => {
-    const allPlays = getGamePlays();
-    const gameData = allPlays[game.id];
-
-    if (!gameData || gameData.count === 0) {
+    if (isNewSession) {
+        const allPlays = getGamePlays();
         const currentCount = (allPlays[game.id]?.count || 0) + 1;
         
         let newCooldownUntil = allPlays[game.id]?.cooldownUntil || null;
@@ -146,6 +145,7 @@ export function GameCard({ game }: GameCardProps) {
                 cooldownUntil: newCooldownUntil,
             },
         });
+        setIsNewSession(false);
     }
 
     setIsGameOpen(true);
@@ -174,6 +174,7 @@ export function GameCard({ game }: GameCardProps) {
 
   const handleFinishGame = () => {
     setIsGameOpen(false);
+    setIsNewSession(true); // Reset session state when game is closed
   }
 
   const GameComponent = GameComponentMap[game.id];
@@ -238,7 +239,7 @@ export function GameCard({ game }: GameCardProps) {
           )}
           
           <Button 
-             onClick={isEmbedded ? () => window.open(game.gameUrl, '_blank') : handleStartGame}
+             onClick={isEmbedded ? () => setIsGameOpen(true) : handleStartGame}
              disabled={onCooldown || (!isEmbedded && playsLeft <= 0)} 
              className="flex-shrink-0"
            >
@@ -269,7 +270,14 @@ export function GameCard({ game }: GameCardProps) {
             <RadixDialogDescription>{game.description}</RadixDialogDescription>
           </DialogHeader>
           <div className="w-full h-full bg-background rounded-lg">
-             {GameComponent ? (
+             {isEmbedded ? (
+                 <iframe 
+                    src={game.gameUrl}
+                    title={game.title}
+                    className="w-full h-full border-0 rounded-lg"
+                    sandbox="allow-scripts allow-same-origin"
+                 ></iframe>
+             ) : GameComponent ? (
                 <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} />
               ) : (
                 <div className="p-8 text-center flex flex-col items-center justify-center h-full">
@@ -277,6 +285,7 @@ export function GameCard({ game }: GameCardProps) {
                   <p className="text-muted-foreground">
                     This game component could not be loaded. It may not be configured correctly.
                   </p>
+                   <Button onClick={handleFinishGame} className="mt-4">Close</Button>
                 </div>
              )}
           </div>
