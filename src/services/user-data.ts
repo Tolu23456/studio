@@ -451,13 +451,14 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
         const feePercentage = settings.transferFeePercentage || 0;
         const feeAmount = Math.ceil(amount * (feePercentage / 100));
         const totalDeduction = amount + feeAmount;
+        let senderData: UserProfile;
 
         await runTransaction(db, async (transaction) => {
             const senderRef = doc(db, 'users', sender.uid);
             const senderDoc = await transaction.get(senderRef);
             if (!senderDoc.exists()) throw new Error("Your user profile could not be found.");
             
-            const senderData = senderDoc.data() as UserProfile;
+            senderData = senderDoc.data() as UserProfile;
             if (senderData.cubeBalance < totalDeduction) throw new Error(`Insufficient balance. You need ${totalDeduction.toLocaleString()} Cubes (including a ${feeAmount.toLocaleString()} Cube fee).`);
 
             const now = new Date();
@@ -485,6 +486,15 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
             await batch.commit();
         });
         
+        // After successful transaction, save beneficiary
+        const recipientData = recipientDoc.data();
+        await setDoc(doc(db, 'users', sender.uid, 'beneficiaries', recipientDoc.id), {
+            adsenerId: recipientData.adsenerId,
+            displayName: recipientData.displayName,
+            photoURL: recipientData.photoURL || null,
+            lastTransferredAt: new Date(),
+        }, { merge: true });
+
         return { success: true, message: `Successfully sent ${amount.toLocaleString()} cubes.` };
 
     } catch (error: any) {

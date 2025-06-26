@@ -113,3 +113,11 @@ export type SupportTicket = {
   resolvedAt?: Date | null;
   resolvedBy?: string | null; // Admin display name
 };
+
+export type Beneficiary = {
+  id: string; // recipient's UID
+  adsenerId: string;
+  displayName: string;
+  photoURL: string | null;
+  lastTransferredAt: Date;
+};

@@ -4,7 +4,6 @@
 import Link from "next/link";
 import { TransferCubesForm } from "@/components/dashboard/transfer-cubes-form";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/auth-context";
 import { Zap, ArrowRight } from "lucide-react";
@@ -37,8 +36,6 @@ export default function WalletPage() {
           </CardTitle>
         </CardHeader>
       </Card>
-
-      <Separator />
 
       <TransferCubesForm />
     </div>
