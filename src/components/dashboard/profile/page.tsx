@@ -5,21 +5,49 @@ import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { User, Zap, Award, Users, Loader2 } from 'lucide-react';
+import { User, Zap, Award, Users, Loader2, Save, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useRef, useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { uploadProfilePicture } from '@/services/user-data';
+import { updateCurrentUserProfile } from '@/services/user-data';
 import { format } from 'date-fns';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const profileSchema = z.object({
+  displayName: z.string().min(3, "Display name must be at least 3 characters.").max(30, "Display name cannot exceed 30 characters."),
+  photoURL: z.string().or(z.literal("")),
+});
+
+type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
   const { user, userProfile, loading, refreshUserProfile } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
+  const form = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      displayName: '',
+      photoURL: '',
+    },
+  });
+
+  useEffect(() => {
+    if (userProfile) {
+      form.reset({ 
+          displayName: userProfile.displayName,
+          photoURL: userProfile.photoURL || '',
+      });
+    }
+  }, [userProfile, form]);
+  
   const handleAvatarClick = () => {
-    if (isUploading) return;
     fileInputRef.current?.click();
   };
 
@@ -27,33 +55,43 @@ export default function ProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) { // 2MB limit
+    if (file.size > 1 * 1024 * 1024) { // 1MB limit for data URI
       toast({
         variant: 'destructive',
         title: 'File Too Large',
-        description: 'Please select an image smaller than 2MB.',
+        description: 'Please select an image smaller than 1MB.',
       });
       return;
     }
 
-    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUri = e.target?.result as string;
+      form.setValue('photoURL', dataUri, { shouldDirty: true });
+    };
+    reader.readAsDataURL(file);
+  };
+
+
+  const handleProfileSave = async (data: ProfileFormData) => {
+    setIsSaving(true);
     try {
-      await uploadProfilePicture(file);
-      // Explicitly refresh the profile to update the UI immediately
-      if(refreshUserProfile) await refreshUserProfile();
+      await updateCurrentUserProfile(data);
+      if (refreshUserProfile) await refreshUserProfile();
       toast({
-        title: 'Profile Picture Updated',
-        description: 'Your new avatar has been saved.',
+        title: 'Profile Updated',
+        description: 'Your changes have been saved.',
       });
-    } catch (error) {
-      console.error('Failed to upload profile picture:', error);
+      form.reset(data); // Resets dirty fields state
+    } catch (error: any) {
+      console.error('Failed to update profile:', error);
       toast({
         variant: 'destructive',
-        title: 'Upload Failed',
-        description: 'Could not update your profile picture. Please try again.',
+        title: 'Update Failed',
+        description: error.message || 'Could not update your profile.',
       });
     } finally {
-      setIsUploading(false);
+      setIsSaving(false);
     }
   };
 
@@ -61,32 +99,8 @@ export default function ProfilePage() {
     return (
         <div className="space-y-6">
              <h1 className="text-3xl font-bold tracking-tight font-headline">My Profile</h1>
-             <Card>
-                <CardHeader>
-                    <CardTitle>User Information</CardTitle>
-                    <CardDescription>View and manage your personal details.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex flex-col sm:flex-row items-center gap-6">
-                        <Skeleton className="h-24 w-24 rounded-full" />
-                        <div className="space-y-2">
-                           <Skeleton className="h-6 w-48" />
-                           <Skeleton className="h-5 w-64" />
-                        </div>
-                    </div>
-                </CardContent>
-             </Card>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Account Statistics</CardTitle>
-                    <CardDescription>Your current progress and earnings on Adsener.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-3">
-                    <Skeleton className="h-20" />
-                    <Skeleton className="h-20" />
-                    <Skeleton className="h-20" />
-                </CardContent>
-             </Card>
+             <Skeleton className="h-64 w-full" />
+             <Skeleton className="h-48 w-full" />
         </div>
     )
   }
@@ -98,42 +112,60 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight font-headline">My Profile</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>User Information</CardTitle>
-          <CardDescription>View and manage your personal details.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="relative group">
-                <Avatar className="h-24 w-24">
-                    <AvatarImage src={userProfile.photoURL || undefined} alt="User Avatar" />
-                    <AvatarFallback><User className="w-12 h-12" /></AvatarFallback>
-                </Avatar>
-                <div 
-                    onClick={handleAvatarClick}
-                    className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xs font-semibold rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                    {isUploading ? <Loader2 className="w-8 h-8 animate-spin" /> : "Change"}
+      
+      <form onSubmit={form.handleSubmit(handleProfileSave)}>
+        <Card>
+            <CardHeader>
+            <CardTitle>User Information</CardTitle>
+            <CardDescription>Update your display name and profile picture.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+                 <div className="relative group">
+                    <Avatar className="h-24 w-24">
+                        <AvatarImage src={form.watch('photoURL') || userProfile.photoURL || undefined} alt="User Avatar" />
+                        <AvatarFallback><User className="w-12 h-12" /></AvatarFallback>
+                    </Avatar>
+                    <div 
+                        onClick={handleAvatarClick}
+                        className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-xs font-semibold rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                       <Upload className="w-6 h-6 mb-1" />
+                       Change
+                    </div>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                        accept="image/png, image/jpeg, image/webp"
+                    />
                 </div>
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/png, image/jpeg, image/webp"
-                    disabled={isUploading}
-                />
+                
+                <div className="space-y-1 text-center sm:text-left">
+                    <h2 className="text-2xl font-semibold">{userProfile.displayName}</h2>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                    <p className="text-sm text-muted-foreground">Joined on {format(userProfile.createdAt, 'PP')}</p>
+                </div>
             </div>
 
-            <div className="space-y-1 text-center sm:text-left">
-              <h2 className="text-2xl font-semibold">{userProfile.displayName}</h2>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-              <p className="text-sm text-muted-foreground">Joined on {format(userProfile.createdAt, 'PP')}</p>
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="displayName">Display Name</Label>
+                    <Input id="displayName" {...form.register('displayName')} />
+                    {form.formState.errors.displayName && <p className="text-sm text-destructive">{form.formState.errors.displayName.message}</p>}
+                </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            
+            <div className="flex justify-end">
+                <Button type="submit" disabled={isSaving || !form.formState.isDirty}>
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Save Changes
+                </Button>
+            </div>
+            </CardContent>
+        </Card>
+      </form>
 
       <Card>
         <CardHeader>
