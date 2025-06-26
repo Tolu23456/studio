@@ -116,15 +116,17 @@ export default function DashboardHeader() {
               </div>
             ) : notifications.length > 0 ? (
                 notifications.slice(0, 5).map((notification) => (
-                    <DropdownMenuItem key={notification.id} className="flex flex-col items-start gap-1 p-3 cursor-pointer">
+                    <DropdownMenuItem key={notification.id} asChild>
+                      <Link href="/dashboard/notifications" className="group flex flex-col items-start gap-1 p-3 !text-current">
                         <div className="flex items-center justify-between w-full">
                             <p className="font-medium text-sm">{notification.title}</p>
                             {!notification.read && <span className="h-2 w-2 rounded-full bg-primary" />}
                         </div>
-                        <p className="text-xs text-muted-foreground w-full">{notification.description}</p>
-                        <p className="text-xs text-muted-foreground/80 w-full pt-1">
+                        <p className="text-xs text-muted-foreground w-full group-data-[highlighted]:text-accent-foreground/90">{notification.description}</p>
+                        <p className="text-xs text-muted-foreground/80 w-full pt-1 group-data-[highlighted]:text-accent-foreground/70">
                             {formatDistanceToNow(notification.date, { addSuffix: true })}
                         </p>
+                      </Link>
                     </DropdownMenuItem>
                 ))
             ) : (
