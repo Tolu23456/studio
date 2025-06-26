@@ -8,7 +8,7 @@ import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import type { UserProfile, Notification, PlatformSettings } from '@/lib/types';
 import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit, setDoc, getDoc } from 'firebase/firestore';
 import { generateAdsenerId } from '@/services/user-data';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   const fetchUserProfile = useCallback(async (uid: string) => {
     if (!db) return;
@@ -206,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   
     return () => unsubscribe();
-  }, [user, toast]);
+  }, [user]);
 
   const value = useMemo(() => ({ user, userProfile, loading, notifications, platformSettings, refreshUserProfile }), [user, userProfile, loading, notifications, platformSettings, refreshUserProfile]);
 
