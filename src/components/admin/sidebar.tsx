@@ -20,6 +20,7 @@ import {
   Gamepad2,
   Film,
   LifeBuoy,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "firebase/auth";
@@ -35,11 +36,12 @@ export default function AdminSidebar() {
     { href: "/admin/ads", icon: Film, label: "Ads" },
     { href: "/admin/notifications", icon: Megaphone, label: "Notifications" },
     { href: "/admin/support", icon: LifeBuoy, label: "Support" },
+    { href: "/admin/profile", icon: User, label: "Profile" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
   
   const isLinkActive = (href: string) => {
-    if (href === '/admin/dashboard') return pathname === href;
+    if (href === '/admin/dashboard' || href === '/admin/profile') return pathname === href;
     return pathname.startsWith(href);
   };
 

@@ -205,12 +205,11 @@ export async function uploadProfilePicture(file: File): Promise<string> {
     await uploadBytes(storageRef, file);
     
     const downloadURL = await getDownloadURL(storageRef);
-    const photoURL = `${downloadURL}&_v=${new Date().getTime()}`;
-
-    const userRef = doc(db, 'users', user.uid);
-    await updateDoc(userRef, { photoURL });
     
-    return photoURL;
+    const userRef = doc(db, 'users', user.uid);
+    await updateDoc(userRef, { photoURL: downloadURL });
+    
+    return downloadURL;
 }
 
 function _createNotification(batch: any, uid: string, title: string, description: string) {
