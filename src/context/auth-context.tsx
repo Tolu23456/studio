@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { User } from 'firebase/auth';
@@ -166,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user || !db) {
+    if (!user?.uid || !db) {
       setNotifications([]);
       return;
     }
@@ -205,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   
     return () => unsubscribe();
-  }, [user]);
+  }, [user?.uid]);
 
   const value = useMemo(() => ({ user, userProfile, loading, notifications, platformSettings, refreshUserProfile }), [user, userProfile, loading, notifications, platformSettings, refreshUserProfile]);
 
