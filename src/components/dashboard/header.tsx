@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -9,7 +9,7 @@ import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from 'date-fns';
-import type { Notification } from '@/lib/types';
+import { markAllNotificationsAsRead } from "@/services/user-data";
 
 import {
   Breadcrumb,
@@ -42,9 +42,24 @@ export default function DashboardHeader() {
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
   const { userProfile, notifications, loading: authLoading } = useAuth();
+  const [isMarkingRead, setIsMarkingRead] = useState(false);
   
-  const loadingNotifications = authLoading;
   const hasUnread = notifications.some(n => !n.read);
+
+  const handleOpenNotifications = async (open: boolean) => {
+    if (open && hasUnread && !isMarkingRead) {
+      setIsMarkingRead(true);
+      try {
+        await markAllNotificationsAsRead();
+      } catch (error) {
+        console.error("Failed to mark notifications as read", error);
+      } finally {
+        // The real-time listener will update the UI, no need to set state here.
+        setIsMarkingRead(false);
+      }
+    }
+  };
+
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -86,7 +101,7 @@ export default function DashboardHeader() {
       </div>
 
       <div className="relative ml-auto flex items-center gap-2">
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={handleOpenNotifications}>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon" className="h-9 w-9 relative">
               <Bell className="h-4 w-4" />
@@ -97,7 +112,7 @@ export default function DashboardHeader() {
           <DropdownMenuContent align="end" className="w-80 md:w-96">
             <DropdownMenuLabel>Notifications</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {loadingNotifications ? (
+            {authLoading ? (
               <div className="p-2 space-y-3">
                 <div className="flex items-start space-x-3">
                   <Skeleton className="h-4 w-4 rounded-full mt-1" />

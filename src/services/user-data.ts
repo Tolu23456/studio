@@ -356,6 +356,10 @@ const calculateGameScore = (gameId: string, scorePayload: number): number => {
             if (scorePayload < 100) return 0; // Impossible reaction time
             if (scorePayload > 1000) return 5; // Participation score
             return Math.max(0, 50 - Math.floor(scorePayload / 20));
+        
+        // Puzzle Block: higher score is better
+        case 'g9':
+            return Math.max(0, Math.min(scorePayload, 2000)); // Cap score
 
         default:
              // A generic score for any other game, prevents giving huge rewards for unknown game IDs.
@@ -538,7 +542,11 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
 
             // 3. Create transaction logs for both users
             const senderTransactionRef = doc(collection(db, 'users', sender.uid, 'transactions'));
-            transaction.set(senderTransactionRef, { type: 'withdrawal', description: `Sent to ${recipientDoc.data().displayName}`, amount: -totalDeduction, date: now, status: 'completed' });
+            transaction.set(senderTransactionRef, { type: 'withdrawal', description: `Sent to ${recipientDoc.data().displayName}`, amount: -amount, date: now, status: 'completed' });
+            if(feeAmount > 0) {
+                 const senderFeeTransactionRef = doc(collection(db, 'users', sender.uid, 'transactions'));
+                 transaction.set(senderFeeTransactionRef, { type: 'withdrawal', description: `Fee for sending to ${recipientDoc.data().displayName}`, amount: -feeAmount, date: now, status: 'completed' });
+            }
             
             const recipientTransactionRef = doc(collection(db, 'users', recipientDoc.id, 'transactions'));
             transaction.set(recipientTransactionRef, { type: 'deposit', description: `Received from ${senderData.displayName}`, amount: amount, date: now, status: 'completed' });
@@ -658,6 +666,29 @@ export async function sendNotificationToAllUsers(title: string, description: str
     return { successCount, errorCount };
 }
 
+export async function markAllNotificationsAsRead(): Promise<void> {
+    const user = getCurrentUser();
+    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+    const q = query(notificationsRef, where('read', '==', false));
+
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            return; // No unread notifications
+        }
+
+        const batch = writeBatch(db);
+        querySnapshot.forEach(docSnapshot => {
+            batch.update(docSnapshot.ref, { read: true });
+        });
+
+        await batch.commit();
+    } catch (error) {
+        console.error("Error marking notifications as read:", error);
+    }
+}
+
+
 // Game Management
 const seedGames = async () => {
     const games: (Omit<Game, 'isEnabled' | 'id'> & { id: string })[] = [
@@ -669,6 +700,7 @@ const seedGames = async () => {
       { id: "g6", title: "Dot Connect", description: "Connect the matching dots by finding their pairs. A test of memory and speed.", imageUrl: "https://i.postimg.cc/mD3tZ6yM/D-6.png", dataAiHint: "connecting dots", rewardDescription: "Score is based on fewer moves." },
       { id: "g7", title: "Bubble Pop", description: "Pop the bubbles as they appear! Test your reaction speed in this fun challenge.", imageUrl: "https://i.postimg.cc/4N5dLBXf/D-7.png", dataAiHint: "soap bubbles", rewardDescription: "Score is based on faster reaction." },
       { id: "g8", title: "Zuma Dash", description: "Dash through a winding tunnel, collecting cubes in this high-speed challenge.", imageUrl: "https://i.postimg.cc/d1hKzZ2B/D-8.png", dataAiHint: "abstract tunnel", rewardDescription: "Score is based on cubes collected." },
+      { id: "g9", title: "Puzzle Block", description: "Fit the blocks into the grid. Clear lines to score big points!", imageUrl: "https://i.postimg.cc/kG7Y9YqH/D-9.png", dataAiHint: "block puzzle", rewardDescription: "Score is based on lines cleared." },
     ];
     const batch = writeBatch(db);
     games.forEach(game => {

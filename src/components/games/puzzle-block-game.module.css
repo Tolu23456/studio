@@ -1,0 +1,126 @@
+
+.gameContainer {
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+}
+
+.title {
+  margin-bottom: 0.5rem;
+  color: hsl(var(--foreground));
+  text-shadow: 1px 1px 1px hsl(var(--background));
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.scoreBoard {
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: hsl(var(--foreground));
+}
+
+.gameBoard {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  gap: 3px;
+  background: hsl(var(--muted));
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px hsla(var(--foreground) / 0.1);
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 1 / 1;
+}
+
+.cell {
+  width: 100%;
+  height: 100%;
+  background: hsl(var(--secondary));
+  border-radius: 6px;
+  box-shadow: inset -2px -2px 5px hsl(var(--card)), inset 2px 2px 5px hsl(var(--muted));
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+.filled {
+  background: hsl(var(--primary));
+  box-shadow: inset -2px -2px 5px hsl(var(--primary) / 0.8), inset 2px 2px 5px hsl(var(--primary) / 0.5);
+  animation: dropIn 0.2s ease-in-out;
+}
+
+.previewValid {
+  background-color: hsla(var(--success) / 0.3) !important;
+}
+
+.previewInvalid {
+  background-color: hsla(var(--destructive) / 0.3) !important;
+}
+
+.clearAnimate {
+  animation: flashClear 0.3s ease;
+}
+
+@keyframes dropIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes flashClear {
+  0%, 100% { background-color: hsl(var(--primary)); }
+  50% { background-color: hsl(var(--card)); }
+}
+
+.piecesContainer {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  min-height: 100px;
+}
+
+.piece {
+  display: grid;
+  cursor: grab;
+  width: 100px;
+  height: 100px;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  touch-action: none;
+}
+.piece:active {
+  cursor: grabbing;
+}
+
+
+.block {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.gameOver {
+  position: absolute;
+  inset: 0;
+  background: hsla(var(--background) / 0.8);
+  color: hsl(var(--foreground));
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.dragging {
+    opacity: 0.5;
+    transform: scale(1.1);
+}

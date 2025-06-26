@@ -28,6 +28,7 @@ import { ReactionTimeGame } from "@/components/games/reaction-time-game";
 import { MemoryMatchGame } from "@/components/games/memory-match-game";
 import { CubeRunnerGame } from "@/components/games/cube-runner-game";
 import { PuzzleBoxGame } from "@/components/games/puzzle-box-game";
+import { PuzzleBlockGame } from "@/components/games/puzzle-block-game";
 import { cn } from "@/lib/utils";
 
 const getGamePlays = () => {
@@ -50,6 +51,7 @@ const GameComponentMap: { [key: string]: React.ElementType } = {
   'g6': MemoryMatchGame, // Dot Connect
   'g7': ReactionTimeGame, // Bubble Pop
   'g8': CubeRunnerGame, // Zuma Dash
+  'g9': PuzzleBlockGame,
 };
 
 
@@ -239,7 +241,7 @@ export function GameCard({ game }: GameCardProps) {
           )}
           
           <Button 
-             onClick={isEmbedded ? () => setIsGameOpen(true) : handleStartGame}
+             onClick={isEmbedded ? () => window.open(game.gameUrl, '_blank') : handleStartGame}
              disabled={onCooldown || (!isEmbedded && playsLeft <= 0)} 
              className="flex-shrink-0"
            >
