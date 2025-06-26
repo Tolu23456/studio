@@ -376,6 +376,8 @@ export default function AdminUsersPage() {
                         <div>{selectedUser.isAdmin ? 'Admin' : 'User'}</div>
                         <div className="font-semibold">Status:</div>
                         <div>{selectedUser.status}</div>
+                         <div className="font-semibold">Disables:</div>
+                        <div className="font-semibold text-destructive">{selectedUser.disableCount || 0}</div>
                     </div>
                 </div>
             )}

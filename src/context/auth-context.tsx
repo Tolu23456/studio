@@ -54,6 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
           isAdmin: data.isAdmin || false,
           status: data.status || 'Active',
+          disableCount: data.disableCount || 0,
+          showReenableWarning: data.showReenableWarning || false,
         };
         setUserProfile(profile);
     }
@@ -140,6 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
               isAdmin: data.isAdmin || false,
               status: data.status || 'Active',
+              disableCount: data.disableCount || 0,
+              showReenableWarning: data.showReenableWarning || false,
             };
             setUserProfile(profile);
           } else {

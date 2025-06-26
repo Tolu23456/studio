@@ -98,7 +98,7 @@ export async function createUserProfile(user: User, displayName: string, referra
     }
 
     // Create new user's profile
-    const newUserProfile: Omit<UserProfile, 'uid' | 'status' | 'isAdmin'> = {
+    const newUserProfile: Omit<UserProfile, 'uid' | 'status' | 'isAdmin' | 'showReenableWarning'> = {
         adsenerId: generateAdsenerId(),
         email: user.email,
         displayName: displayName,
@@ -109,6 +109,7 @@ export async function createUserProfile(user: User, displayName: string, referra
         loginStreak: 0,
         lastClaimedDate: null,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
+        disableCount: 0,
     };
     batch.set(userRef, { 
         uid: user.uid, 
@@ -165,6 +166,8 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
             createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(docSnap.createTime!.seconds * 1000),
             status: data.status || 'Active',
             isAdmin: data.isAdmin || false,
+            disableCount: data.disableCount || 0,
+            showReenableWarning: data.showReenableWarning || false,
         };
     }
     return null;
@@ -187,6 +190,7 @@ export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
             isAdmin: data.isAdmin || false,
             cubeBalance: data.cubeBalance || 0,
             totalEarned: data.totalEarned || 0,
+            disableCount: data.disableCount || 0,
         };
     });
     return users;
@@ -462,7 +466,17 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
 // Admin Functions
 export async function updateUserStatus(uid: string, status: 'Active' | 'Disabled'): Promise<void> {
     const userRef = doc(db, 'users', uid);
-    await updateDoc(userRef, { status });
+    if (status === 'Disabled') {
+        await updateDoc(userRef, { status, disableCount: increment(1) });
+    } else {
+        await updateDoc(userRef, { status, showReenableWarning: true });
+    }
+}
+
+export async function clearReenableWarning(): Promise<void> {
+    const user = getCurrentUser();
+    const userRef = doc(db, 'users', user.uid);
+    await updateDoc(userRef, { showReenableWarning: false });
 }
 
 export async function updateUserProfileAdmin(uid: string, data: { displayName: string; isAdmin: boolean; }): Promise<void> {

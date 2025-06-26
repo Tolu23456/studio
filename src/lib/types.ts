@@ -14,6 +14,8 @@ export type UserProfile = {
   createdAt: Date;
   status: 'Active' | 'Disabled';
   isAdmin?: boolean;
+  disableCount: number;
+  showReenableWarning?: boolean;
 };
 
 export type Transaction = {
@@ -78,6 +80,7 @@ export type AdminUserView = {
   isAdmin: boolean;
   cubeBalance: number;
   totalEarned: number;
+  disableCount: number;
 };
 
 export type PlatformSettings = {
