@@ -322,17 +322,17 @@ const calculateGameScore = (gameId: string, scorePayload: number): number => {
     // A higher return value is always better.
     switch (gameId) {
         // Cube Runner games: score is direct. Higher is better.
-        case 'g1': case 'g5':
+        case 'g1': case 'g5': case 'g8':
             // Cap score to prevent ridiculously high submissions.
             return Math.min(scorePayload, 100);
 
         // Memory Match: fewer moves is better.
-        case 'g2':
+        case 'g2': case 'g6':
             if (scorePayload < 6) return 0; // Impossible score for a 12-card game (6 pairs)
             return Math.max(0, 50 - scorePayload); // Base score decreases with more moves.
 
         // Puzzle Box: fewer moves is better.
-        case 'g3':
+        case 'g3': case 'g7':
             if (scorePayload < 1) return 0; // Impossible score
             return Math.max(0, 40 - scorePayload); // Reward diminishes with more moves
 
@@ -645,12 +645,15 @@ export async function sendNotificationToAllUsers(title: string, description: str
 
 // Game Management
 const seedGames = async () => {
-    const games: (Omit<Game, 'isEnabled'>)[] = [
+    const games: (Omit<Game, 'isEnabled' | 'id'> & { id: string })[] = [
       { id: "g1", title: "Cube Runner", description: "Dodge obstacles and collect valuable cubes in this fast-paced runner.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "runner game", rewardDescription: "Score is based on cubes collected." },
-      { id: "g2", title: "Memory Match", description: "Test your memory by flipping cards and finding matching pairs.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "memory game", rewardDescription: "Score is based on fewer moves." },
-      { id: "g3", title: "Puzzle Box", description: "Solve the light puzzle by turning all lights on or off. A true brain teaser!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "puzzle box", rewardDescription: "Score is based on fewer moves." },
-      { id: "g4", title: "Reaction Time", description: "Click as fast as you can when the screen turns green. Don't jump the gun!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "reaction test", rewardDescription: "Score is based on faster reaction." },
-      { id: "g5", title: "Endless Runner", description: "A different, more challenging version of Cube Runner. How long can you last?", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "abstract running", rewardDescription: "Score is based on cubes collected." },
+      { id: "g2", title: "Memory Match", description: "Test your memory by flipping cards and finding matching pairs.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "memory cards", rewardDescription: "Score is based on fewer moves." },
+      { id: "g3", title: "Puzzle Box", description: "Solve the light puzzle by turning all lights on or off. A true brain teaser!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "glowing puzzle", rewardDescription: "Score is based on fewer moves." },
+      { id: "g4", title: "Reaction Time", description: "Click as fast as you can when the screen turns green. Don't jump the gun!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "stopwatch speed", rewardDescription: "Score is based on faster reaction." },
+      { id: "g5", title: "Endless Runner", description: "A different, more challenging version of Cube Runner. How long can you last?", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "abstract space", rewardDescription: "Score is based on cubes collected." },
+      { id: "g6", title: "Speed Match", description: "Find the pairs as quickly as you can in this fast-paced memory challenge.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "card match", rewardDescription: "Score is based on fewer moves." },
+      { id: "g7", title: "Lights Out", description: "A classic light puzzle with a twist. Can you solve it?", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "glowing grid", rewardDescription: "Score is based on fewer moves." },
+      { id: "g8", title: "Sprint Runner", description: "A high-speed version of Cube Runner for the ultimate challenge.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "fast motion", rewardDescription: "Score is based on cubes collected." },
     ];
     const batch = writeBatch(db);
     games.forEach(game => {

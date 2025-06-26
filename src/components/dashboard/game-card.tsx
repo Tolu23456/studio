@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
@@ -46,6 +47,9 @@ const GameComponentMap: { [key: string]: React.ElementType } = {
   'g3': PuzzleBoxGame,
   'g4': ReactionTimeGame,
   'g5': CubeRunnerGame, // "Endless Runner" uses the same component
+  'g6': MemoryMatchGame,
+  'g7': PuzzleBoxGame,
+  'g8': CubeRunnerGame,
 };
 
 
@@ -234,7 +238,7 @@ export function GameCard({ game }: GameCardProps) {
           )}
           
           <Button 
-             onClick={isEmbedded ? () => setIsGameOpen(true) : handleStartGame}
+             onClick={isEmbedded ? () => window.open(game.gameUrl, '_blank') : handleStartGame}
              disabled={onCooldown || (!isEmbedded && playsLeft <= 0)} 
              className="flex-shrink-0"
            >
@@ -256,38 +260,26 @@ export function GameCard({ game }: GameCardProps) {
       <Dialog open={isGameOpen} onOpenChange={setIsGameOpen}>
         <DialogContent
           className={cn(
-            "flex items-center justify-center",
-            isEmbedded
-              ? "h-full w-full border-0 bg-transparent p-0 shadow-none sm:h-[90vh] sm:w-auto sm:max-w-4xl"
-              : "p-0 sm:max-w-2xl"
+            "p-0 max-w-none w-full h-full flex items-center justify-center bg-transparent border-0 shadow-none",
+            "sm:w-[calc(100%-2rem)] sm:h-[calc(100%-2rem)] sm:max-w-7xl sm:max-h-5xl",
           )}
         >
           <DialogHeader className="sr-only">
             <RadixDialogTitle>{game.title}</RadixDialogTitle>
             <RadixDialogDescription>{game.description}</RadixDialogDescription>
           </DialogHeader>
-          {isEmbedded ? (
-            <div className="h-full w-full overflow-hidden sm:rounded-lg bg-black">
-              <iframe
-                src={game.gameUrl}
-                title={game.title}
-                className="h-full w-full border-0"
-                allow="fullscreen"
-                sandbox="allow-scripts allow-same-origin"
-              />
-            </div>
-          ) : GameComponent ? (
-            <div className="w-full h-full bg-background sm:rounded-lg">
-              <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} />
-            </div>
-          ) : (
-            <div className="p-8 text-center">
-              <h3 className="text-lg font-semibold">Game Not Available</h3>
-              <p className="text-muted-foreground">
-                This game component could not be loaded. It may not be configured correctly.
-              </p>
-            </div>
-          )}
+          <div className="w-full h-full bg-background rounded-lg">
+             {GameComponent ? (
+                <GameComponent onGameWon={handleGameWon} onGameComplete={handleFinishGame} />
+              ) : (
+                <div className="p-8 text-center flex flex-col items-center justify-center h-full">
+                  <h3 className="text-lg font-semibold">Game Not Available</h3>
+                  <p className="text-muted-foreground">
+                    This game component could not be loaded. It may not be configured correctly.
+                  </p>
+                </div>
+             )}
+          </div>
         </DialogContent>
       </Dialog>
     </>
