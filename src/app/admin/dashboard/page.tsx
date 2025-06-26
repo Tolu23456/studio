@@ -4,8 +4,9 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, BarChart, Settings, AlertCircle } from 'lucide-react';
-import { getAllUsersForAdmin } from '@/services/user-data';
+import { Users, BarChart, Settings, AlertCircle, Landmark } from 'lucide-react';
+import { getAllUsersForAdmin, getPlatformSettings } from '@/services/user-data';
+import type { PlatformSettings } from '@/lib/types';
 import { subWeeks, isAfter } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -14,17 +15,24 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [totalUsers, setTotalUsers] = useState(0);
   const [newUsers, setNewUsers] = useState(0);
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings | null>(null);
 
   useEffect(() => {
     async function fetchDashboardData() {
       try {
         setLoading(true);
         setError(null);
-        const users = await getAllUsersForAdmin();
+
+        const [users, settings] = await Promise.all([
+          getAllUsersForAdmin(),
+          getPlatformSettings(),
+        ]);
+        
         setTotalUsers(users.length);
+        setPlatformSettings(settings);
 
         const oneWeekAgo = subWeeks(new Date(), 1);
-        const recentUsers = users.filter(user => isAfter(user.createdAt, oneWeekAgo));
+        const recentUsers = users.filter(user => user.createdAt && isAfter(user.createdAt, oneWeekAgo));
         setNewUsers(recentUsers.length);
 
       } catch (err: any) {
@@ -54,7 +62,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="grid auto-rows-max items-start gap-4 md:gap-8">
       <h1 className="text-3xl font-bold tracking-tight font-headline">Admin Dashboard</h1>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -85,6 +93,19 @@ export default function AdminDashboardPage() {
             <div className="text-2xl font-bold">Active</div>
             <p className="text-xs text-muted-foreground">Monitoring system operational</p>
           </CardContent>
+        </Card>
+         <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Total Fees Collected</CardTitle>
+                <Landmark className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                {loading || !platformSettings ? (
+                    <Skeleton className="h-8 w-24" />
+                ) : (
+                    <div className="text-2xl font-bold">{platformSettings.totalFeesCollected.toLocaleString()} Cubes</div>
+                )}
+            </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">

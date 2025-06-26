@@ -81,7 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const settingsRef = doc(db, 'platform_settings', 'config');
     settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
         if (docSnap.exists()) {
-            setPlatformSettings(docSnap.data() as PlatformSettings);
+            const data = docSnap.data();
+            setPlatformSettings({
+                totalFeesCollected: 0,
+                ...data
+            } as PlatformSettings);
         } else {
             const defaultSettings: PlatformSettings = {
                 id: 'config',
@@ -91,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 globalGameRewardMultiplier: 1.0,
                 maintenanceMode: false,
                 transferFeePercentage: 1,
+                totalFeesCollected: 0,
                 globalPopup: {
                   enabled: false,
                   title: "Welcome!",

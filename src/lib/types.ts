@@ -89,6 +89,7 @@ export type PlatformSettings = {
   welcomeBonus: number;
   maintenanceMode: boolean;
   // Economy
+  totalFeesCollected: number;
   globalAdRewardMultiplier: number;
   globalGameRewardMultiplier: number;
   transferFeePercentage: number;

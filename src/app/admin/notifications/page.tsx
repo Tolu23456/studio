@@ -31,11 +31,11 @@ const formSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
 }).refine(data => {
     if (data.target === 'specific') {
-        return !!data.userId && /^AC-[0-9]{6}[A-Z]$/.test(data.userId);
+        return !!data.userId && /^[0-9]{6}[A-Z]$/.test(data.userId);
     }
     return true;
 }, {
-    message: "A valid User ID is required for specific targeting.",
+    message: "Invalid User ID format. Use 6 numbers and 1 capital letter.",
     path: ['userId'],
 });
 
@@ -61,11 +61,12 @@ export default function AdminNotificationsPage() {
 
     React.useEffect(() => {
         const handler = setTimeout(async () => {
-          if (targetValue === 'specific' && userIdValue && /^AC-[0-9]{6}[A-Z]$/.test(userIdValue)) {
+          if (targetValue === 'specific' && userIdValue && /^[0-9]{6}[A-Z]$/.test(userIdValue)) {
             setIsVerifying(true);
             setRecipientName(null);
             try {
-              const { displayName, error } = await fetchRecipientDisplayName(userIdValue);
+              const fullUserId = `AC-${userIdValue}`;
+              const { displayName, error } = await fetchRecipientDisplayName(fullUserId);
               if (error) {
                 setRecipientName(error); // This will just display the error string. Fine for this page.
                 form.setError('userId', { type: 'manual', message: error });
@@ -101,8 +102,9 @@ export default function AdminNotificationsPage() {
                     description: `Notifications sent to ${result.successCount} users. ${result.errorCount > 0 ? `${result.errorCount} failed.` : ''}`
                 });
             } else if (values.target === 'specific' && values.userId) {
+                const fullUserId = `AC-${values.userId}`;
                 const usersRef = collection(db, 'users');
-                const q = query(usersRef, where("adsenerId", "==", values.userId));
+                const q = query(usersRef, where("adsenerId", "==", fullUserId));
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
@@ -176,12 +178,21 @@ export default function AdminNotificationsPage() {
                         {targetValue === 'specific' && (
                             <div className="space-y-2">
                                 <Label htmlFor="userId">User ID</Label>
-                                <Input
-                                    id="userId"
-                                    placeholder="AC-123456A"
-                                    {...form.register('userId')}
-                                    className="uppercase"
-                                />
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground font-mono">
+                                        AC-
+                                    </span>
+                                    <Input
+                                        id="userId"
+                                        placeholder="123456A"
+                                        {...form.register('userId')}
+                                        onChange={(e) => {
+                                            const { value } = e.target;
+                                            form.setValue('userId', value.toUpperCase().replace(/[^0-9A-Z]/g, ''));
+                                        }}
+                                        className="uppercase pl-10 font-mono"
+                                    />
+                                </div>
                                 <div className="h-5 pt-1 text-sm text-muted-foreground">
                                     {isVerifying ? (
                                     <span className="flex items-center">
@@ -211,7 +222,7 @@ export default function AdminNotificationsPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="description">Description</Label>
-                            <Textarea id="description" placeholder="Describe the notification..." {...form.register('description')} />
+                            <Textarea id="description" placeholder="Describe the notification..." rows={5} {...form.register('description')} />
                             {form.formState.errors.description && (
                                 <p className="text-sm font-medium text-destructive">{form.formState.errors.description.message}</p>
                             )}

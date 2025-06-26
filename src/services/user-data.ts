@@ -463,6 +463,11 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
             const now = new Date();
             transaction.update(senderRef, { cubeBalance: increment(-totalDeduction) });
             transaction.update(recipientDoc.ref, { cubeBalance: increment(amount) });
+            
+            if (feeAmount > 0) {
+                const settingsRef = doc(db, 'platform_settings', 'config');
+                transaction.update(settingsRef, { totalFeesCollected: increment(feeAmount) });
+            }
 
             const senderTransactionRef = doc(collection(db, 'users', sender.uid, 'transactions'));
             transaction.set(senderTransactionRef, { type: 'withdrawal', description: `Sent to ${recipientDoc.data().displayName}`, amount: -totalDeduction, date: now, status: 'completed' });
@@ -470,12 +475,14 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
             const recipientTransactionRef = doc(collection(db, 'users', recipientDoc.id, 'transactions'));
             transaction.set(recipientTransactionRef, { type: 'deposit', description: `Received from ${senderData.displayName}`, amount: amount, date: now, status: 'completed' });
             
-            _createNotification(
-                transaction,
+            const batch = writeBatch(db);
+             _createNotification(
+                batch,
                 recipientDoc.id,
                 'Cubes Received!',
                 `You have received ${amount.toLocaleString()} Cubes from ${senderData.displayName}.`
             );
+            await batch.commit();
         });
         
         return { success: true, message: `Successfully sent ${amount.toLocaleString()} cubes.` };
@@ -512,7 +519,11 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     const docSnap = await getDoc(settingsRef);
 
     if (docSnap.exists()) {
-        return docSnap.data() as PlatformSettings;
+        const data = docSnap.data();
+        return {
+            totalFeesCollected: 0,
+            ...data
+        } as PlatformSettings;
     }
 
     const defaultSettings: PlatformSettings = {
@@ -523,6 +534,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
         globalGameRewardMultiplier: 1.0,
         maintenanceMode: false,
         transferFeePercentage: 1,
+        totalFeesCollected: 0,
         globalPopup: {
           enabled: false,
           title: "Welcome!",
