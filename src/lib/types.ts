@@ -97,3 +97,15 @@ export type PlatformSettings = {
     imageUrl?: string;
   };
 };
+
+export type SupportTicket = {
+  id: string;
+  userId: string;
+  userDisplayName: string;
+  userEmail: string;
+  message: string;
+  status: 'open' | 'resolved';
+  createdAt: Date;
+  resolvedAt?: Date | null;
+  resolvedBy?: string | null; // Admin display name
+};

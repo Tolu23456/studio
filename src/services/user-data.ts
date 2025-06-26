@@ -1,8 +1,8 @@
 
 'use client';
 
-import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup } from 'firebase/firestore';
+import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, SupportTicket } from '@/lib/types';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay } from 'date-fns';
@@ -593,3 +593,58 @@ export async function getAds(): Promise<Ad[]> {
 export async function addAd(ad: Omit<Ad, 'id'>): Promise<void> { await addDoc(collection(db, 'ads'), ad); }
 export async function updateAd(id: string, ad: Partial<Ad>): Promise<void> { await updateDoc(doc(db, 'ads', id), ad); }
 export async function deleteAd(id: string): Promise<void> { await deleteDoc(doc(db, 'ads', id)); }
+
+
+// Support Ticket Management
+export async function submitSupportTicket(message: string): Promise<void> {
+    const user = getCurrentUser();
+    const userProfileDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userProfileDoc.exists()) throw new Error('User profile not found.');
+    
+    const userProfile = userProfileDoc.data() as UserProfile;
+    
+    const ticketRef = doc(collection(db, 'support_tickets'));
+    const newTicket = {
+        userId: user.uid,
+        userDisplayName: userProfile.displayName,
+        userEmail: userProfile.email,
+        message,
+        status: 'open',
+        createdAt: serverTimestamp(),
+    };
+    await setDoc(ticketRef, newTicket);
+}
+
+export async function getSupportTickets(): Promise<SupportTicket[]> {
+    const ticketsRef = collection(db, 'support_tickets');
+    const q = query(ticketsRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: (data.createdAt as Timestamp).toDate(),
+            resolvedAt: data.resolvedAt ? (data.resolvedAt as Timestamp).toDate() : null,
+        } as SupportTicket;
+    });
+}
+
+export async function updateSupportTicketStatus(ticketId: string, status: 'resolved', adminName: string): Promise<void> {
+    const ticketRef = doc(db, 'support_tickets', ticketId);
+    const ticketSnap = await getDoc(ticketRef);
+    if (!ticketSnap.exists()) throw new Error('Ticket not found.');
+
+    const batch = writeBatch(db);
+
+    batch.update(ticketRef, {
+        status,
+        resolvedAt: serverTimestamp(),
+        resolvedBy: adminName,
+    });
+    
+    const ticketData = ticketSnap.data();
+    _createNotification(batch, ticketData.userId, 'Support Ticket Resolved', 'Your recent support ticket has been reviewed and marked as resolved by our team.');
+
+    await batch.commit();
+}

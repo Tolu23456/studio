@@ -9,13 +9,14 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/auth-context";
 import { Zap } from "lucide-react";
 import { GlobalPopup } from "@/components/dashboard/global-popup";
+import { StatusOverlay } from "@/components/dashboard/status-overlay";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, userProfile, platformSettings, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -34,6 +35,13 @@ export default function DashboardLayout({
         <Zap className="h-8 w-8 animate-pulse text-primary" />
       </div>
     );
+  }
+
+  const isMaintenance = platformSettings?.maintenanceMode && !userProfile?.isAdmin;
+  const isDisabled = userProfile?.status === 'Disabled';
+
+  if (isMaintenance || isDisabled) {
+    return <StatusOverlay isMaintenance={isMaintenance} />;
   }
 
   return (

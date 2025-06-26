@@ -19,6 +19,7 @@ import {
   Megaphone,
   Gamepad2,
   Film,
+  LifeBuoy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "firebase/auth";
@@ -32,8 +33,9 @@ export default function AdminSidebar() {
     { href: "/admin/users", icon: Users, label: "Users" },
     { href: "/admin/games", icon: Gamepad2, label: "Games" },
     { href: "/admin/ads", icon: Film, label: "Ads" },
-    { href: "/admin/settings", icon: Settings, label: "Settings" },
     { href: "/admin/notifications", icon: Megaphone, label: "Notifications" },
+    { href: "/admin/support", icon: LifeBuoy, label: "Support" },
+    { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
   
   const isLinkActive = (href: string) => {
