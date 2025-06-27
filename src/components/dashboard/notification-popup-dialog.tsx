@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -25,17 +24,17 @@ export function NotificationPopupDialog({ notification, onClose }: NotificationP
       <DialogContent onInteractOutside={(e) => e.preventDefault()} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{notification.title}</DialogTitle>
-          <DialogDescription>
+        </DialogHeader>
+        <div className="text-sm text-muted-foreground">
              {notification.isHtml ? (
                 <div
-                    className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground pt-2"
+                    className="prose prose-sm dark:prose-invert max-w-none"
                     dangerouslySetInnerHTML={{ __html: notification.description }}
                 />
             ) : (
-                <div className="pt-2">{notification.description}</div>
+                <p className="whitespace-pre-wrap">{notification.description}</p>
             )}
-          </DialogDescription>
-        </DialogHeader>
+        </div>
         <DialogFooter className="sm:justify-start">
           <Button type="button" onClick={onClose}>
             Close
