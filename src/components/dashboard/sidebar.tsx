@@ -20,6 +20,7 @@ import {
   Settings,
   Users,
   Gamepad2,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ export default function DashboardSidebar() {
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/dashboard/watch-ads", icon: PlaySquare, label: "Watch Ads" },
     { href: "/dashboard/games", icon: Gamepad2, label: "Games" },
+    { href: "/dashboard/tasks", icon: ClipboardList, label: "Tasks" },
     { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
     { href: "/dashboard/referrals", icon: Users, label: "Referrals" },
     { href: "/dashboard/settings", icon: Settings, label: "Settings" },
@@ -96,7 +98,7 @@ export default function DashboardSidebar() {
       </aside>
 
       {/* Mobile Bottom Bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t bg-background p-1 sm:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-7 border-t bg-background p-1 sm:hidden">
           {navItems.map((item) => (
               <Link
                   key={item.href}

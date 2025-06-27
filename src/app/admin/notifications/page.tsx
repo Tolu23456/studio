@@ -49,7 +49,7 @@ export default function AdminNotificationsPage() {
         <CardHeader>
           <CardTitle>Message History</CardTitle>
           <CardDescription>
-            A log of all broadcast and individual messages sent by admins.
+            A log of all broadcast and individual messages sent by admins. Note: Placeholders like '{{username}}' are shown as they were sent.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -67,7 +67,7 @@ export default function AdminNotificationsPage() {
             <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-lg">
               <Bell className="w-16 h-16 text-muted-foreground/50 mb-4" />
               <h3 className="text-xl font-semibold">No Messages Sent</h3>
-              <p className="text-muted-foreground">Sent notifications will be logged here.</p>
+              <p className="text-muted-foreground">Go to the 'Send Message' page to send a notification.</p>
             </div>
           ) : (
             <Table>
@@ -83,7 +83,7 @@ export default function AdminNotificationsPage() {
               <TableBody>
                 {logs.map((log) => (
                   <TableRow key={log.id}>
-                    <TableCell className="font-medium">{log.title}</TableCell>
+                    <TableCell className="font-medium truncate max-w-xs">{log.title}</TableCell>
                     <TableCell className="hidden sm:table-cell capitalize">{log.target}</TableCell>
                     <TableCell className="hidden md:table-cell">{log.adminDisplayName}</TableCell>
                     <TableCell>{formatDistanceToNow(log.timestamp, { addSuffix: true })}</TableCell>
@@ -114,7 +114,7 @@ export default function AdminNotificationsPage() {
                 srcDoc={selectedLog.description}
                 title="HTML Preview"
                 className="w-full h-full border-0 min-h-[200px]"
-                sandbox=""
+                sandbox="allow-scripts"
               />
             </div>
           ) : (

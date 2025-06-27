@@ -17,7 +17,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Check, Gift } from "lucide-react";
+import { Check, Gift, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isToday, isYesterday, startOfDay } from 'date-fns';
 import { claimDailyReward } from "@/services/user-data";
@@ -54,6 +54,7 @@ export function DailyRewards() {
 
   const rewards = Array.from({ length: 7 }, (_, i) => ({
     day: i + 1,
+    isStreakDay: (i + 1) % 7 === 0,
     claimed: i + 1 <= streak,
   }));
   
@@ -112,32 +113,35 @@ export function DailyRewards() {
       <CardHeader className="pb-3">
         <CardTitle>Daily Login Rewards</CardTitle>
         <CardDescription>
-          {streak > 0 ? `You are on a ${streak}-day streak!` : "Log in daily to build your streak."}
+          {streak > 0 ? `You're on a ${streak}-day streak!` : "Log in daily to build your streak."}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         <TooltipProvider>
             <div className="flex flex-wrap items-center justify-center gap-2">
-                {rewards.map((reward) => (
+                {rewards.map((reward) => {
+                  const isNextClaim = canClaim && reward.day === nextStreakDay;
+                  return (
                     <Tooltip key={reward.day}>
                         <TooltipTrigger asChild>
                             <div
                             className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all ${
                                 reward.claimed
                                 ? "bg-primary/20 border-primary text-primary"
-                                : canClaim && reward.day === nextStreakDay
+                                : isNextClaim
                                 ? "bg-accent/20 border-accent text-accent animate-pulse"
                                 : "bg-muted text-muted-foreground"
-                            }`}
+                            } ${reward.isStreakDay ? 'border-amber-500' : ''}`}
                             >
-                            {reward.claimed ? <Check className="h-4 w-4" /> : <Gift className="h-4 w-4" />}
+                            {reward.claimed ? <Check className="h-4 w-4" /> : reward.isStreakDay ? <Star className="h-4 w-4 fill-amber-400 text-amber-500" /> : <Gift className="h-4 w-4" />}
                             </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p>Day {reward.day} {reward.claimed ? '(Claimed)' : ''}</p>
+                            <p>Day {reward.day} {reward.isStreakDay && '(Streak Bonus!)'} {reward.claimed && '(Claimed)'}</p>
                         </TooltipContent>
                     </Tooltip>
-                ))}
+                  )
+                })}
             </div>
         </TooltipProvider>
         <Button onClick={handleClaim} className="w-full" disabled={!canClaim || isClaiming}>

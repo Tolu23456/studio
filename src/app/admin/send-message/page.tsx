@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -21,12 +20,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { sendNotificationToAllUsers, fetchRecipientDisplayName, logSentNotification } from '@/services/user-data';
+import { sendBroadcastNotification, fetchRecipientDisplayName, logSentNotification, sendPersonalizedNotification } from '@/services/user-data';
 import { useAuth } from '@/context/auth-context';
-import { Loader2, Send, AlertTriangle } from 'lucide-react';
+import { Loader2, Send, AlertTriangle, Key } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { UserProfile } from '@/lib/types';
 
 const formSchema = z.object({
   target: z.enum(['all', 'specific']),
@@ -49,7 +49,7 @@ export default function AdminSendMessagePage() {
     const { toast } = useToast();
     const { userProfile: adminProfile } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [recipientName, setRecipientName] = useState<string | null>(null);
+    const [recipient, setRecipient] = useState<{ displayName: string | null; photoURL: string | null; error?: string } | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -72,28 +72,28 @@ export default function AdminSendMessagePage() {
         const handler = setTimeout(async () => {
           if (targetValue === 'specific' && userIdValue && /^[0-9]{6}[A-Z]$/.test(userIdValue)) {
             setIsVerifying(true);
-            setRecipientName(null);
+            setRecipient(null);
             try {
               const fullUserId = `AC-${userIdValue}`;
               const { displayName, error } = await fetchRecipientDisplayName(fullUserId);
               if (error) {
-                setRecipientName(error); // This will just display the error string. Fine for this page.
+                setRecipient({ displayName: null, photoURL: null, error });
                 form.setError('userId', { type: 'manual', message: error });
               } else if (displayName) {
-                setRecipientName(displayName);
+                setRecipient({ displayName, photoURL: null }); // photoURL not needed here
                 form.clearErrors('userId');
               } else {
-                 setRecipientName("Error finding user.");
+                 setRecipient({displayName: null, photoURL: null, error: "Error finding user."});
                  form.setError('userId', { type: 'manual', message: 'Error finding user.' });
               }
             } catch (error) {
-              setRecipientName("Error finding user.");
+              setRecipient({displayName: null, photoURL: null, error: "Error finding user."});
               form.setError('userId', { type: 'manual', message: 'Error finding user.' });
             } finally {
               setIsVerifying(false);
             }
           } else {
-            setRecipientName(null);
+            setRecipient(null);
           }
         }, 500);
 
@@ -106,39 +106,25 @@ export default function AdminSendMessagePage() {
         try {
             let messageTargetDescription = "All Users";
             if (values.target === 'all') {
-                const result = await sendNotificationToAllUsers(values.title, values.description, values.isHtml);
+                const result = await sendBroadcastNotification(values.title, values.description, values.isHtml);
                 toast({
-                    title: "Broadcast Sent",
-                    description: `Notifications sent to ${result.successCount} users. ${result.errorCount > 0 ? `${result.errorCount} failed.` : ''}`
+                    title: "Broadcast Queued",
+                    description: `Notifications will be sent to ${result.successCount} users. ${result.errorCount > 0 ? `${result.errorCount} failed.` : ''}`
                 });
             } else if (values.target === 'specific' && values.userId) {
                 const fullUserId = `AC-${values.userId}`;
-                const usersRef = collection(db, 'users');
-                const q = query(usersRef, where("adsenerId", "==", fullUserId));
-                const querySnapshot = await getDocs(q);
-
-                if (querySnapshot.empty) {
-                    toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
+                const result = await sendPersonalizedNotification(fullUserId, values.title, values.description, values.isHtml);
+                if (result.success) {
+                    toast({
+                        title: "Notification Sent",
+                        description: `Message sent to ${result.recipientName}.`
+                    });
+                     messageTargetDescription = `${result.recipientName} (${fullUserId})`;
+                } else {
+                    toast({ variant: 'destructive', title: 'Error', description: result.message });
                     setIsSubmitting(false);
                     return;
                 }
-                const userDoc = querySnapshot.docs[0];
-                const notificationRef = doc(collection(db, 'users', userDoc.id, 'notifications'));
-                await setDoc(notificationRef, {
-                    title: values.title,
-                    description: values.description,
-                    isHtml: values.isHtml || false,
-                    date: new Date(),
-                    read: false,
-                });
-                
-                const recipientData = userDoc.data();
-                messageTargetDescription = `${recipientData.displayName} (${recipientData.adsenerId})`;
-
-                toast({
-                    title: "Notification Sent",
-                    description: `Message sent to ${recipientData.displayName}.`
-                });
             }
             
             if (adminProfile) {
@@ -146,7 +132,7 @@ export default function AdminSendMessagePage() {
             }
 
             form.reset({ target: 'all', userId: '', title: '', description: '', isHtml: isHtmlValue });
-            setRecipientName(null);
+            setRecipient(null);
         } catch (error) {
             console.error("Failed to send notification:", error);
             toast({
@@ -184,7 +170,7 @@ export default function AdminSendMessagePage() {
                                     >
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="all" id="r1" />
-                                            <Label htmlFor="r1">All Users</Label>
+                                            <Label htmlFor="r1">All Users (Broadcast)</Label>
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <RadioGroupItem value="specific" id="r2" />
@@ -218,11 +204,11 @@ export default function AdminSendMessagePage() {
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         Verifying ID...
                                     </span>
-                                    ) : recipientName && !form.formState.errors.userId ? (
+                                    ) : recipient?.displayName && !recipient.error ? (
                                     <span>
                                         Recipient:{" "}
                                         <span className="font-semibold text-foreground">
-                                        {recipientName}
+                                        {recipient.displayName}
                                         </span>
                                     </span>
                                     ) : null }
@@ -259,6 +245,16 @@ export default function AdminSendMessagePage() {
                                 )}
                             />
                         </div>
+                        
+                         <Alert>
+                            <Key className="h-4 w-4" />
+                            <AlertTitle>Dynamic Placeholders</AlertTitle>
+                            <AlertDescription>
+                                You can use these placeholders in your message. They will be replaced with the user's data.
+                                <br />
+                                <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{username}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{email}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{adsenerId}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{cubeBalance}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{date}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{time}}</code>
+                            </AlertDescription>
+                        </Alert>
 
                         {isHtmlValue ? (
                            <Tabs defaultValue="compose" className="w-full">
@@ -267,7 +263,7 @@ export default function AdminSendMessagePage() {
                                     <TabsTrigger value="preview">Preview</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="compose" className="mt-2">
-                                     <Textarea id="description" placeholder="<h1>Hello!</h1><p>You can use <b>HTML</b> here. Use <style> tags for CSS.</p>" rows={15} {...form.register('description')} />
+                                     <Textarea id="description" placeholder="<h1>Hello {{username}}!</h1><p>You can use <b>HTML</b> here. Use <style> tags for CSS.</p>" rows={15} {...form.register('description')} />
                                       {form.formState.errors.description && (
                                         <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.description.message}</p>
                                     )}

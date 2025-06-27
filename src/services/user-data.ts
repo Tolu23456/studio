@@ -2,9 +2,9 @@
 'use client';
 
 import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, SupportTicket, SentNotificationLog } from '@/lib/types';
-import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup, serverTimestamp, limit } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import { isYesterday, startOfDay, isToday } from 'date-fns';
+import { isYesterday, startOfDay, isToday, format } from 'date-fns';
 import { db, auth } from '@/lib/firebase';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
@@ -30,13 +30,25 @@ export function generateAdsenerId(): string {
     return result;
 }
 
-function _createNotificationInBatch(batch: any, uid: string, title: string, description: string) {
+const _replacePlaceholders = (template: string, userProfile: UserProfile): string => {
+    const now = new Date();
+    return template
+        .replace(/{{username}}/g, userProfile.displayName)
+        .replace(/{{email}}/g, userProfile.email || '')
+        .replace(/{{adsenerId}}/g, userProfile.adsenerId)
+        .replace(/{{cubeBalance}}/g, userProfile.cubeBalance.toLocaleString())
+        .replace(/{{date}}/g, format(now, 'PPP'))
+        .replace(/{{time}}/g, format(now, 'p'));
+};
+
+function _createNotificationInBatch(batch: any, uid: string, title: string, description: string, isHtml: boolean = false) {
     const notificationRef = doc(collection(db, 'users', uid, 'notifications'));
     const newNotification: Omit<Notification, 'id'> = {
         title,
         description,
         date: new Date(),
         read: false,
+        isHtml,
     };
     batch.set(notificationRef, newNotification);
 }
@@ -179,8 +191,8 @@ export async function createUserProfile(user: User, displayName: string, referra
 }
 
 
-export async function getUserProfile(user: User): Promise<UserProfile | null> {
-    const userRef = doc(db, 'users', user.uid);
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+    const userRef = doc(db, 'users', uid);
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
         const data = docSnap.data();
@@ -274,7 +286,6 @@ export async function updateCurrentUserProfile(data: Partial<Pick<UserProfile, '
                 finalData.photoURL = await uploadImageIfPresent(finalData.photoURL, `profile-pictures/${user.uid}`);
             }
 
-            // Remove cubeBalance from finalData as it's handled via increment
             const { cubeBalance, ...restOfFinalData } = finalData as any;
             transaction.update(userRef, restOfFinalData);
         });
@@ -486,13 +497,15 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   }
   
   const newStreak = (lastClaimedDay && isYesterday(lastClaimedDay)) ? userProfile.loginStreak + 1 : 1;
-  const reward = 5 + (newStreak * 5);
+  const isStreakBonusDay = newStreak % 7 === 0;
+  const baseReward = 5 + (newStreak * 5);
+  const finalReward = isStreakBonusDay ? baseReward + 50 : baseReward; // 50 cube bonus on 7th day
   const now = new Date();
   
   const batch = writeBatch(db);
   batch.update(userRef, {
-    cubeBalance: increment(reward),
-    totalEarned: increment(reward),
+    cubeBalance: increment(finalReward),
+    totalEarned: increment(finalReward),
     loginStreak: newStreak,
     lastClaimedDate: now,
   });
@@ -500,23 +513,26 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
   batch.set(activityRef, {
     type: 'Daily Login',
-    description: `Claimed Day ${newStreak} login bonus`,
-    cubes_earned: reward,
+    description: `Claimed Day ${newStreak} login bonus` + (isStreakBonusDay ? ' (STREAK BONUS!)' : ''),
+    cubes_earned: finalReward,
     date: now,
   });
 
   const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
   batch.set(transactionRef, {
     type: 'reward',
-    description: `Daily Login Bonus - Day ${newStreak}`,
-    amount: reward,
+    description: `Daily Login Bonus - Day ${newStreak}` + (isStreakBonusDay ? ' (STREAK BONUS!)' : ''),
+    amount: finalReward,
     date: now,
     status: 'completed',
   });
   
-  _createNotificationInBatch(batch, user.uid, "Daily Reward Claimed!", `You earned ${reward} Cubes for your Day ${newStreak} login!`);
+  const notificationTitle = isStreakBonusDay ? "STREAK BONUS!" : "Daily Reward Claimed!";
+  const notificationDesc = `You earned ${finalReward} Cubes for your Day ${newStreak} login!`;
+  _createNotificationInBatch(batch, user.uid, notificationTitle, notificationDesc);
+
   await batch.commit();
-  return { success: true, message: `You earned ${reward} Cubes!` };
+  return { success: true, message: `You earned ${finalReward} Cubes!` };
 }
 
 export async function fetchRecipientDisplayName(adsenerId: string): Promise<{ displayName: string | null; photoURL: string | null; error?: string }> {
@@ -745,7 +761,7 @@ export async function updatePlatformSettings(settings: Partial<PlatformSettings>
     await updateDoc(settingsRef, settings);
 }
 
-export async function sendNotificationToAllUsers(title: string, description: string, isHtml: boolean = false): Promise<{ successCount: number; errorCount: number }> {
+export async function sendBroadcastNotification(titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false): Promise<{ successCount: number; errorCount: number }> {
     const usersCollectionRef = collection(db, 'users');
     const querySnapshot = await getDocs(usersCollectionRef);
     if (querySnapshot.empty) return { successCount: 0, errorCount: 0 };
@@ -753,15 +769,19 @@ export async function sendNotificationToAllUsers(title: string, description: str
     let successCount = 0;
     let errorCount = 0;
     const chunks = [];
-    for (let i = 0; i < querySnapshot.docs.length; i += 499) {
-        chunks.push(querySnapshot.docs.slice(i, i + 499));
+    const allDocs = querySnapshot.docs;
+
+    for (let i = 0; i < allDocs.length; i += 499) {
+        chunks.push(allDocs.slice(i, i + 499));
     }
 
     for (const chunk of chunks) {
         const batch = writeBatch(db);
         chunk.forEach(userDoc => {
-            const notificationRef = doc(collection(db, 'users', userDoc.id, 'notifications'));
-            batch.set(notificationRef, { title, description, date: new Date(), read: false, isHtml });
+            const userProfile = userDoc.data() as UserProfile;
+            const title = _replacePlaceholders(titleTemplate, userProfile);
+            const description = _replacePlaceholders(descriptionTemplate, userProfile);
+            _createNotificationInBatch(batch, userDoc.id, title, description, isHtml);
         });
         
         try {
@@ -774,6 +794,43 @@ export async function sendNotificationToAllUsers(title: string, description: str
     }
     return { successCount, errorCount };
 }
+
+export async function sendPersonalizedNotification(recipientAdsenerId: string, titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false): Promise<{ success: boolean; message: string; recipientName?: string; }> {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where("adsenerId", "==", recipientAdsenerId));
+
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            return { success: false, message: 'User not found.' };
+        }
+        
+        const userDoc = querySnapshot.docs[0];
+        const userProfile = await getUserProfile(userDoc.id);
+
+        if (!userProfile) {
+            return { success: false, message: 'Could not retrieve user profile.' };
+        }
+        
+        const title = _replacePlaceholders(titleTemplate, userProfile);
+        const description = _replacePlaceholders(descriptionTemplate, userProfile);
+
+        const notificationRef = doc(collection(db, 'users', userDoc.id, 'notifications'));
+        await setDoc(notificationRef, {
+            title,
+            description,
+            isHtml: isHtml || false,
+            date: new Date(),
+            read: false,
+        });
+
+        return { success: true, message: `Message sent to ${userProfile.displayName}.`, recipientName: userProfile.displayName };
+    } catch (error) {
+        console.error("Failed to send personalized notification:", error);
+        return { success: false, message: "An unexpected error occurred." };
+    }
+}
+
 
 export async function logSentNotification(title: string, description: string, target: string, isHtml: boolean, adminDisplayName: string): Promise<void> {
     const logRef = doc(collection(db, 'sent_notifications_log'));
@@ -972,4 +1029,18 @@ export async function updateSupportTicketStatus(ticketId: string, status: 'resol
     _createNotificationInBatch(batch, ticketData.userId, 'Support Ticket Resolved', 'Your recent support ticket has been reviewed and marked as resolved by our team.');
 
     await batch.commit();
+}
+
+export async function getTransactionsForUserAdmin(uid: string, count: number = 50): Promise<Transaction[]> {
+    const transactionsRef = collection(db, 'users', uid, 'transactions');
+    const q = query(transactionsRef, orderBy('date', 'desc'), limit(count));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            date: (data.date as Timestamp).toDate(),
+        } as Transaction;
+    });
 }

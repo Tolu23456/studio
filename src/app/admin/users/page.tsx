@@ -15,6 +15,7 @@ import {
   PlusCircle,
   Zap,
   Coins,
+  FileText,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -34,8 +35,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -56,9 +55,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { type AdminUserView } from '@/lib/types';
+import { type AdminUserView, type Transaction } from '@/lib/types';
 import { format } from 'date-fns';
-import { getAllUsersForAdmin, updateUserStatus, updateUserProfileAdmin, adjustUserBalanceAdmin } from '@/services/user-data';
+import { getAllUsersForAdmin, updateUserStatus, updateUserProfileAdmin, adjustUserBalanceAdmin, getTransactionsForUserAdmin } from '@/services/user-data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
@@ -67,6 +66,18 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/auth-context';
+import { cn } from '@/lib/utils';
+import { TransactionReceipt } from '@/components/dashboard/transaction-receipt';
+
+
+const getStatusBadgeVariant = (status: Transaction['status']) => {
+    switch (status) {
+        case "completed": return "default";
+        case "pending": return "secondary";
+        case "failed": return "destructive";
+    }
+}
+
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
@@ -76,11 +87,16 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [selectedUser, setSelectedUser] = React.useState<AdminUserView | null>(null);
+  const [userTransactions, setUserTransactions] = React.useState<Transaction[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = React.useState(false);
   const [isViewOpen, setIsViewOpen] = React.useState(false);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('all');
+  const [isReceiptOpen, setIsReceiptOpen] = React.useState(false);
+  const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
+
 
   const fetchUsers = React.useCallback(async () => {
     try {
@@ -109,6 +125,23 @@ export default function AdminUsersPage() {
           setFilteredUsers(users.filter(u => u.status === 'Disabled'));
       }
   }, [activeTab, users]);
+  
+  React.useEffect(() => {
+      if (isViewOpen && selectedUser) {
+          const fetchTransactions = async () => {
+              setLoadingTransactions(true);
+              try {
+                const transactions = await getTransactionsForUserAdmin(selectedUser.id, 50);
+                setUserTransactions(transactions);
+              } catch (error) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch user transactions.' });
+              } finally {
+                  setLoadingTransactions(false);
+              }
+          }
+          fetchTransactions();
+      }
+  }, [isViewOpen, selectedUser, toast])
 
   const handleStatusToggle = async (user: AdminUserView) => {
     const newStatus = user.status === 'Active' ? 'Disabled' : 'Active';
@@ -194,6 +227,11 @@ export default function AdminUsersPage() {
     if (type === 'view') setIsViewOpen(true);
     if (type === 'edit') setIsEditOpen(true);
     if (type === 'adjust') setIsAdjustOpen(true);
+  }
+
+  const openReceipt = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsReceiptOpen(true);
   }
 
   return (
@@ -306,7 +344,7 @@ export default function AdminUsersPage() {
                               <DropdownMenuContent align="end">
                                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                   <DropdownMenuItem onClick={() => openDialog(user, 'view')}>
-                                    <Eye className="mr-2 h-4 w-4"/> View Profile
+                                    <Eye className="mr-2 h-4 w-4"/> View Details
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => openDialog(user, 'edit')}>
                                     <UserCog className="mr-2 h-4 w-4"/> Edit User
@@ -357,49 +395,90 @@ export default function AdminUsersPage() {
       </Tabs>
       
       {/* View User Dialog */}
-      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-                <DialogTitle>User Profile</DialogTitle>
-                <DialogDescription>
-                    Details for {selectedUser?.displayName}.
-                </DialogDescription>
-            </DialogHeader>
-            {selectedUser && (
-                <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                        <Avatar className="h-16 w-16">
-                            <AvatarImage src={selectedUser.photoURL} />
-                            <AvatarFallback><UserIcon /></AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="font-bold text-lg">{selectedUser.displayName}</p>
-                            <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
-                            <p className="text-xs text-muted-foreground">Joined: {format(selectedUser.createdAt, 'PPP')}</p>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                            <Zap className="w-4 h-4 text-primary" />
-                            <span><span className="font-semibold">{selectedUser.cubeBalance.toLocaleString()}</span> Cubes</span>
-                        </div>
-                         <div className="flex items-center gap-2">
-                            <Award className="w-4 h-4 text-primary" />
-                            <span><span className="font-semibold">{selectedUser.totalEarned.toLocaleString()}</span> Earned</span>
-                        </div>
-                        <div className="font-semibold">Role:</div>
-                        <div>{selectedUser.isAdmin ? 'Admin' : 'User'}</div>
-                        <div className="font-semibold">Status:</div>
-                        <div>{selectedUser.status}</div>
-                         <div className="font-semibold">Disables:</div>
-                        <div className="font-semibold text-destructive">{selectedUser.disableCount || 0}</div>
-                    </div>
-                </div>
-            )}
-             <DialogFooter>
-                <Button variant="outline" onClick={() => setIsViewOpen(false)}>Close</Button>
-             </DialogFooter>
-        </DialogContent>
+        <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>User Details</DialogTitle>
+                    <DialogDescription>
+                        Viewing profile and activity for {selectedUser?.displayName}.
+                    </DialogDescription>
+                </DialogHeader>
+                {selectedUser && (
+                    <Tabs defaultValue="profile">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="profile">Profile</TabsTrigger>
+                            <TabsTrigger value="transactions">Transaction History</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="profile" className="pt-4">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="h-16 w-16">
+                                        <AvatarImage src={selectedUser.photoURL} />
+                                        <AvatarFallback><UserIcon /></AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-bold text-lg">{selectedUser.displayName}</p>
+                                        <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
+                                        <p className="text-xs text-muted-foreground">Joined: {format(selectedUser.createdAt, 'PPP')}</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <Zap className="w-4 h-4 text-primary" />
+                                        <span><span className="font-semibold">{selectedUser.cubeBalance.toLocaleString()}</span> Cubes</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Award className="w-4 h-4 text-primary" />
+                                        <span><span className="font-semibold">{selectedUser.totalEarned.toLocaleString()}</span> Earned</span>
+                                    </div>
+                                    <div className="font-semibold">Role:</div>
+                                    <div>{selectedUser.isAdmin ? 'Admin' : 'User'}</div>
+                                    <div className="font-semibold">Status:</div>
+                                    <div>{selectedUser.status}</div>
+                                    <div className="font-semibold">Disables:</div>
+                                    <div className="font-semibold text-destructive">{selectedUser.disableCount || 0}</div>
+                                </div>
+                            </div>
+                        </TabsContent>
+                        <TabsContent value="transactions" className="pt-4">
+                           {loadingTransactions ? <Skeleton className="h-64 w-full" /> : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Description</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead className="text-right">Amount</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {userTransactions.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-center h-24">No transactions found.</TableCell>
+                                            </TableRow>
+                                        ) : userTransactions.map(tx => (
+                                            <TableRow key={tx.id}>
+                                                <TableCell>
+                                                    <div>{tx.description}</div>
+                                                    <div className="text-xs text-muted-foreground">{format(tx.date, 'Pp')}</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline">{tx.type}</Badge>
+                                                </TableCell>
+                                                <TableCell className={cn("text-right font-semibold", tx.amount > 0 ? "text-success" : "text-destructive")}>
+                                                    {tx.amount > 0 ? `+` : ''}{tx.amount.toLocaleString()}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                           )}
+                        </TabsContent>
+                    </Tabs>
+                )}
+                 <DialogFooter className="mt-4">
+                    <Button variant="outline" onClick={() => setIsViewOpen(false)}>Close</Button>
+                 </DialogFooter>
+            </DialogContent>
       </Dialog>
       
       {/* Edit User Dialog */}
