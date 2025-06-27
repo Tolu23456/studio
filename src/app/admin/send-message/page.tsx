@@ -274,7 +274,7 @@ export default function AdminSendMessagePage() {
                             <AlertDescription>
                                 You can use these placeholders in your message. They will be replaced with the user's data.
                                 <br />
-                                <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{username}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{email}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{adsenerId}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{cubeBalance}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{date}}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{{time}}</code>
+                                <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{username}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{email}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{adsenerId}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{cubeBalance}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{date}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{time}}`}</code>
                             </AlertDescription>
                         </Alert>
 
@@ -332,5 +332,3 @@ export default function AdminSendMessagePage() {
         </div>
     );
 }
-
-    
