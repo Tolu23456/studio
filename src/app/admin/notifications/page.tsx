@@ -25,6 +25,7 @@ import { sendNotificationToAllUsers, fetchRecipientDisplayName } from '@/service
 import { Loader2, Send, AlertTriangle } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const formSchema = z.object({
   target: z.enum(['all', 'specific']),
@@ -63,6 +64,7 @@ export default function AdminNotificationsPage() {
     const targetValue = form.watch('target');
     const userIdValue = form.watch('userId');
     const isHtmlValue = form.watch('isHtml');
+    const descriptionValue = form.watch('description');
 
     React.useEffect(() => {
         const handler = setTimeout(async () => {
@@ -132,7 +134,7 @@ export default function AdminNotificationsPage() {
                     description: `Message sent to ${userDoc.data().displayName}.`
                 });
             }
-            form.reset();
+            form.reset({ target: 'all', userId: '', title: '', description: '', isHtml: isHtmlValue });
             setRecipientName(null);
         } catch (error) {
             console.error("Failed to send notification:", error);
@@ -226,18 +228,12 @@ export default function AdminNotificationsPage() {
                                 <p className="text-sm font-medium text-destructive">{form.formState.errors.title.message}</p>
                             )}
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="description">Description</Label>
-                            <Textarea id="description" placeholder="Describe the notification..." rows={5} {...form.register('description')} />
-                            {form.formState.errors.description && (
-                                <p className="text-sm font-medium text-destructive">{form.formState.errors.description.message}</p>
-                            )}
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border p-4">
+
+                         <div className="flex items-center justify-between rounded-lg border p-4">
                             <div>
-                                <Label htmlFor="isHtml">Send as HTML</Label>
+                                <Label htmlFor="isHtml">Enable HTML Editor</Label>
                                 <p className="text-xs text-muted-foreground">
-                                    Allows custom HTML and inline CSS in the description.
+                                    Compose notification with custom HTML and a live preview.
                                 </p>
                             </div>
                             <Controller
@@ -252,6 +248,41 @@ export default function AdminNotificationsPage() {
                                 )}
                             />
                         </div>
+
+                        {isHtmlValue ? (
+                           <Tabs defaultValue="compose" className="w-full">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="compose">Compose</TabsTrigger>
+                                    <TabsTrigger value="preview">Preview</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="compose" className="mt-2">
+                                     <Textarea id="description" placeholder="<h1>Hello!</h1><p>You can use <b>HTML</b> here.</p>" rows={15} {...form.register('description')} />
+                                      {form.formState.errors.description && (
+                                        <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.description.message}</p>
+                                    )}
+                                </TabsContent>
+                                <TabsContent value="preview" className="mt-2">
+                                    <div className="w-full min-h-[358px] rounded-md border bg-background p-4">
+                                        <iframe
+                                            srcDoc={descriptionValue}
+                                            title="HTML Preview"
+                                            className="w-full h-full border-0 min-h-[338px]"
+                                            sandbox=""
+                                            style={{ backgroundColor: '#FFFFFF', color: '#000000' }}
+                                        />
+                                    </div>
+                                </TabsContent>
+                           </Tabs>
+                        ) : (
+                            <div className="space-y-2">
+                                <Label htmlFor="description">Description</Label>
+                                <Textarea id="description" placeholder="Describe the notification..." rows={5} {...form.register('description')} />
+                                {form.formState.errors.description && (
+                                    <p className="text-sm font-medium text-destructive">{form.formState.errors.description.message}</p>
+                                )}
+                            </div>
+                        )}
+
                         {isHtmlValue && (
                             <Alert variant="destructive">
                                 <AlertTriangle className="h-4 w-4" />
