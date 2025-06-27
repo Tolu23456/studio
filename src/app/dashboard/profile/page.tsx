@@ -5,10 +5,12 @@ import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { User, Zap, Award, Users, Loader2, Save, Upload } from 'lucide-react';
+import { User, Zap, Award, Users, Loader2, Save, Upload, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { updateCurrentUserProfile } from '@/services/user-data';
@@ -16,6 +18,8 @@ import { format } from 'date-fns';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import Image from 'next/image';
+import { enhanceImage } from '@/ai/flows/enhance-image-flow';
 
 const profileSchema = z.object({
   displayName: z.string().min(3, "Display name must be at least 3 characters.").max(30, "Display name cannot exceed 30 characters."),
@@ -30,6 +34,9 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEnhancerOpen, setIsEnhancerOpen] = useState(false);
+  const [enhancementPrompt, setEnhancementPrompt] = useState('');
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -56,11 +63,11 @@ export default function ProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 1 * 1024 * 1024) { // 1MB limit for data URI
+    if (file.size > 4 * 1024 * 1024) { // 4MB limit
       toast({
         variant: 'destructive',
         title: 'File Too Large',
-        description: 'Please select an image smaller than 1MB.',
+        description: 'Please select an image smaller than 4MB.',
       });
       return;
     }
@@ -71,6 +78,28 @@ export default function ProfilePage() {
       form.setValue('photoURL', dataUri, { shouldDirty: true });
     };
     reader.readAsDataURL(file);
+  };
+  
+  const handleEnhanceImage = async () => {
+    const imageUrl = form.getValues('photoURL');
+    if (!imageUrl || !enhancementPrompt) return;
+    
+    setIsEnhancing(true);
+    try {
+        const result = await enhanceImage({
+            imageDataUri: imageUrl,
+            prompt: enhancementPrompt,
+        });
+        form.setValue('photoURL', result.enhancedImageDataUri, { shouldDirty: true });
+        toast({ title: 'Image Enhanced', description: 'The AI has enhanced your image.' });
+        setIsEnhancerOpen(false);
+        setEnhancementPrompt('');
+    } catch (error) {
+        console.error('Failed to enhance image:', error);
+        toast({ variant: 'destructive', title: 'Enhancement Failed', description: 'Could not enhance the image.' });
+    } finally {
+        setIsEnhancing(false);
+    }
   };
 
 
@@ -111,6 +140,7 @@ export default function ProfilePage() {
   }
 
   return (
+    <>
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight font-headline">My Profile</h1>
       
@@ -123,13 +153,12 @@ export default function ProfilePage() {
             <CardContent className="space-y-6">
             <div className="flex flex-col sm:flex-row items-center gap-6">
                  <div className="relative group">
-                    <Avatar className="h-24 w-24">
+                    <Avatar className="h-24 w-24 cursor-pointer" onClick={handleAvatarClick}>
                         <AvatarImage src={form.watch('photoURL') || userProfile.photoURL || undefined} alt="User Avatar" />
                         <AvatarFallback><User className="w-12 h-12" /></AvatarFallback>
                     </Avatar>
                      <div 
-                        onClick={handleAvatarClick}
-                        className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-xs font-semibold rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-xs font-semibold rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                     >
                        <Upload className="w-6 h-6 mb-1" />
                        Change
@@ -147,6 +176,12 @@ export default function ProfilePage() {
                     <h2 className="text-2xl font-semibold">{userProfile.displayName}</h2>
                     <p className="text-sm text-muted-foreground">{user.email}</p>
                     <p className="text-sm text-muted-foreground">Joined on {format(userProfile.createdAt, 'PP')}</p>
+                    <div className='pt-2'>
+                       <Button type="button" size="sm" variant="secondary" onClick={() => setIsEnhancerOpen(true)} disabled={!form.watch('photoURL')}>
+                            <Wand2 className="mr-2 h-4 w-4" />
+                            Enhance with AI
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -198,5 +233,34 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
     </div>
+
+    <Dialog open={isEnhancerOpen} onOpenChange={setIsEnhancerOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Enhance Profile Picture</DialogTitle>
+                <DialogDescription>
+                    Describe how you want to enhance the image. E.g., "cinematic lighting, fantasy style".
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+                <Textarea 
+                    placeholder="Enter enhancement prompt..."
+                    value={enhancementPrompt}
+                    onChange={(e) => setEnhancementPrompt(e.target.value)}
+                />
+                  <div className="mx-auto w-48 h-48 relative rounded-full border bg-muted flex items-center justify-center">
+                   {form.watch('photoURL') && <Image src={form.watch('photoURL')} alt="Current profile picture" layout="fill" className="object-cover rounded-full" />}
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEnhancerOpen(false)}>Cancel</Button>
+                <Button onClick={handleEnhanceImage} disabled={isEnhancing || !enhancementPrompt}>
+                    {isEnhancing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Enhance
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }

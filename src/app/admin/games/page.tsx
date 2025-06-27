@@ -47,16 +47,18 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Gamepad2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Gamepad2, Upload, Wand2 } from 'lucide-react';
 import type { Game } from '@/lib/types';
 import { getGames, addGame, updateGame, deleteGame } from '@/services/user-data';
+import Image from 'next/image';
+import { enhanceImage } from '@/ai/flows/enhance-image-flow';
 
 const gameSchema = z.object({
     id: z.string().optional(),
     title: z.string().min(1, 'Title is required.'),
     description: z.string().min(1, 'Description is required.'),
     rewardDescription: z.string().optional(),
-    imageUrl: z.string().url('Must be a valid URL.'),
+    imageUrl: z.string().min(1, 'Image is required.'),
     dataAiHint: z.string().optional(),
     gameUrl: z.string().url({ message: 'Please enter a valid URL.' }).or(z.literal("")).optional(),
     isEnabled: z.boolean(),
@@ -84,6 +86,10 @@ export default function AdminGamesPage() {
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = React.useState(false);
     const [selectedGame, setSelectedGame] = React.useState<Game | null>(null);
+    const [isEnhancerOpen, setIsEnhancerOpen] = React.useState(false);
+    const [enhancementPrompt, setEnhancementPrompt] = React.useState('');
+    const [isEnhancing, setIsEnhancing] = React.useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const form = useForm<GameFormData>({
         resolver: zodResolver(gameSchema),
@@ -134,13 +140,55 @@ export default function AdminGamesPage() {
         setSelectedGame(game);
         setIsDeleteAlertOpen(true);
     };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 4 * 1024 * 1024) { // 4MB limit
+          toast({
+            variant: 'destructive',
+            title: 'File Too Large',
+            description: 'Please select an image smaller than 4MB.',
+          });
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUri = e.target?.result as string;
+          form.setValue('imageUrl', dataUri, { shouldDirty: true });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleEnhanceImage = async () => {
+        const imageUrl = form.getValues('imageUrl');
+        if (!imageUrl || !enhancementPrompt) return;
+        
+        setIsEnhancing(true);
+        try {
+            const result = await enhanceImage({
+                imageDataUri: imageUrl,
+                prompt: enhancementPrompt,
+            });
+            form.setValue('imageUrl', result.enhancedImageDataUri, { shouldDirty: true });
+            toast({ title: 'Image Enhanced', description: 'The AI has enhanced your image.' });
+            setIsEnhancerOpen(false);
+            setEnhancementPrompt('');
+        } catch (error) {
+            console.error('Failed to enhance image:', error);
+            toast({ variant: 'destructive', title: 'Enhancement Failed', description: 'Could not enhance the image.' });
+        } finally {
+            setIsEnhancing(false);
+        }
+    };
     
     const onSubmit = async (data: GameFormData) => {
         setIsSaving(true);
         try {
             const submissionData = { ...data };
             if (submissionData.gameUrl) {
-                // Ensure rewardDescription is not sent for embedded games
                 delete submissionData.rewardDescription;
             }
 
@@ -284,8 +332,33 @@ export default function AdminGamesPage() {
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="imageUrl">Image URL</Label>
-                            <Input id="imageUrl" placeholder="https://placehold.co/600x400.png" {...form.register('imageUrl')} />
+                            <Label htmlFor="imageUrl">Game Image</Label>
+                            <div className="flex items-center gap-4">
+                                <div className="w-48 h-28 relative rounded-md border bg-muted flex items-center justify-center">
+                                    {form.watch('imageUrl') ? (
+                                        <Image src={form.watch('imageUrl')} alt="Game preview" layout="fill" className="object-cover rounded-md" />
+                                    ) : (
+                                        <Gamepad2 className="w-10 h-10 text-muted-foreground" />
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Upload Image
+                                    </Button>
+                                    <Button type="button" variant="secondary" onClick={() => setIsEnhancerOpen(true)} disabled={!form.watch('imageUrl')}>
+                                        <Wand2 className="mr-2 h-4 w-4" />
+                                        Enhance with AI
+                                    </Button>
+                                </div>
+                            </div>
+                             <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                                accept="image/png, image/jpeg, image/webp"
+                            />
                             {form.formState.errors.imageUrl && <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>}
                         </div>
                         <div className="space-y-2">
@@ -322,6 +395,34 @@ export default function AdminGamesPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            
+            <Dialog open={isEnhancerOpen} onOpenChange={setIsEnhancerOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Enhance Image with AI</DialogTitle>
+                        <DialogDescription>
+                            Describe how you want to enhance the image. E.g., "cinematic lighting, photorealistic".
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Textarea 
+                            placeholder="Enter enhancement prompt..."
+                            value={enhancementPrompt}
+                            onChange={(e) => setEnhancementPrompt(e.target.value)}
+                        />
+                         <div className="w-full relative rounded-md border bg-muted flex items-center justify-center aspect-video">
+                           {form.watch('imageUrl') && <Image src={form.watch('imageUrl')} alt="Current game image" layout="fill" className="object-contain rounded-md" />}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEnhancerOpen(false)}>Cancel</Button>
+                        <Button onClick={handleEnhanceImage} disabled={isEnhancing || !enhancementPrompt}>
+                            {isEnhancing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Enhance
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
