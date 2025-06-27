@@ -12,6 +12,9 @@ export function NotificationPopupController() {
     const [currentNotification, setCurrentNotification] = useState<Notification | null>(null);
 
     useEffect(() => {
+        // If a notification is already being shown, don't look for another one.
+        if (currentNotification) return;
+
         // Find the oldest unread "popup" notification.
         // Also treat notifications without a deliveryMethod as popups for backward compatibility.
         const oldestUnreadPopup = notifications
@@ -20,21 +23,18 @@ export function NotificationPopupController() {
         
         if (oldestUnreadPopup) {
             setCurrentNotification(oldestUnreadPopup);
-        } else {
-            setCurrentNotification(null);
         }
 
-    }, [notifications]);
+    }, [notifications, currentNotification]);
 
     const handleClose = async () => {
         if (!currentNotification) return;
-
         try {
             await markNotificationAsRead(currentNotification.id);
         } catch (error) {
             console.error("Failed to mark notification as read:", error);
-            // The UI will still update due to local state change
         } finally {
+            // Setting to null allows the useEffect to search for the next available popup.
             setCurrentNotification(null);
         }
     };

@@ -64,6 +64,17 @@ export type Game = {
   dataAiHint?: string;
 };
 
+export type Task = {
+  id: string;
+  title: string;
+  description: string;
+  reward: number;
+  imageUrl: string;
+  isEnabled: boolean;
+  taskUrl?: string;
+  dataAiHint?: string;
+};
+
 export type Notification = {
   id: string;
   title: string;

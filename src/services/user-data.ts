@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, SupportTicket, SentNotificationLog } from '@/lib/types';
+import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, Task, SupportTicket, SentNotificationLog } from '@/lib/types';
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup, serverTimestamp, limit } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay, isToday, format } from 'date-fns';
@@ -484,6 +484,49 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
   await batch.commit();
   return finalReward;
 }
+
+export async function claimTaskReward(taskId: string): Promise<void> {
+  const user = getCurrentUser();
+  const userRef = doc(db, 'users', user.uid);
+  const taskRef = doc(db, 'tasks', taskId);
+
+  await runTransaction(db, async (transaction) => {
+    const userDoc = await transaction.get(userRef);
+    const taskDoc = await transaction.get(taskRef);
+
+    if (!userDoc.exists()) throw new Error("User profile not found.");
+    if (!taskDoc.exists()) throw new Error("Task not found.");
+    
+    const taskData = taskDoc.data() as Task;
+    const { reward, title } = taskData;
+    const now = new Date();
+    
+    transaction.update(userRef, {
+      cubeBalance: increment(reward),
+      totalEarned: increment(reward),
+    });
+
+    const activityRef = doc(collection(db, 'users', user.uid, 'activities'));
+    transaction.set(activityRef, {
+      type: 'Task Completion',
+      description: `Completed task: '${title}'`,
+      cubes_earned: reward,
+      date: now,
+    });
+
+    const transactionLogRef = doc(collection(db, 'users', user.uid, 'transactions'));
+    transaction.set(transactionLogRef, {
+      type: 'reward',
+      description: `Reward for task: '${title}'`,
+      amount: reward,
+      date: now,
+      status: 'completed',
+    });
+    
+    _createNotificationInBatch(transaction, user.uid, "Task Reward!", `You earned ${reward} Cubes for completing '${title}'.`, false, 'toast');
+  });
+}
+
 
 export async function claimDailyReward(): Promise<{ success: boolean; message: string }> {
   const user = getCurrentUser();
@@ -981,6 +1024,47 @@ export async function updateAd(id: string, ad: Partial<Ad>): Promise<void> {
     await updateDoc(doc(db, 'ads', id), adData);
 }
 export async function deleteAd(id: string): Promise<void> { await deleteDoc(doc(db, 'ads', id)); }
+
+
+// Task Management
+const seedTasks = async () => {
+    const tasks: (Omit<Task, 'id' | 'isEnabled'> & {dataAiHint: string})[] = [
+      { title: "Sign Up for Our Newsletter", description: "Stay up-to-date with our latest news and offers.", reward: 150, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "email newsletter", taskUrl: "#" },
+      { title: "Complete a Short Survey", description: "Give us your feedback and help us improve our platform.", reward: 250, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "survey form", taskUrl: "#" },
+      { title: "Follow Us on Social Media", description: "Join our community and get exclusive content.", reward: 100, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "social media", taskUrl: "#" },
+    ];
+    const batch = writeBatch(db);
+    tasks.forEach(task => {
+        const docRef = doc(collection(db, 'tasks'));
+        batch.set(docRef, { ...task, isEnabled: true });
+    });
+    await batch.commit();
+};
+
+export async function getTasks(): Promise<Task[]> {
+    const tasksRef = collection(db, 'tasks');
+    let querySnapshot = await getDocs(tasksRef);
+
+    if (querySnapshot.empty) {
+        await seedTasks();
+        querySnapshot = await getDocs(tasksRef);
+    }
+    
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+}
+export async function addTask(task: Omit<Task, 'id'>): Promise<void> {
+    const taskData = { ...task };
+    taskData.imageUrl = await uploadImageIfPresent(task.imageUrl, 'task-images');
+    await addDoc(collection(db, 'tasks'), taskData);
+}
+export async function updateTask(id: string, task: Partial<Task>): Promise<void> {
+    const taskData = { ...task };
+    if (taskData.imageUrl) {
+        taskData.imageUrl = await uploadImageIfPresent(task.imageUrl, `task-images/${id}`);
+    }
+    await updateDoc(doc(db, 'tasks', id), taskData);
+}
+export async function deleteTask(id: string): Promise<void> { await deleteDoc(doc(db, 'tasks', id)); }
 
 
 // Support Ticket Management

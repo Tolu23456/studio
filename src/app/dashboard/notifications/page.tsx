@@ -8,15 +8,46 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bell } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Bell, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { useEffect } from 'react';
+import { markAllNotificationsAsRead } from '@/services/user-data';
+import { useToast } from '@/hooks/use-toast';
 
 export default function NotificationsPage() {
-  const { notifications, loading } = useAuth();
+  const { notifications, loading, userProfile } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Only mark as read if there are unread notifications to avoid unnecessary writes
+    if (notifications.some(n => !n.read)) {
+      markAllNotificationsAsRead();
+    }
+  }, [notifications]);
+  
+  const handleMarkAllRead = async () => {
+    try {
+        await markAllNotificationsAsRead();
+        toast({
+            title: "Success",
+            description: "All notifications have been marked as read.",
+        });
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not mark notifications as read.",
+        });
+    }
+  }
+  
+  const hasUnread = notifications.some(n => !n.read);
 
   return (
     <div className="space-y-6">
@@ -29,7 +60,7 @@ export default function NotificationsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {loading && !userProfile ? (
             <div className="space-y-6">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="flex items-start space-x-4 p-4 border rounded-lg">
@@ -68,7 +99,7 @@ export default function NotificationsPage() {
                                  dangerouslySetInnerHTML={{ __html: notification.description }}
                                />
                             ) : (
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                                     {notification.description}
                                 </p>
                             )}
@@ -83,9 +114,15 @@ export default function NotificationsPage() {
             </div>
           )}
         </CardContent>
+         {notifications.length > 0 && (
+            <CardFooter className="justify-end">
+                <Button onClick={handleMarkAllRead} variant="ghost" size="sm" disabled={!hasUnread}>
+                    <CheckCheck className="mr-2 h-4 w-4" />
+                    Mark all as read
+                </Button>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );
 }
-
-    
