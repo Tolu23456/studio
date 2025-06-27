@@ -234,11 +234,45 @@ export async function updateCurrentUserProfile(data: Partial<Pick<UserProfile, '
     const userRef = doc(db, 'users', user.uid);
     let finalData = { ...data };
 
-    if (finalData.photoURL) {
-        finalData.photoURL = await uploadImageIfPresent(finalData.photoURL, `profile-pictures/${user.uid}`);
+    try {
+        await runTransaction(db, async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists()) {
+                throw new Error("User profile not found.");
+            }
+            const userProfile = userDoc.data() as UserProfile;
+
+            // Handle display name change fee
+            if (finalData.displayName && finalData.displayName !== userProfile.displayName && !userProfile.isAdmin) {
+                const fee = 1000;
+                if (userProfile.cubeBalance < fee) {
+                    throw new Error(`Insufficient funds. Changing your name costs ${fee.toLocaleString()} Cubes.`);
+                }
+                
+                // Deduct fee and log transaction
+                finalData.cubeBalance = increment(-fee);
+                
+                const feeTransactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
+                transaction.set(feeTransactionRef, {
+                    type: 'purchase',
+                    description: 'Display name change fee',
+                    amount: -fee,
+                    date: new Date(),
+                    status: 'completed',
+                });
+            }
+
+            // Handle photoURL upload
+            if (finalData.photoURL) {
+                finalData.photoURL = await uploadImageIfPresent(finalData.photoURL, `profile-pictures/${user.uid}`);
+            }
+
+            transaction.update(userRef, finalData);
+        });
+    } catch (error) {
+        console.error("Failed to update profile in transaction:", error);
+        throw error;
     }
-    
-    await updateDoc(userRef, finalData);
 }
 
 

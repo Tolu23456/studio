@@ -9,6 +9,7 @@ import { User, Zap, Award, Users, Loader2, Save, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { updateCurrentUserProfile } from '@/services/user-data';
@@ -119,6 +120,13 @@ export default function ProfilePage() {
     return <div>User not found.</div>;
   }
 
+  const SaveButton = (
+    <Button type="submit" disabled={isSaving || !form.formState.isDirty}>
+        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+        Save Changes
+    </Button>
+  );
+
   return (
     <>
     <div className="space-y-6">
@@ -168,10 +176,27 @@ export default function ProfilePage() {
             </div>
             
             <div className="flex justify-end">
-                <Button type="submit" disabled={isSaving || !form.formState.isDirty}>
-                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save Changes
-                </Button>
+                {form.formState.dirtyFields.displayName ? (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            {SaveButton}
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Confirm Name Change</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Changing your display name costs 1,000 Cubes. This amount will be deducted from your balance. Are you sure you want to continue?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={form.handleSubmit(handleProfileSubmit)}>Confirm & Pay</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                ) : (
+                    SaveButton
+                )}
             </div>
             </CardContent>
         </Card>
