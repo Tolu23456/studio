@@ -139,7 +139,7 @@ export default function DashboardHeader() {
                         </div>
                          {notification.isHtml ? (
                             <div 
-                                className="text-xs text-muted-foreground w-full group-data-[highlighted]:text-accent-foreground/90"
+                                className="text-xs text-muted-foreground w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap group-data-[highlighted]:text-accent-foreground/90"
                                 dangerouslySetInnerHTML={{ __html: notification.description }} 
                             />
                         ) : (
