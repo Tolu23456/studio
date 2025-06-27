@@ -256,7 +256,7 @@ export default function AdminNotificationsPage() {
                                     <TabsTrigger value="preview">Preview</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="compose" className="mt-2">
-                                     <Textarea id="description" placeholder="<h1>Hello!</h1><p>You can use <b>HTML</b> here.</p>" rows={15} {...form.register('description')} />
+                                     <Textarea id="description" placeholder="<h1>Hello!</h1><p>You can use <b>HTML</b> here. Use <style> tags for CSS.</p>" rows={15} {...form.register('description')} />
                                       {form.formState.errors.description && (
                                         <p className="text-sm font-medium text-destructive mt-2">{form.formState.errors.description.message}</p>
                                     )}
@@ -267,7 +267,6 @@ export default function AdminNotificationsPage() {
                                             srcDoc={descriptionValue}
                                             title="HTML Preview"
                                             className="w-full h-full border-0 min-h-[338px]"
-                                            sandbox=""
                                             style={{ backgroundColor: '#FFFFFF', color: '#000000' }}
                                         />
                                     </div>

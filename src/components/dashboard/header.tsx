@@ -137,7 +137,14 @@ export default function DashboardHeader() {
                             <p className="font-medium text-sm">{notification.title}</p>
                             {!notification.read && <span className="h-2 w-2 rounded-full bg-primary" />}
                         </div>
-                        <p className="text-xs text-muted-foreground w-full group-data-[highlighted]:text-accent-foreground/90">{notification.description}</p>
+                         {notification.isHtml ? (
+                            <div 
+                                className="text-xs text-muted-foreground w-full group-data-[highlighted]:text-accent-foreground/90"
+                                dangerouslySetInnerHTML={{ __html: notification.description }} 
+                            />
+                        ) : (
+                            <p className="text-xs text-muted-foreground w-full group-data-[highlighted]:text-accent-foreground/90">{notification.description}</p>
+                        )}
                         <p className="text-xs text-muted-foreground/80 w-full pt-1 group-data-[highlighted]:text-accent-foreground/70">
                             {formatDistanceToNow(notification.date, { addSuffix: true })}
                         </p>

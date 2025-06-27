@@ -183,7 +183,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         const newNotificationData = change.doc.data();
                         toast({
                             title: `🔔 ${newNotificationData.title}`,
-                            description: newNotificationData.description,
+                            description: newNotificationData.isHtml 
+                                ? <div dangerouslySetInnerHTML={{ __html: newNotificationData.description }} /> 
+                                : newNotificationData.description,
                         });
                     }
                 });
