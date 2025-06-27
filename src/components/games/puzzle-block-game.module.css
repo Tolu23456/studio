@@ -33,7 +33,7 @@
   border-radius: 0.75rem;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   width: 100%;
-  max-width: 420px;
+  max-width: 360px;
   aspect-ratio: 1 / 1;
 }
 
@@ -69,18 +69,19 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
   margin-top: 1rem;
   flex-wrap: wrap;
-  min-height: 100px;
+  min-height: 80px;
+  padding: 0 1rem;
 }
 
 .piece {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-template-rows: repeat(5, 1fr);
-  width: 75px;
-  height: 75px;
+  width: 65px;
+  height: 65px;
   cursor: grab;
   touch-action: none;
   transition: transform 0.1s ease-in-out, opacity 0.1s ease-in-out;
@@ -88,14 +89,6 @@
 
 .piece:active {
   cursor: grabbing;
-}
-
-.block {
-  width: 100%;
-  height: 100%;
-  background-color: hsl(var(--primary));
-  border: 1px solid hsl(var(--primary) / 1);
-  border-radius: 4px;
 }
 
 .dragging {
