@@ -161,6 +161,10 @@ function toast({ ...props }: Toast) {
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()
+        // Allow consumer to pass their own onOpenChange
+        if (props.onOpenChange) {
+            props.onOpenChange(open);
+        }
       },
     },
   })

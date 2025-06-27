@@ -41,7 +41,7 @@ const _replacePlaceholders = (template: string, userProfile: UserProfile): strin
         .replace(/{{time}}/g, format(now, 'p'));
 };
 
-function _createNotificationInBatch(batch: any, uid: string, title: string, description: string, isHtml: boolean = false) {
+function _createNotificationInBatch(batch: any, uid: string, title: string, description: string, isHtml: boolean = false, deliveryMethod: 'popup' | 'toast' = 'popup') {
     const notificationRef = doc(collection(db, 'users', uid, 'notifications'));
     const newNotification: Omit<Notification, 'id'> = {
         title,
@@ -49,6 +49,7 @@ function _createNotificationInBatch(batch: any, uid: string, title: string, desc
         date: new Date(),
         read: false,
         isHtml,
+        deliveryMethod,
     };
     batch.set(notificationRef, newNotification);
 }
@@ -304,6 +305,7 @@ export async function createSimpleNotification(title: string, description: strin
         description,
         date: new Date(),
         read: false,
+        deliveryMethod: 'toast',
     };
     await setDoc(notificationRef, newNotification);
 }
@@ -376,6 +378,7 @@ export async function claimAdReward(adId: string): Promise<void> {
           description: `You earned ${reward} Cubes for watching '${title}'.`,
           date: now,
           read: false,
+          deliveryMethod: 'toast',
       });
     });
   } catch (error) {
@@ -477,7 +480,7 @@ export async function claimGameReward(gameId: string, scorePayload: number): Pro
     status: 'completed',
   });
 
-  _createNotificationInBatch(batch, user.uid, "Game Reward!", `You earned ${finalReward} Cubes for playing '${gameTitle}'.`);
+  _createNotificationInBatch(batch, user.uid, "Game Reward!", `You earned ${finalReward} Cubes for playing '${gameTitle}'.`, false, 'toast');
   await batch.commit();
   return finalReward;
 }
@@ -529,7 +532,7 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
   
   const notificationTitle = isStreakBonusDay ? "STREAK BONUS!" : "Daily Reward Claimed!";
   const notificationDesc = `You earned ${finalReward} Cubes for your Day ${newStreak} login!`;
-  _createNotificationInBatch(batch, user.uid, notificationTitle, notificationDesc);
+  _createNotificationInBatch(batch, user.uid, notificationTitle, notificationDesc, false, 'toast');
 
   await batch.commit();
   return { success: true, message: `You earned ${finalReward} Cubes!` };
@@ -623,6 +626,7 @@ export async function transferCubes(recipientAdsenerId: string, amount: number):
                 description: `You have received ${amount.toLocaleString()} Cubes from ${senderData.displayName}.`,
                 date: now,
                 read: false,
+                deliveryMethod: 'toast',
             });
         });
         
@@ -761,7 +765,7 @@ export async function updatePlatformSettings(settings: Partial<PlatformSettings>
     await updateDoc(settingsRef, settings);
 }
 
-export async function sendBroadcastNotification(titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false): Promise<{ successCount: number; errorCount: number }> {
+export async function sendBroadcastNotification(titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false, deliveryMethod: 'popup' | 'toast' = 'popup'): Promise<{ successCount: number; errorCount: number }> {
     const usersCollectionRef = collection(db, 'users');
     const querySnapshot = await getDocs(usersCollectionRef);
     if (querySnapshot.empty) return { successCount: 0, errorCount: 0 };
@@ -781,7 +785,7 @@ export async function sendBroadcastNotification(titleTemplate: string, descripti
             const userProfile = userDoc.data() as UserProfile;
             const title = _replacePlaceholders(titleTemplate, userProfile);
             const description = _replacePlaceholders(descriptionTemplate, userProfile);
-            _createNotificationInBatch(batch, userDoc.id, title, description, isHtml);
+            _createNotificationInBatch(batch, userDoc.id, title, description, isHtml, deliveryMethod);
         });
         
         try {
@@ -795,7 +799,7 @@ export async function sendBroadcastNotification(titleTemplate: string, descripti
     return { successCount, errorCount };
 }
 
-export async function sendPersonalizedNotification(recipientAdsenerId: string, titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false): Promise<{ success: boolean; message: string; recipientName?: string; }> {
+export async function sendPersonalizedNotification(recipientAdsenerId: string, titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false, deliveryMethod: 'popup' | 'toast' = 'popup'): Promise<{ success: boolean; message: string; recipientName?: string; }> {
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where("adsenerId", "==", recipientAdsenerId));
 
@@ -820,6 +824,7 @@ export async function sendPersonalizedNotification(recipientAdsenerId: string, t
             title,
             description,
             isHtml: isHtml || false,
+            deliveryMethod,
             date: new Date(),
             read: false,
         });
@@ -832,7 +837,7 @@ export async function sendPersonalizedNotification(recipientAdsenerId: string, t
 }
 
 
-export async function logSentNotification(title: string, description: string, target: string, isHtml: boolean, adminDisplayName: string): Promise<void> {
+export async function logSentNotification(title: string, description: string, target: string, isHtml: boolean, adminDisplayName: string, deliveryMethod: 'popup' | 'toast'): Promise<void> {
     const logRef = doc(collection(db, 'sent_notifications_log'));
     const newLog = {
         adminDisplayName,
@@ -840,6 +845,7 @@ export async function logSentNotification(title: string, description: string, ta
         description,
         target,
         isHtml,
+        deliveryMethod,
         timestamp: new Date(),
     };
     await setDoc(logRef, newLog);
@@ -891,16 +897,16 @@ export async function markAllNotificationsAsRead(): Promise<void> {
 
 // Game Management
 const seedGames = async () => {
-    const games: (Omit<Game, 'isEnabled' | 'id'> & { id: string })[] = [
-      { id: "g1", title: "Cube Runner", description: "Dodge obstacles and collect valuable cubes in this fast-paced runner.", imageUrl: "https://i.postimg.cc/pT3sJXX9/D-1.png", dataAiHint: "runner game", rewardDescription: "Score is based on cubes collected." },
-      { id: "g2", title: "Memory Match", description: "Test your memory by flipping cards and finding matching pairs.", imageUrl: "https://i.postimg.cc/zX8k8gC2/D-2.png", dataAiHint: "memory cards", rewardDescription: "Score is based on fewer moves." },
-      { id: "g3", title: "Puzzle Box", description: "Solve the light puzzle by turning all lights on or off. A true brain teaser!", imageUrl: "https://i.postimg.cc/L8pQ0g2z/D-3.png", dataAiHint: "glowing puzzle", rewardDescription: "Score is based on fewer moves." },
-      { id: "g4", title: "Reaction Time", description: "Click as fast as you can when the screen turns green. Don't jump the gun!", imageUrl: "https://i.postimg.cc/k4GzZxyw/D-4.png", dataAiHint: "stopwatch speed", rewardDescription: "Score is based on faster reaction." },
-      { id: "g5", title: "Endless Runner", description: "A different, more challenging version of Cube Runner. How long can you last?", imageUrl: "https://i.postimg.cc/PqD3GqR9/D-5.png", dataAiHint: "abstract space", rewardDescription: "Score is based on cubes collected." },
-      { id: "g6", title: "Dot Connect", description: "Connect the matching dots by finding their pairs. A test of memory and speed.", imageUrl: "https://i.postimg.cc/mD3tZ6yM/D-6.png", dataAiHint: "connecting dots", rewardDescription: "Score is based on fewer moves." },
-      { id: "g7", title: "Bubble Pop", description: "Pop the bubbles as they appear! Test your reaction speed in this fun challenge.", imageUrl: "https://i.postimg.cc/4N5dLBXf/D-7.png", dataAiHint: "soap bubbles", rewardDescription: "Score is based on faster reaction." },
-      { id: "g8", title: "Zuma Dash", description: "Dash through a winding tunnel, collecting cubes in this high-speed challenge.", imageUrl: "https://i.postimg.cc/d1hKzZ2B/D-8.png", dataAiHint: "abstract tunnel", rewardDescription: "Score is based on cubes collected." },
-      { id: "g9", title: "Puzzle Block", description: "Fit the blocks into the grid. Clear lines to score big points!", imageUrl: "https://i.postimg.cc/kG7Y9YqH/D-9.png", dataAiHint: "block puzzle", rewardDescription: "Score is based on lines cleared." },
+    const games: (Omit<Game, 'isEnabled' | 'id'> & { id: string, dataAiHint: string })[] = [
+      { id: "g1", title: "Cube Runner", description: "Dodge obstacles and collect valuable cubes in this fast-paced runner.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "runner game", rewardDescription: "Score is based on cubes collected." },
+      { id: "g2", title: "Memory Match", description: "Test your memory by flipping cards and finding matching pairs.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "memory cards", rewardDescription: "Score is based on fewer moves." },
+      { id: "g3", title: "Puzzle Box", description: "Solve the light puzzle by turning all lights on or off. A true brain teaser!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "glowing puzzle", rewardDescription: "Score is based on fewer moves." },
+      { id: "g4", title: "Reaction Time", description: "Click as fast as you can when the screen turns green. Don't jump the gun!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "stopwatch speed", rewardDescription: "Score is based on faster reaction." },
+      { id: "g5", title: "Endless Runner", description: "A different, more challenging version of Cube Runner. How long can you last?", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "abstract space", rewardDescription: "Score is based on cubes collected." },
+      { id: "g6", title: "Dot Connect", description: "Connect the matching dots by finding their pairs. A test of memory and speed.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "connecting dots", rewardDescription: "Score is based on fewer moves." },
+      { id: "g7", title: "Bubble Pop", description: "Pop the bubbles as they appear! Test your reaction speed in this fun challenge.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "soap bubbles", rewardDescription: "Score is based on faster reaction." },
+      { id: "g8", title: "Zuma Dash", description: "Dash through a winding tunnel, collecting cubes in this high-speed challenge.", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "abstract tunnel", rewardDescription: "Score is based on cubes collected." },
+      { id: "g9", title: "Puzzle Block", description: "Fit the blocks into the grid. Clear lines to score big points!", imageUrl: "https://placehold.co/600x400.png", dataAiHint: "block puzzle", rewardDescription: "Score is based on lines cleared." },
     ];
     const batch = writeBatch(db);
     games.forEach(game => {
@@ -937,11 +943,11 @@ export async function deleteGame(id: string): Promise<void> { await deleteDoc(do
 
 // Ad Management
 const seedAds = async () => {
-    const ads: Omit<Ad, 'id'>[] = [
-        { title: "Explore the New TechGadget Pro", description: "Watch a short video about the latest innovation in personal tech.", duration: 30, reward: 15, imageUrl: "https://i.postimg.cc/zBtwMM3X/A-4.png", dataAiHint: "tech gadget", isEnabled: true },
-        { title: "Quick & Healthy Snack Ideas", description: "Discover delicious and easy-to-make snacks for your busy lifestyle.", duration: 25, reward: 12, imageUrl: "https://i.postimg.cc/zBtwMM3X/A-4.png", dataAiHint: "healthy food", isEnabled: true },
-        { title: "Adventure Awaits: Travel Deals", description: "Get inspired for your next vacation with these amazing travel packages.", duration: 45, reward: 20, imageUrl: "https://i.postimg.cc/zBtwMM3X/A-4.png", dataAiHint: "travel vacation", isEnabled: true },
-        { title: "Mobile Gaming Madness", description: "Check out the hottest new mobile game that's taking the world by storm.", duration: 15, reward: 8, imageUrl: "https://i.postimg.cc/zBtwMM3X/A-4.png", dataAiHint: "mobile game", isEnabled: true },
+    const ads: (Omit<Ad, 'id'> & {dataAiHint: string})[] = [
+        { title: "Explore the New TechGadget Pro", description: "Watch a short video about the latest innovation in personal tech.", duration: 30, reward: 15, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "tech gadget", isEnabled: true },
+        { title: "Quick & Healthy Snack Ideas", description: "Discover delicious and easy-to-make snacks for your busy lifestyle.", duration: 25, reward: 12, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "healthy food", isEnabled: true },
+        { title: "Adventure Awaits: Travel Deals", description: "Get inspired for your next vacation with these amazing travel packages.", duration: 45, reward: 20, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "travel vacation", isEnabled: true },
+        { title: "Mobile Gaming Madness", description: "Check out the hottest new mobile game that's taking the world by storm.", duration: 15, reward: 8, imageUrl: "https://placehold.co/600x400.png", dataAiHint: "mobile game", isEnabled: true },
     ];
     const batch = writeBatch(db);
     ads.forEach(ad => {

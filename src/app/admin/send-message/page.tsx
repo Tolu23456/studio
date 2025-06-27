@@ -23,7 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { sendBroadcastNotification, fetchRecipientDisplayName, logSentNotification, sendPersonalizedNotification } from '@/services/user-data';
 import { useAuth } from '@/context/auth-context';
-import { Loader2, Send, AlertTriangle, Key } from 'lucide-react';
+import { Loader2, Send, AlertTriangle, Key, MessageSquare, Bell } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,6 +36,7 @@ const formSchema = z.object({
   userId: z.string().optional(),
   title: z.string().min(1, 'Title is required.'),
   description: z.string().min(1, 'Description is required.'),
+  deliveryMethod: z.enum(['popup', 'toast']).default('popup'),
   isHtml: z.boolean().optional(),
 }).refine(data => {
     if (data.target === 'specific') {
@@ -62,6 +63,7 @@ export default function AdminSendMessagePage() {
             userId: '',
             title: '',
             description: '',
+            deliveryMethod: 'popup',
             isHtml: false,
         },
     });
@@ -128,14 +130,14 @@ export default function AdminSendMessagePage() {
         try {
             let messageTargetDescription = "All Users";
             if (values.target === 'all') {
-                const result = await sendBroadcastNotification(values.title, values.description, values.isHtml);
+                const result = await sendBroadcastNotification(values.title, values.description, values.isHtml, values.deliveryMethod);
                 toast({
                     title: "Broadcast Queued",
                     description: `Notifications will be sent to ${result.successCount} users. ${result.errorCount > 0 ? `${result.errorCount} failed.` : ''}`
                 });
             } else if (values.target === 'specific' && values.userId) {
                 const fullUserId = `AC-${values.userId}`;
-                const result = await sendPersonalizedNotification(fullUserId, values.title, values.description, values.isHtml);
+                const result = await sendPersonalizedNotification(fullUserId, values.title, values.description, values.isHtml, values.deliveryMethod);
                 if (result.success) {
                     toast({
                         title: "Notification Sent",
@@ -150,10 +152,10 @@ export default function AdminSendMessagePage() {
             }
             
             if (adminProfile) {
-                await logSentNotification(values.title, values.description, messageTargetDescription, values.isHtml || false, adminProfile.displayName);
+                await logSentNotification(values.title, values.description, messageTargetDescription, values.isHtml || false, adminProfile.displayName, values.deliveryMethod);
             }
 
-            form.reset({ target: 'all', userId: '', title: '', description: '', isHtml: isHtmlValue });
+            form.reset({ target: 'all', userId: '', title: '', description: '', isHtml: isHtmlValue, deliveryMethod: values.deliveryMethod });
             setRecipient(null);
         } catch (error) {
             console.error("Failed to send notification:", error);
@@ -247,6 +249,31 @@ export default function AdminSendMessagePage() {
                                 <p className="text-sm font-medium text-destructive">{form.formState.errors.title.message}</p>
                             )}
                         </div>
+                        
+                         <div className="space-y-2">
+                            <Label>Delivery Method</Label>
+                            <Controller
+                                name="deliveryMethod"
+                                control={form.control}
+                                render={({ field }) => (
+                                    <RadioGroup
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value}
+                                        className="flex gap-4"
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="popup" id="r_popup" />
+                                            <Label htmlFor="r_popup" className="flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Popup Dialog</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="toast" id="r_toast" />
+                                            <Label htmlFor="r_toast" className="flex items-center gap-2"><Bell className="h-4 w-4" /> Toast Notification</Label>
+                                        </div>
+                                    </RadioGroup>
+                                )}
+                            />
+                        </div>
+
 
                          <div className="flex items-center justify-between rounded-lg border p-4">
                             <div>
@@ -274,7 +301,7 @@ export default function AdminSendMessagePage() {
                             <AlertDescription>
                                 You can use these placeholders in your message. They will be replaced with the user's data.
                                 <br />
-                                <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{username}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{email}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{adsenerId}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{cubeBalance}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{date}}`}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{`{{time}}`}</code>
+                                <code className="font-mono text-xs bg-muted p-1 rounded-sm">{'{{username}}'}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{'{{email}}'}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{'{{adsenerId}}'}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{'{{cubeBalance}}'}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{'{{date}}'}</code>, <code className="font-mono text-xs bg-muted p-1 rounded-sm">{'{{time}}'}</code>
                             </AlertDescription>
                         </Alert>
 

@@ -5,19 +5,21 @@ import { useAuth } from "@/context/auth-context";
 import { useEffect, useState } from "react";
 import { NotificationPopupDialog } from "./notification-popup-dialog";
 import { markNotificationAsRead } from "@/services/user-data";
+import type { Notification } from "@/lib/types";
 
 export function NotificationPopupController() {
     const { notifications } = useAuth();
-    const [currentNotification, setCurrentNotification] = useState<typeof notifications[0] | null>(null);
+    const [currentNotification, setCurrentNotification] = useState<Notification | null>(null);
 
     useEffect(() => {
-        // Find the oldest unread notification that hasn't been shown in this session yet.
-        const oldestUnread = notifications
-            .filter(n => !n.read)
+        // Find the oldest unread "popup" notification.
+        // Also treat notifications without a deliveryMethod as popups for backward compatibility.
+        const oldestUnreadPopup = notifications
+            .filter(n => !n.read && (n.deliveryMethod === 'popup' || !n.deliveryMethod))
             .sort((a, b) => a.date.getTime() - b.date.getTime())[0];
         
-        if (oldestUnread) {
-            setCurrentNotification(oldestUnread);
+        if (oldestUnreadPopup) {
+            setCurrentNotification(oldestUnreadPopup);
         } else {
             setCurrentNotification(null);
         }

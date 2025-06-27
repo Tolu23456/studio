@@ -50,6 +50,7 @@ export type Ad = {
   reward: number;
   imageUrl: string;
   isEnabled: boolean;
+  dataAiHint?: string;
 };
 
 export type Game = {
@@ -60,6 +61,7 @@ export type Game = {
   rewardDescription?: string;
   isEnabled: boolean;
   gameUrl?: string;
+  dataAiHint?: string;
 };
 
 export type Notification = {
@@ -69,6 +71,7 @@ export type Notification = {
   date: Date;
   read: boolean;
   isHtml?: boolean;
+  deliveryMethod?: 'popup' | 'toast';
 };
 
 export type ReferredUser = {
@@ -136,5 +139,6 @@ export type SentNotificationLog = {
   description: string;
   target: string;
   isHtml: boolean;
+  deliveryMethod: 'popup' | 'toast';
   timestamp: Date;
 };

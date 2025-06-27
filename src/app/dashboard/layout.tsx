@@ -12,6 +12,7 @@ import { GlobalPopup } from "@/components/dashboard/global-popup";
 import { StatusOverlay } from "@/components/dashboard/status-overlay";
 import { ReenableWarningPopup } from "@/components/dashboard/reenable-warning-popup";
 import { NotificationPopupController } from "@/components/dashboard/notification-popup-controller";
+import { NotificationToastController } from "@/components/dashboard/notification-toast-controller";
 
 export default function DashboardLayout({
   children,
@@ -59,6 +60,7 @@ export default function DashboardLayout({
         <GlobalPopup />
         {userProfile?.showReenableWarning && <ReenableWarningPopup />}
         <NotificationPopupController />
+        <NotificationToastController />
       </div>
     </SidebarProvider>
   );
