@@ -27,7 +27,6 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter,
-    DialogClose,
 } from '@/components/ui/dialog';
 import {
     AlertDialog,
@@ -48,11 +47,10 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Film, Upload, Sparkles } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Film, Upload } from 'lucide-react';
 import type { Ad } from '@/lib/types';
 import { getAds, addAd, updateAd, deleteAd } from '@/services/user-data';
 import Image from 'next/image';
-import { generateImageFromPrompt } from '@/ai/flows/enhance-image-flow';
 
 
 const adSchema = z.object({
@@ -62,62 +60,10 @@ const adSchema = z.object({
     duration: z.coerce.number().int().positive('Duration must be a positive number.'),
     reward: z.coerce.number().int().positive('Reward must be a positive number.'),
     imageUrl: z.string().min(1, 'Image is required.'),
-    dataAiHint: z.string().optional(),
     isEnabled: z.boolean(),
 });
 
 type AdFormData = z.infer<typeof adSchema>;
-
-function AiGenerateDialog({ onImageGenerated, open, onOpenChange }: { onImageGenerated: (dataUri: string) => void; open: boolean; onOpenChange: (open: boolean) => void; }) {
-    const [prompt, setPrompt] = React.useState('');
-    const [isGenerating, setIsGenerating] = React.useState(false);
-    const { toast } = useToast();
-
-    const handleGenerate = async () => {
-        if (!prompt) {
-            toast({ variant: 'destructive', title: 'Prompt is empty', description: 'Please enter a prompt to generate an image.' });
-            return;
-        }
-        setIsGenerating(true);
-        try {
-            const result = await generateImageFromPrompt({ prompt });
-            onImageGenerated(result.generatedImageDataUri);
-            onOpenChange(false);
-            setPrompt('');
-        } catch (error) {
-            console.error('AI Image generation failed', error);
-            toast({ variant: 'destructive', title: 'Generation Failed', description: 'Could not generate the image. Please try again.' });
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Generate Image with AI</DialogTitle>
-                    <DialogDescription>Describe the image you want to create. Be descriptive for best results.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-2">
-                    <div className="space-y-2">
-                        <Label htmlFor="ai-prompt">Prompt</Label>
-                        <Input id="ai-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., A photorealistic image of a sleek new laptop" />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button onClick={handleGenerate} disabled={isGenerating}>
-                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        Generate
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 export default function AdminAdsPage() {
     const { toast } = useToast();
@@ -127,7 +73,6 @@ export default function AdminAdsPage() {
     const [isSaving, setIsSaving] = React.useState(false);
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = React.useState(false);
-    const [isAiDialogOpen, setIsAiDialogOpen] = React.useState(false);
     const [selectedAd, setSelectedAd] = React.useState<Ad | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -139,7 +84,6 @@ export default function AdminAdsPage() {
             duration: 30,
             reward: 10,
             imageUrl: '',
-            dataAiHint: '',
             isEnabled: true,
         },
     });
@@ -168,7 +112,7 @@ export default function AdminAdsPage() {
             form.reset(ad);
         } else {
             form.reset({
-                title: '', description: '', duration: 30, reward: 10, imageUrl: '', dataAiHint: '', isEnabled: true
+                title: '', description: '', duration: 30, reward: 10, imageUrl: '', isEnabled: true
             });
         }
         setIsDialogOpen(true);
@@ -351,10 +295,6 @@ export default function AdminAdsPage() {
                                         <Upload className="mr-2 h-4 w-4" />
                                         Upload Image
                                     </Button>
-                                    <Button type="button" variant="outline" onClick={() => setIsAiDialogOpen(true)}>
-                                        <Sparkles className="mr-2 h-4 w-4" />
-                                        Generate with AI
-                                    </Button>
                                 </div>
                             </div>
                             <input
@@ -365,11 +305,6 @@ export default function AdminAdsPage() {
                                 accept="image/png, image/jpeg, image/webp"
                             />
                             {form.formState.errors.imageUrl && <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="dataAiHint">Image Hint (for AI generation)</Label>
-                            <Input id="dataAiHint" placeholder="e.g. tech gadget" {...form.register('dataAiHint')} />
-                            {form.formState.errors.dataAiHint && <p className="text-sm text-destructive">{form.formState.errors.dataAiHint.message}</p>}
                         </div>
                         <div className="flex items-center space-x-2">
                             <Switch id="isEnabled" checked={form.watch('isEnabled')} onCheckedChange={(checked) => form.setValue('isEnabled', checked)} />
@@ -385,14 +320,6 @@ export default function AdminAdsPage() {
                     </form>
                 </DialogContent>
             </Dialog>
-
-             <AiGenerateDialog
-                open={isAiDialogOpen}
-                onOpenChange={setIsAiDialogOpen}
-                onImageGenerated={(dataUri) => {
-                    form.setValue('imageUrl', dataUri, { shouldDirty: true, shouldValidate: true });
-                }}
-            />
 
              <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
                 <AlertDialogContent>

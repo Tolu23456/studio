@@ -49,7 +49,6 @@ export type Ad = {
   duration: number; // in seconds
   reward: number;
   imageUrl: string;
-  dataAiHint?: string;
   isEnabled: boolean;
 };
 
@@ -58,7 +57,6 @@ export type Game = {
   title: string;
   description: string;
   imageUrl: string;
-  dataAiHint?: string;
   rewardDescription?: string;
   isEnabled: boolean;
   gameUrl?: string;
