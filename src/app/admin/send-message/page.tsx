@@ -99,7 +99,7 @@ export default function AdminSendMessagePage() {
       }, [userIdValue, targetValue, form]);
 
 
-    const onSubmit = async (values: z.infer<typeof formSchema>>) => {
+    const onSubmit = async (values: z.infer<typeof formSchema>) => {
         setIsSubmitting(true);
         try {
             if (values.target === 'all') {
