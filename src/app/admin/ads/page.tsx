@@ -60,6 +60,7 @@ const adSchema = z.object({
     duration: z.coerce.number().int().positive('Duration must be a positive number.'),
     reward: z.coerce.number().int().positive('Reward must be a positive number.'),
     imageUrl: z.string().min(1, 'Image is required.'),
+    dataAiHint: z.string().optional(),
     isEnabled: z.boolean(),
 });
 
@@ -84,6 +85,7 @@ export default function AdminAdsPage() {
             duration: 30,
             reward: 10,
             imageUrl: '',
+            dataAiHint: '',
             isEnabled: true,
         },
     });
@@ -112,7 +114,7 @@ export default function AdminAdsPage() {
             form.reset(ad);
         } else {
             form.reset({
-                title: '', description: '', duration: 30, reward: 10, imageUrl: '', isEnabled: true
+                title: '', description: '', duration: 30, reward: 10, imageUrl: '', dataAiHint: '', isEnabled: true
             });
         }
         setIsDialogOpen(true);
@@ -304,7 +306,12 @@ export default function AdminAdsPage() {
                                 className="hidden"
                                 accept="image/png, image/jpeg, image/webp"
                             />
-                            {form.formState.errors.imageUrl && <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>}
+                             {form.formState.errors.imageUrl && <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                             <Label htmlFor="dataAiHint">Image Hint (Optional)</Label>
+                             <Input id="dataAiHint" placeholder="e.g. `tech gadget` or `healthy food`" {...form.register('dataAiHint')} />
+                             <p className="text-xs text-muted-foreground">Provide one or two keywords to help AI find a better image for this ad later.</p>
                         </div>
                         <div className="flex items-center space-x-2">
                             <Switch id="isEnabled" checked={form.watch('isEnabled')} onCheckedChange={(checked) => form.setValue('isEnabled', checked)} />

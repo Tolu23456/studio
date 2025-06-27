@@ -58,6 +58,7 @@ const gameSchema = z.object({
     description: z.string().min(1, 'Description is required.'),
     rewardDescription: z.string().optional(),
     imageUrl: z.string().min(1, 'Image is required.'),
+    dataAiHint: z.string().optional(),
     gameUrl: z.string().url({ message: 'Please enter a valid URL.' }).or(z.literal("")).optional(),
     isEnabled: z.boolean(),
 }).refine(data => {
@@ -93,6 +94,7 @@ export default function AdminGamesPage() {
             description: '',
             rewardDescription: '',
             imageUrl: '',
+            dataAiHint: '',
             gameUrl: '',
             isEnabled: true,
         },
@@ -124,7 +126,7 @@ export default function AdminGamesPage() {
             form.reset(game);
         } else {
             form.reset({
-                title: '', description: '', rewardDescription: '', imageUrl: '', gameUrl: '', isEnabled: true
+                title: '', description: '', rewardDescription: '', imageUrl: '', dataAiHint: '', gameUrl: '', isEnabled: true
             });
         }
         setIsDialogOpen(true);
@@ -328,6 +330,11 @@ export default function AdminGamesPage() {
                                 accept="image/png, image/jpeg, image/webp"
                             />
                             {form.formState.errors.imageUrl && <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>}
+                        </div>
+                         <div className="space-y-2">
+                             <Label htmlFor="dataAiHint">Image Hint (Optional)</Label>
+                             <Input id="dataAiHint" placeholder="e.g. `runner game` or `glowing puzzle`" {...form.register('dataAiHint')} />
+                             <p className="text-xs text-muted-foreground">Provide one or two keywords to help AI find a better image for this game later.</p>
                         </div>
                         <div className="flex items-center space-x-2">
                             <Switch id="isEnabled" checked={form.watch('isEnabled')} onCheckedChange={(checked) => form.setValue('isEnabled', checked)} />
