@@ -1,0 +1,117 @@
+
+.gameContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  text-align: center;
+  gap: 1rem;
+}
+
+.header {
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: var(--font-headline);
+  color: hsl(var(--foreground));
+}
+
+.description {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.boardContainer {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1 / 1;
+  touch-action: none;
+}
+
+.boardGrid {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  background-color: hsl(var(--secondary));
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  gap: 0.5rem;
+}
+
+.cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.dot {
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.dot:hover {
+  transform: scale(1.1);
+}
+
+.svgOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.path {
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  opacity: 0.8;
+}
+
+.path-active {
+  stroke-dasharray: 8;
+  animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.footer {
+  flex-shrink: 0;
+}
+
+.moves {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.winOverlay {
+  position: absolute;
+  inset: 0;
+  background-color: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

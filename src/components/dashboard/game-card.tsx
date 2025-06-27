@@ -29,6 +29,7 @@ import { MemoryMatchGame } from "@/components/games/memory-match-game";
 import { CubeRunnerGame } from "@/components/games/cube-runner-game";
 import { PuzzleBoxGame } from "@/components/games/puzzle-box-game";
 import { PuzzleBlockGame } from "@/components/games/puzzle-block-game";
+import { DotConnectGame } from "@/components/games/dot-connect-game";
 import { cn } from "@/lib/utils";
 
 const getGamePlays = () => {
@@ -48,7 +49,7 @@ const GameComponentMap: { [key: string]: React.ElementType } = {
   'g3': PuzzleBoxGame,
   'g4': ReactionTimeGame,
   'g5': CubeRunnerGame, // "Endless Runner" uses the same component
-  'g6': MemoryMatchGame, // Dot Connect
+  'g6': DotConnectGame, // Dot Connect
   'g7': ReactionTimeGame, // Bubble Pop
   'g8': CubeRunnerGame, // Zuma Dash
   'g9': PuzzleBlockGame,

@@ -342,20 +342,25 @@ const calculateGameScore = (gameId: string, scorePayload: number): number => {
             return Math.min(scorePayload, 100);
 
         // Memory Match: fewer moves is better.
-        case 'g2': case 'g6':
+        case 'g2':
             if (scorePayload < 6) return 0; // Impossible score for a 12-card game (6 pairs)
             return Math.max(0, 50 - scorePayload); // Base score decreases with more moves.
 
         // Puzzle Box: fewer moves is better.
-        case 'g3': case 'g7':
+        case 'g3':
             if (scorePayload < 1) return 0; // Impossible score
             return Math.max(0, 40 - scorePayload); // Reward diminishes with more moves
 
         // Reaction Time: lower time (ms) is better.
-        case 'g4':
+        case 'g4': case 'g7':
             if (scorePayload < 100) return 0; // Impossible reaction time
             if (scorePayload > 1000) return 5; // Participation score
             return Math.max(0, 50 - Math.floor(scorePayload / 20));
+
+        // Dot Connect: fewer moves is better (4 pairs are generated).
+        case 'g6':
+            if (scorePayload < 4) return 0; // Impossible score
+            return Math.max(0, 40 - (scorePayload - 4) * 2);
         
         // Puzzle Block: higher score is better
         case 'g9':
