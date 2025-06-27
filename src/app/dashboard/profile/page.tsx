@@ -5,11 +5,10 @@ import { useAuth } from '@/context/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { User, Zap, Award, Users, Loader2, Save, Upload, Wand2 } from 'lucide-react';
+import { User, Zap, Award, Users, Loader2, Save, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +18,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Image from 'next/image';
-import { enhanceImage } from '@/ai/flows/enhance-image-flow';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,9 +42,6 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isEnhancerOpen, setIsEnhancerOpen] = useState(false);
-  const [enhancementPrompt, setEnhancementPrompt] = useState('');
-  const [isEnhancing, setIsEnhancing] = useState(false);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
   const [dataToSave, setDataToSave] = useState<ProfileFormData | null>(null);
 
@@ -91,29 +86,6 @@ export default function ProfilePage() {
     };
     reader.readAsDataURL(file);
   };
-  
-  const handleEnhanceImage = async () => {
-    const imageUrl = form.getValues('photoURL');
-    if (!imageUrl || !enhancementPrompt) return;
-    
-    setIsEnhancing(true);
-    try {
-        const result = await enhanceImage({
-            imageDataUri: imageUrl,
-            prompt: enhancementPrompt,
-        });
-        form.setValue('photoURL', result.enhancedImageDataUri, { shouldDirty: true });
-        toast({ title: 'Image Enhanced', description: 'The AI has enhanced your image.' });
-        setIsEnhancerOpen(false);
-        setEnhancementPrompt('');
-    } catch (error) {
-        console.error('Failed to enhance image:', error);
-        toast({ variant: 'destructive', title: 'Enhancement Failed', description: 'Could not enhance the image.' });
-    } finally {
-        setIsEnhancing(false);
-    }
-  };
-
 
   const handleProfileSubmit = (data: ProfileFormData) => {
     // If name hasn't changed, just save
@@ -213,12 +185,6 @@ export default function ProfilePage() {
                     <h2 className="text-2xl font-semibold">{userProfile.displayName}</h2>
                     <p className="text-sm text-muted-foreground">{user.email}</p>
                     <p className="text-sm text-muted-foreground">Joined on {format(userProfile.createdAt, 'PP')}</p>
-                    <div className='pt-2'>
-                       <Button type="button" size="sm" variant="secondary" onClick={() => setIsEnhancerOpen(true)} disabled={!form.watch('photoURL')}>
-                            <Wand2 className="mr-2 h-4 w-4" />
-                            Enhance with AI
-                        </Button>
-                    </div>
                 </div>
             </div>
 
@@ -276,34 +242,6 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
     </div>
-
-    <Dialog open={isEnhancerOpen} onOpenChange={setIsEnhancerOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Enhance Profile Picture</DialogTitle>
-                <DialogDescription>
-                    Describe how you want to enhance the image. E.g., "cinematic lighting, fantasy style".
-                </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-                <Textarea 
-                    placeholder="Enter enhancement prompt..."
-                    value={enhancementPrompt}
-                    onChange={(e) => setEnhancementPrompt(e.target.value)}
-                />
-                  <div className="mx-auto w-48 h-48 relative rounded-full border bg-muted flex items-center justify-center">
-                   {form.watch('photoURL') && <Image src={form.watch('photoURL')} alt="Current profile picture" layout="fill" className="object-cover rounded-full" />}
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEnhancerOpen(false)}>Cancel</Button>
-                <Button onClick={handleEnhanceImage} disabled={isEnhancing || !enhancementPrompt}>
-                    {isEnhancing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Enhance
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
 
     <AlertDialog open={isConfirmOpen} onOpenChange={setConfirmOpen}>
       <AlertDialogContent>

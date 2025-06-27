@@ -47,11 +47,10 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Gamepad2, Upload, Wand2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Gamepad2, Upload } from 'lucide-react';
 import type { Game } from '@/lib/types';
 import { getGames, addGame, updateGame, deleteGame } from '@/services/user-data';
 import Image from 'next/image';
-import { enhanceImage } from '@/ai/flows/enhance-image-flow';
 
 const gameSchema = z.object({
     id: z.string().optional(),
@@ -86,9 +85,6 @@ export default function AdminGamesPage() {
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = React.useState(false);
     const [selectedGame, setSelectedGame] = React.useState<Game | null>(null);
-    const [isEnhancerOpen, setIsEnhancerOpen] = React.useState(false);
-    const [enhancementPrompt, setEnhancementPrompt] = React.useState('');
-    const [isEnhancing, setIsEnhancing] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const form = useForm<GameFormData>({
@@ -162,28 +158,6 @@ export default function AdminGamesPage() {
         reader.readAsDataURL(file);
     };
 
-    const handleEnhanceImage = async () => {
-        const imageUrl = form.getValues('imageUrl');
-        if (!imageUrl || !enhancementPrompt) return;
-        
-        setIsEnhancing(true);
-        try {
-            const result = await enhanceImage({
-                imageDataUri: imageUrl,
-                prompt: enhancementPrompt,
-            });
-            form.setValue('imageUrl', result.enhancedImageDataUri, { shouldDirty: true });
-            toast({ title: 'Image Enhanced', description: 'The AI has enhanced your image.' });
-            setIsEnhancerOpen(false);
-            setEnhancementPrompt('');
-        } catch (error) {
-            console.error('Failed to enhance image:', error);
-            toast({ variant: 'destructive', title: 'Enhancement Failed', description: 'Could not enhance the image.' });
-        } finally {
-            setIsEnhancing(false);
-        }
-    };
-    
     const onSubmit = async (data: GameFormData) => {
         setIsSaving(true);
         try {
@@ -346,10 +320,6 @@ export default function AdminGamesPage() {
                                         <Upload className="mr-2 h-4 w-4" />
                                         Upload Image
                                     </Button>
-                                    <Button type="button" variant="secondary" onClick={() => setIsEnhancerOpen(true)} disabled={!form.watch('imageUrl')}>
-                                        <Wand2 className="mr-2 h-4 w-4" />
-                                        Enhance with AI
-                                    </Button>
                                 </div>
                             </div>
                              <input
@@ -395,34 +365,6 @@ export default function AdminGamesPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            
-            <Dialog open={isEnhancerOpen} onOpenChange={setIsEnhancerOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Enhance Image with AI</DialogTitle>
-                        <DialogDescription>
-                            Describe how you want to enhance the image. E.g., "cinematic lighting, photorealistic".
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <Textarea 
-                            placeholder="Enter enhancement prompt..."
-                            value={enhancementPrompt}
-                            onChange={(e) => setEnhancementPrompt(e.target.value)}
-                        />
-                         <div className="w-full relative rounded-md border bg-muted flex items-center justify-center aspect-video">
-                           {form.watch('imageUrl') && <Image src={form.watch('imageUrl')} alt="Current game image" layout="fill" className="object-contain rounded-md" />}
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEnhancerOpen(false)}>Cancel</Button>
-                        <Button onClick={handleEnhanceImage} disabled={isEnhancing || !enhancementPrompt}>
-                            {isEnhancing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Enhance
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
