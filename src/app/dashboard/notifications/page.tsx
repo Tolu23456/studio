@@ -62,9 +62,16 @@ export default function NotificationsPage() {
                                     <div className="w-2.5 h-2.5 rounded-full bg-primary" />
                                 )}
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                                {notification.description}
-                            </p>
+                            {notification.isHtml ? (
+                               <p
+                                 className="text-sm text-muted-foreground"
+                                 dangerouslySetInnerHTML={{ __html: notification.description }}
+                               />
+                            ) : (
+                                <p className="text-sm text-muted-foreground">
+                                    {notification.description}
+                                </p>
+                            )}
                             <p className="text-xs text-muted-foreground/80">
                                 {formatDistanceToNow(notification.date, { addSuffix: true })}
                             </p>

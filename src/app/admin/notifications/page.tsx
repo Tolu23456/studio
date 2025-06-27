@@ -18,9 +18,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { sendNotificationToAllUsers, fetchRecipientDisplayName } from '@/services/user-data';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, AlertTriangle } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 
@@ -29,6 +31,7 @@ const formSchema = z.object({
   userId: z.string().optional(),
   title: z.string().min(1, 'Title is required.'),
   description: z.string().min(1, 'Description is required.'),
+  isHtml: z.boolean().optional(),
 }).refine(data => {
     if (data.target === 'specific') {
         return !!data.userId && /^[0-9]{6}[A-Z]$/.test(data.userId);
@@ -53,11 +56,13 @@ export default function AdminNotificationsPage() {
             userId: '',
             title: '',
             description: '',
+            isHtml: false,
         },
     });
 
     const targetValue = form.watch('target');
     const userIdValue = form.watch('userId');
+    const isHtmlValue = form.watch('isHtml');
 
     React.useEffect(() => {
         const handler = setTimeout(async () => {
@@ -96,7 +101,7 @@ export default function AdminNotificationsPage() {
         setIsSubmitting(true);
         try {
             if (values.target === 'all') {
-                const result = await sendNotificationToAllUsers(values.title, values.description);
+                const result = await sendNotificationToAllUsers(values.title, values.description, values.isHtml);
                 toast({
                     title: "Broadcast Sent",
                     description: `Notifications sent to ${result.successCount} users. ${result.errorCount > 0 ? `${result.errorCount} failed.` : ''}`
@@ -117,6 +122,7 @@ export default function AdminNotificationsPage() {
                 await setDoc(notificationRef, {
                     title: values.title,
                     description: values.description,
+                    isHtml: values.isHtml || false,
                     date: new Date(),
                     read: false,
                 });
@@ -227,6 +233,34 @@ export default function AdminNotificationsPage() {
                                 <p className="text-sm font-medium text-destructive">{form.formState.errors.description.message}</p>
                             )}
                         </div>
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <Label htmlFor="isHtml">Send as HTML</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Allows custom HTML and inline CSS in the description.
+                                </p>
+                            </div>
+                            <Controller
+                                control={form.control}
+                                name="isHtml"
+                                render={({ field }) => (
+                                    <Switch
+                                        id="isHtml"
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                )}
+                            />
+                        </div>
+                        {isHtmlValue && (
+                            <Alert variant="destructive">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertTitle>Security Warning</AlertTitle>
+                                <AlertDescription>
+                                    Using raw HTML can be a security risk. Ensure your code is sanitized and does not contain malicious scripts.
+                                </AlertDescription>
+                            </Alert>
+                        )}
                     </CardContent>
                     <CardFooter>
                         <Button type="submit" disabled={isSubmitting}>

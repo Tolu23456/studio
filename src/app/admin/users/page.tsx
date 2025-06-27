@@ -14,6 +14,7 @@ import {
   Eye,
   PlusCircle,
   Zap,
+  Coins,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -57,16 +58,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { type AdminUserView } from '@/lib/types';
 import { format } from 'date-fns';
-import { getAllUsersForAdmin, updateUserStatus, updateUserProfileAdmin } from '@/services/user-data';
+import { getAllUsersForAdmin, updateUserStatus, updateUserProfileAdmin, adjustUserBalanceAdmin } from '@/services/user-data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/context/auth-context';
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
+  const { userProfile: adminProfile } = useAuth();
   const [users, setUsers] = React.useState<AdminUserView[]>([]);
   const [filteredUsers, setFilteredUsers] = React.useState<AdminUserView[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -74,6 +78,7 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = React.useState<AdminUserView | null>(null);
   const [isViewOpen, setIsViewOpen] = React.useState(false);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
+  const [isAdjustOpen, setIsAdjustOpen] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('all');
 
@@ -83,8 +88,6 @@ export default function AdminUsersPage() {
       setLoading(true);
       const fetchedUsers = await getAllUsersForAdmin();
       setUsers(fetchedUsers);
-      setFilteredUsers(fetchedUsers);
-      setActiveTab('all');
     } catch (err: any) {
       console.error("Failed to fetch users:", err);
       setError("Could not fetch the user list. Please check your network connection and Firestore security rules.");
@@ -115,7 +118,7 @@ export default function AdminUsersPage() {
         title: 'User Status Updated',
         description: `${user.displayName}'s account has been ${newStatus.toLowerCase()}.`,
       });
-      fetchUsers(); // Refresh the list
+      fetchUsers();
     } catch (error) {
       console.error('Failed to update user status:', error);
       toast({
@@ -142,7 +145,7 @@ export default function AdminUsersPage() {
         description: `Successfully updated ${displayName}'s profile.`,
       });
       setIsEditOpen(false);
-      fetchUsers(); // Refresh user list
+      fetchUsers();
     } catch (error) {
        console.error('Failed to update user profile:', error);
        toast({
@@ -155,10 +158,42 @@ export default function AdminUsersPage() {
     }
   };
   
-  const openDialog = (user: AdminUserView, type: 'view' | 'edit') => {
+  const handleAdjustBalance = async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (!selectedUser || !adminProfile) return;
+
+      const formData = new FormData(e.currentTarget);
+      const amount = Number(formData.get('amount'));
+      const reason = formData.get('reason') as string;
+
+      if (isNaN(amount) || amount === 0) {
+        toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a non-zero number.' });
+        return;
+      }
+      if (!reason) {
+          toast({ variant: 'destructive', title: 'Reason Required', description: 'Please provide a reason for this adjustment.' });
+          return;
+      }
+
+      setIsSaving(true);
+      try {
+        await adjustUserBalanceAdmin(selectedUser.id, amount, reason, adminProfile);
+        toast({ title: 'Balance Adjusted', description: `${selectedUser.displayName}'s balance has been adjusted by ${amount}.` });
+        setIsAdjustOpen(false);
+        fetchUsers();
+      } catch (error) {
+          console.error("Failed to adjust balance:", error);
+          toast({ variant: 'destructive', title: 'Adjustment Failed', description: 'Could not adjust the user balance.' });
+      } finally {
+          setIsSaving(false);
+      }
+  }
+
+  const openDialog = (user: AdminUserView, type: 'view' | 'edit' | 'adjust') => {
     setSelectedUser(user);
     if (type === 'view') setIsViewOpen(true);
     if (type === 'edit') setIsEditOpen(true);
+    if (type === 'adjust') setIsAdjustOpen(true);
   }
 
   return (
@@ -177,29 +212,6 @@ export default function AdminUsersPage() {
                 Export
               </span>
             </Button>
-            <Dialog>
-                <DialogTrigger asChild>
-                    <Button size="sm" className="h-7 gap-1">
-                        <PlusCircle className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Add User
-                        </span>
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Add New User</DialogTitle>
-                        <DialogDescription>
-                            For security reasons, new users should be created through the standard registration process. This ensures they set their own password securely.
-                        </DialogDescription>
-                    </DialogHeader>
-                     <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button" variant="secondary">Close</Button>
-                        </DialogClose>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
           </div>
         </div>
         <TabsContent value={activeTab}>
@@ -298,6 +310,9 @@ export default function AdminUsersPage() {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => openDialog(user, 'edit')}>
                                     <UserCog className="mr-2 h-4 w-4"/> Edit User
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openDialog(user, 'adjust')}>
+                                    <Coins className="mr-2 h-4 w-4"/> Adjust Balance
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <AlertDialog>
@@ -416,6 +431,38 @@ export default function AdminUsersPage() {
                 </form>
             )}
         </DialogContent>
+      </Dialog>
+      
+      {/* Adjust Balance Dialog */}
+      <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
+          <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                  <DialogTitle>Adjust Cube Balance</DialogTitle>
+                  <DialogDescription>
+                      Manually add or remove Cubes for {selectedUser?.displayName}. This action is logged.
+                  </DialogDescription>
+              </DialogHeader>
+              {selectedUser && (
+                  <form onSubmit={handleAdjustBalance} className="space-y-4">
+                      <div className="space-y-2">
+                          <Label htmlFor="amount">Amount</Label>
+                          <Input id="amount" name="amount" type="number" placeholder="e.g., 500 or -100" />
+                          <p className="text-xs text-muted-foreground">Use a positive number to add Cubes, and a negative number to remove them.</p>
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="reason">Reason</Label>
+                          <Textarea id="reason" name="reason" placeholder="e.g., Bonus for contest winner" />
+                      </div>
+                      <DialogFooter className='pt-4'>
+                          <Button type="button" variant="outline" onClick={() => setIsAdjustOpen(false)}>Cancel</Button>
+                          <Button type="submit" disabled={isSaving}>
+                              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Adjust Balance
+                          </Button>
+                      </DialogFooter>
+                  </form>
+              )}
+          </DialogContent>
       </Dialog>
     </>
   );

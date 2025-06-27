@@ -26,7 +26,7 @@ export type UserProfile = {
 
 export type Transaction = {
   id: string;
-  type: 'deposit' | 'withdrawal' | 'reward' | 'purchase';
+  type: 'deposit' | 'withdrawal' | 'reward' | 'purchase' | 'admin';
   description: string;
   amount: number;
   date: Date;
@@ -35,7 +35,7 @@ export type Transaction = {
 
 export type Activity = {
   id:string;
-  type: 'Ad Watch' | 'Task Completion' | 'Game Play' | 'Referral Bonus' | 'Daily Login';
+  type: 'Ad Watch' | 'Task Completion' | 'Game Play' | 'Referral Bonus' | 'Daily Login' | 'Admin Adjustment';
   description:string;
   cubes_earned: number;
   date: Date;
@@ -69,6 +69,7 @@ export type Notification = {
   description: string;
   date: Date;
   read: boolean;
+  isHtml?: boolean;
 };
 
 export type ReferredUser = {

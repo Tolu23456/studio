@@ -250,7 +250,7 @@ export async function updateCurrentUserProfile(data: Partial<Pick<UserProfile, '
                 }
                 
                 // Deduct fee and log transaction
-                finalData.cubeBalance = increment(-fee);
+                transaction.update(userRef, { cubeBalance: increment(-fee) });
                 
                 const feeTransactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
                 transaction.set(feeTransactionRef, {
@@ -260,14 +260,20 @@ export async function updateCurrentUserProfile(data: Partial<Pick<UserProfile, '
                     date: new Date(),
                     status: 'completed',
                 });
+                
+                // Add fee to platform collection
+                const settingsRef = doc(db, 'platform_settings', 'config');
+                transaction.update(settingsRef, { totalFeesCollected: increment(fee) });
             }
 
             // Handle photoURL upload
-            if (finalData.photoURL) {
+            if (finalData.photoURL && finalData.photoURL.startsWith('data:image')) {
                 finalData.photoURL = await uploadImageIfPresent(finalData.photoURL, `profile-pictures/${user.uid}`);
             }
 
-            transaction.update(userRef, finalData);
+            // Remove cubeBalance from finalData as it's handled via increment
+            const { cubeBalance, ...restOfFinalData } = finalData as any;
+            transaction.update(userRef, restOfFinalData);
         });
     } catch (error) {
         console.error("Failed to update profile in transaction:", error);
@@ -639,6 +645,66 @@ export async function updateUserProfileAdmin(uid: string, data: { displayName: s
     await updateDoc(userRef, data);
 }
 
+export async function adjustUserBalanceAdmin(targetUid: string, amount: number, reason: string, adminProfile: UserProfile): Promise<void> {
+    const targetUserRef = doc(db, 'users', targetUid);
+    const now = new Date();
+
+    const batch = writeBatch(db);
+
+    // Update user's balance and, if adding, total earned
+    const balanceUpdate: { [key: string]: any } = { cubeBalance: increment(amount) };
+    if (amount > 0) {
+      balanceUpdate.totalEarned = increment(amount);
+    }
+    batch.update(targetUserRef, balanceUpdate);
+
+    // Create a transaction log for the user
+    const transactionRef = doc(collection(db, 'users', targetUid, 'transactions'));
+    batch.set(transactionRef, {
+      type: 'admin',
+      description: `Admin adjustment: ${reason}`,
+      amount: amount,
+      date: now,
+      status: 'completed',
+    });
+
+    // Create an activity log for the user
+    const activityRef = doc(collection(db, 'users', targetUid, 'activities'));
+    batch.set(activityRef, {
+      type: 'Admin Adjustment',
+      description: `Balance adjusted by admin: ${reason}`,
+      cubes_earned: amount,
+      date: now,
+    });
+    
+    // Create a notification for the user
+    const notificationRef = doc(collection(db, 'users', targetUid, 'notifications'));
+    batch.set(notificationRef, {
+        title: "Account Balance Adjusted",
+        description: `An admin has adjusted your balance by ${amount.toLocaleString()} Cubes. Reason: ${reason}`,
+        date: now,
+        read: false,
+    });
+    
+    // Create an audit log for the admin action
+    const adminLogRef = doc(collection(db, 'admin_logs'));
+    const targetUserSnap = await getDoc(targetUserRef);
+    const targetUserData = targetUserSnap.data();
+
+    batch.set(adminLogRef, {
+        adminUid: adminProfile.uid,
+        adminDisplayName: adminProfile.displayName,
+        action: "Adjusted User Balance",
+        targetUid: targetUid,
+        targetDisplayName: targetUserData?.displayName || 'Unknown',
+        details: { amount, reason },
+        timestamp: now,
+    });
+
+    await batch.commit();
+}
+
+
 export async function getPlatformSettings(): Promise<PlatformSettings> {
     const settingsRef = doc(db, 'platform_settings', 'config');
     const docSnap = await getDoc(settingsRef);
@@ -676,7 +742,7 @@ export async function updatePlatformSettings(settings: Partial<PlatformSettings>
     await updateDoc(settingsRef, settings);
 }
 
-export async function sendNotificationToAllUsers(title: string, description: string): Promise<{ successCount: number; errorCount: number }> {
+export async function sendNotificationToAllUsers(title: string, description: string, isHtml: boolean = false): Promise<{ successCount: number; errorCount: number }> {
     const usersCollectionRef = collection(db, 'users');
     const querySnapshot = await getDocs(usersCollectionRef);
     if (querySnapshot.empty) return { successCount: 0, errorCount: 0 };
@@ -692,7 +758,7 @@ export async function sendNotificationToAllUsers(title: string, description: str
         const batch = writeBatch(db);
         chunk.forEach(userDoc => {
             const notificationRef = doc(collection(db, 'users', userDoc.id, 'notifications'));
-            batch.set(notificationRef, { title, description, date: new Date(), read: false });
+            batch.set(notificationRef, { title, description, date: new Date(), read: false, isHtml });
         });
         
         try {

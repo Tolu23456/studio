@@ -76,7 +76,8 @@ export default function ProfilePage() {
 
   const handleProfileSubmit = async (data: ProfileFormData) => {
     setIsSaving(true);
-
+    
+    // Create a payload with only the dirty fields
     const payload: Partial<ProfileFormData> = {};
     if (form.formState.dirtyFields.displayName) {
       payload.displayName = data.displayName;
@@ -92,7 +93,7 @@ export default function ProfilePage() {
         title: 'Profile Updated',
         description: 'Your changes have been saved.',
       });
-      form.reset(data);
+      form.reset(data); // Reset the form with new data to clear dirty state
     } catch (error: any) {
       console.error('Failed to update profile:', error);
       toast({
@@ -119,7 +120,7 @@ export default function ProfilePage() {
   if (!user || !userProfile) {
     return <div>User not found.</div>;
   }
-
+  
   const SaveButton = (
     <Button type="submit" disabled={isSaving || !form.formState.isDirty}>
         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -176,7 +177,7 @@ export default function ProfilePage() {
             </div>
             
             <div className="flex justify-end">
-                {form.formState.dirtyFields.displayName ? (
+                 {form.formState.dirtyFields.displayName && !userProfile.isAdmin ? (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             {SaveButton}
