@@ -215,31 +215,65 @@ export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
     return users;
 }
 
-export async function updateCurrentUserProfile(data: {
-    displayName?: string;
-    photoURL?: string;
-    notificationPreferences?: {
-        rewardNotifications: boolean;
-        promotionalUpdates: boolean;
-    };
-}): Promise<void> {
+export async function updateCurrentUserProfile(data: Partial<Pick<UserProfile, 'displayName' | 'photoURL' | 'notificationPreferences'>>): Promise<void> {
     const user = getCurrentUser();
     const userRef = doc(db, 'users', user.uid);
+    const cost = 1000;
 
-    const updateData: { [key: string]: any } = {};
-    if (data.displayName) {
-        updateData.displayName = data.displayName;
-    }
-    if (typeof data.photoURL === 'string') {
-        updateData.photoURL = data.photoURL;
-    }
-    if (data.notificationPreferences) {
-        updateData.notificationPreferences = data.notificationPreferences;
+    // If only notification preferences are being updated, do a simple update.
+    if (data.notificationPreferences && !data.displayName && !data.photoURL) {
+        await updateDoc(userRef, { notificationPreferences: data.notificationPreferences });
+        return;
     }
 
-    if (Object.keys(updateData).length > 0) {
-        await updateDoc(userRef, updateData);
-    }
+    // For displayName or photoURL changes, run a transaction.
+    await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) {
+            throw new Error("User profile not found.");
+        }
+        
+        const currentData = userDoc.data() as UserProfile;
+        const updateData: { [key: string]: any } = {};
+        let nameChangeFeeApplicable = false;
+
+        // Check if display name is changing
+        if (data.displayName && data.displayName !== currentData.displayName) {
+            updateData.displayName = data.displayName;
+            // Only apply fee if user is NOT an admin
+            if (!currentData.isAdmin) {
+                nameChangeFeeApplicable = true;
+            }
+        }
+        
+        // Check if photo URL is changing
+        if (typeof data.photoURL === 'string' && data.photoURL !== currentData.photoURL) {
+            updateData.photoURL = data.photoURL;
+        }
+
+        // If a fee is applicable, check balance and apply it
+        if (nameChangeFeeApplicable) {
+            if (currentData.cubeBalance < cost) {
+                throw new Error(`Insufficient funds. Changing your name costs ${cost.toLocaleString()} Cubes.`);
+            }
+            updateData.cubeBalance = increment(-cost);
+            
+            // Add transaction log for the fee
+            const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
+            transaction.set(transactionRef, {
+                type: 'withdrawal',
+                description: 'Display name change fee',
+                amount: -cost,
+                date: new Date(),
+                status: 'completed',
+            });
+        }
+
+        // Commit all updates if there's anything to change
+        if (Object.keys(updateData).length > 0) {
+            transaction.update(userRef, updateData);
+        }
+    });
 }
 
 

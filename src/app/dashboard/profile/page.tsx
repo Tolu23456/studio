@@ -20,6 +20,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Image from 'next/image';
 import { enhanceImage } from '@/ai/flows/enhance-image-flow';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const profileSchema = z.object({
   displayName: z.string().min(3, "Display name must be at least 3 characters.").max(30, "Display name cannot exceed 30 characters."),
@@ -37,6 +47,8 @@ export default function ProfilePage() {
   const [isEnhancerOpen, setIsEnhancerOpen] = useState(false);
   const [enhancementPrompt, setEnhancementPrompt] = useState('');
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isConfirmOpen, setConfirmOpen] = useState(false);
+  const [dataToSave, setDataToSave] = useState<ProfileFormData | null>(null);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -103,10 +115,33 @@ export default function ProfilePage() {
   };
 
 
-  const handleProfileSave = async (data: ProfileFormData) => {
+  const handleProfileSubmit = (data: ProfileFormData) => {
+    // If name hasn't changed, just save
+    if (!form.formState.dirtyFields.displayName) {
+      executeSave(data);
+      return;
+    }
+    // If name has changed, open confirmation dialog
+    setDataToSave(data);
+    setConfirmOpen(true);
+  };
+
+  const executeSave = async (data: ProfileFormData | null) => {
+    if (!data) return;
     setIsSaving(true);
+    setConfirmOpen(false); // Close dialog if open
+
+    // Create payload based on what changed
+    const payload: Partial<ProfileFormData> = {};
+    if (form.formState.dirtyFields.displayName) {
+      payload.displayName = data.displayName;
+    }
+    if (form.formState.dirtyFields.photoURL) {
+      payload.photoURL = data.photoURL;
+    }
+
     try {
-      await updateCurrentUserProfile(data);
+      await updateCurrentUserProfile(payload);
       if (refreshUserProfile) await refreshUserProfile();
       toast({
         title: 'Profile Updated',
@@ -122,8 +157,10 @@ export default function ProfilePage() {
       });
     } finally {
       setIsSaving(false);
+      setDataToSave(null);
     }
   };
+
 
   if (loading) {
     return (
@@ -144,7 +181,7 @@ export default function ProfilePage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight font-headline">My Profile</h1>
       
-      <form onSubmit={form.handleSubmit(handleProfileSave)}>
+      <form onSubmit={form.handleSubmit(handleProfileSubmit)}>
         <Card>
             <CardHeader>
             <CardTitle>User Information</CardTitle>
@@ -189,7 +226,13 @@ export default function ProfilePage() {
                 <div className="space-y-2">
                     <Label htmlFor="displayName">Display Name</Label>
                     <Input id="displayName" {...form.register('displayName')} />
-                    {form.formState.errors.displayName && <p className="text-sm text-destructive">{form.formState.errors.displayName.message}</p>}
+                    {form.formState.errors.displayName ? (
+                        <p className="text-sm text-destructive h-5">{form.formState.errors.displayName.message}</p>
+                      ) : form.formState.dirtyFields.displayName ? (
+                        <p className="text-xs text-muted-foreground h-5">Changing your name costs 1,000 Cubes.</p>
+                      ) : (
+                        <div className="h-5" /> 
+                      )}
                 </div>
             </div>
             
@@ -261,6 +304,24 @@ export default function ProfilePage() {
             </DialogFooter>
         </DialogContent>
     </Dialog>
+
+    <AlertDialog open={isConfirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Name Change</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to change your display name? A fee of 1,000 Cubes will be deducted from your balance. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setDataToSave(null)}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => executeSave(dataToSave)}>
+            Confirm & Pay 1,000 Cubes
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     </>
   );
 }
