@@ -5,7 +5,9 @@ import type { Activity, AdminUserView, Notification, PlatformSettings, Transacti
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup, serverTimestamp } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay, isToday } from 'date-fns';
-import { db, auth, storage } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+
 
 const getCurrentUser = (): User => {
     const user = auth.currentUser;
@@ -38,6 +40,18 @@ function _createNotificationInBatch(batch: any, uid: string, title: string, desc
     };
     batch.set(notificationRef, newNotification);
 }
+
+const uploadImageIfPresent = async (dataUri: string, path: string): Promise<string> => {
+    if (typeof dataUri === 'string' && dataUri.startsWith('data:image')) {
+        const storage = getStorage();
+        // Create a unique file name
+        const fileName = `${new Date().getTime()}-${Math.random().toString(36).substring(2, 8)}`;
+        const storageRef = ref(storage, `${path}/${fileName}`);
+        const uploadResult = await uploadString(storageRef, dataUri, 'data_url');
+        return await getDownloadURL(uploadResult.ref);
+    }
+    return dataUri; // Return original if it's not a data URI (already a URL)
+};
 
 export async function createUserProfile(user: User, displayName: string, referralCode?: string): Promise<void> {
     const batch = writeBatch(db);
@@ -220,13 +234,13 @@ export async function updateCurrentUserProfile(data: Partial<Pick<UserProfile, '
     const userRef = doc(db, 'users', user.uid);
     const cost = 1000;
 
-    // If only notification preferences are being updated, do a simple update.
-    if (data.notificationPreferences && !data.displayName && !data.photoURL) {
-        await updateDoc(userRef, { notificationPreferences: data.notificationPreferences });
-        return;
-    }
+    let finalData = { ...data };
 
-    // For displayName or photoURL changes, run a transaction.
+    // Handle image upload OUTSIDE the transaction
+    if (finalData.photoURL) {
+        finalData.photoURL = await uploadImageIfPresent(finalData.photoURL, `profile-pictures/${user.uid}`);
+    }
+    
     await runTransaction(db, async (transaction) => {
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists()) {
@@ -235,38 +249,35 @@ export async function updateCurrentUserProfile(data: Partial<Pick<UserProfile, '
         
         const currentData = userDoc.data() as UserProfile;
         const updateData: { [key: string]: any } = {};
-        let nameChangeFeeApplicable = false;
 
         // Check if display name is changing
-        if (data.displayName && data.displayName !== currentData.displayName) {
-            updateData.displayName = data.displayName;
+        if (finalData.displayName && finalData.displayName !== currentData.displayName) {
+            updateData.displayName = finalData.displayName;
             // Only apply fee if user is NOT an admin
             if (!currentData.isAdmin) {
-                nameChangeFeeApplicable = true;
+                if (currentData.cubeBalance < cost) {
+                    throw new Error(`Insufficient funds. Changing your name costs ${cost.toLocaleString()} Cubes.`);
+                }
+                updateData.cubeBalance = increment(-cost);
+                
+                const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
+                transaction.set(transactionRef, {
+                    type: 'withdrawal',
+                    description: 'Display name change fee',
+                    amount: -cost,
+                    date: new Date(),
+                    status: 'completed',
+                });
             }
         }
         
         // Check if photo URL is changing
-        if (typeof data.photoURL === 'string' && data.photoURL !== currentData.photoURL) {
-            updateData.photoURL = data.photoURL;
+        if (finalData.photoURL && finalData.photoURL !== currentData.photoURL) {
+            updateData.photoURL = finalData.photoURL;
         }
 
-        // If a fee is applicable, check balance and apply it
-        if (nameChangeFeeApplicable) {
-            if (currentData.cubeBalance < cost) {
-                throw new Error(`Insufficient funds. Changing your name costs ${cost.toLocaleString()} Cubes.`);
-            }
-            updateData.cubeBalance = increment(-cost);
-            
-            // Add transaction log for the fee
-            const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
-            transaction.set(transactionRef, {
-                type: 'withdrawal',
-                description: 'Display name change fee',
-                amount: -cost,
-                date: new Date(),
-                status: 'completed',
-            });
+        if (finalData.notificationPreferences) {
+            updateData.notificationPreferences = finalData.notificationPreferences;
         }
 
         // Commit all updates if there's anything to change
@@ -762,8 +773,18 @@ export async function getGames(): Promise<Game[]> {
     
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
 }
-export async function addGame(game: Omit<Game, 'id'>): Promise<void> { await addDoc(collection(db, 'games'), game); }
-export async function updateGame(id: string, game: Partial<Game>): Promise<void> { await updateDoc(doc(db, 'games', id), game); }
+export async function addGame(game: Omit<Game, 'id'>): Promise<void> {
+    const gameData = { ...game };
+    gameData.imageUrl = await uploadImageIfPresent(game.imageUrl, 'game-images');
+    await addDoc(collection(db, 'games'), gameData);
+}
+export async function updateGame(id: string, game: Partial<Game>): Promise<void> {
+    const gameData = { ...game };
+    if (gameData.imageUrl) {
+        gameData.imageUrl = await uploadImageIfPresent(game.imageUrl, `game-images/${id}`);
+    }
+    await updateDoc(doc(db, 'games', id), gameData);
+}
 export async function deleteGame(id: string): Promise<void> { await deleteDoc(doc(db, 'games', id)); }
 
 // Ad Management
@@ -793,8 +814,18 @@ export async function getAds(): Promise<Ad[]> {
     
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
 }
-export async function addAd(ad: Omit<Ad, 'id'>): Promise<void> { await addDoc(collection(db, 'ads'), ad); }
-export async function updateAd(id: string, ad: Partial<Ad>): Promise<void> { await updateDoc(doc(db, 'ads', id), ad); }
+export async function addAd(ad: Omit<Ad, 'id'>): Promise<void> {
+    const adData = { ...ad };
+    adData.imageUrl = await uploadImageIfPresent(ad.imageUrl, 'ad-images');
+    await addDoc(collection(db, 'ads'), adData);
+}
+export async function updateAd(id: string, ad: Partial<Ad>): Promise<void> {
+    const adData = { ...ad };
+    if (adData.imageUrl) {
+        adData.imageUrl = await uploadImageIfPresent(ad.imageUrl, `ad-images/${id}`);
+    }
+    await updateDoc(doc(db, 'ads', id), adData);
+}
 export async function deleteAd(id: string): Promise<void> { await deleteDoc(doc(db, 'ads', id)); }
 
 

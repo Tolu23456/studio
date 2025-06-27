@@ -128,11 +128,11 @@ export default function AdminAdsPage() {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (file.size > 4 * 1024 * 1024) { // 4MB limit for Genkit
+        if (file.size > 2 * 1024 * 1024) { // 2MB limit
           toast({
             variant: 'destructive',
             title: 'File Too Large',
-            description: 'Please select an image smaller than 4MB.',
+            description: 'Please select an image smaller than 2MB.',
           });
           return;
         }
