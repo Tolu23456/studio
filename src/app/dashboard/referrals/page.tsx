@@ -138,8 +138,8 @@ export default function ReferralsPage() {
                 <Gift className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">Coming Soon</div>
-                <p className="text-xs text-muted-foreground">Track Cubes earned from referrals</p>
+                <div className="text-2xl font-bold">{userProfile.totalReferralEarnings.toLocaleString()} Cubes</div>
+                <p className="text-xs text-muted-foreground">Cubes earned from your referrals</p>
             </CardContent>
         </Card>
       </div>

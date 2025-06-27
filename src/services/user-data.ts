@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, SupportTicket } from '@/lib/types';
+import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, SupportTicket, SentNotificationLog } from '@/lib/types';
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup, serverTimestamp } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay, isToday } from 'date-fns';
@@ -83,6 +83,7 @@ export async function createUserProfile(user: User, displayName: string, referra
                         referrals: increment(1),
                         cubeBalance: increment(referrerReward),
                         totalEarned: increment(referrerReward),
+                        totalReferralEarnings: increment(referrerReward),
                     });
     
                     // Add activity for referrer
@@ -130,6 +131,7 @@ export async function createUserProfile(user: User, displayName: string, referra
         cubeBalance: startingBalance,
         totalEarned: startingBalance,
         referrals: 0,
+        totalReferralEarnings: 0,
         loginStreak: 0,
         lastClaimedDate: null,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
@@ -191,6 +193,7 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
             cubeBalance: data.cubeBalance,
             totalEarned: data.totalEarned,
             referrals: data.referrals,
+            totalReferralEarnings: data.totalReferralEarnings || 0,
             loginStreak: data.loginStreak || 0,
             lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
             createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(docSnap.createTime!.seconds * 1000),
@@ -770,6 +773,40 @@ export async function sendNotificationToAllUsers(title: string, description: str
         }
     }
     return { successCount, errorCount };
+}
+
+export async function logSentNotification(title: string, description: string, target: string, isHtml: boolean, adminDisplayName: string): Promise<void> {
+    const logRef = doc(collection(db, 'sent_notifications_log'));
+    const newLog = {
+        adminDisplayName,
+        title,
+        description,
+        target,
+        isHtml,
+        timestamp: new Date(),
+    };
+    await setDoc(logRef, newLog);
+}
+
+export async function getSentNotificationsLog(): Promise<SentNotificationLog[]> {
+    const logsRef = collection(db, 'sent_notifications_log');
+    const q = query(logsRef, orderBy('timestamp', 'desc'), limit(50));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            timestamp: (data.timestamp as Timestamp).toDate(),
+        } as SentNotificationLog;
+    });
+}
+
+
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+    const user = getCurrentUser();
+    const notificationRef = doc(db, 'users', user.uid, 'notifications', notificationId);
+    await updateDoc(notificationRef, { read: true });
 }
 
 export async function markAllNotificationsAsRead(): Promise<void> {

@@ -1,15 +1,12 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
-import { Skeleton } from "@/components/ui/skeleton";
-import { formatDistanceToNow } from 'date-fns';
-import { markAllNotificationsAsRead } from "@/services/user-data";
 
 import {
   Breadcrumb,
@@ -35,30 +32,16 @@ import {
   User,
   Zap,
   Shield,
+  Badge,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export default function DashboardHeader() {
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
-  const { userProfile, notifications, loading: authLoading } = useAuth();
-  const [isMarkingRead, setIsMarkingRead] = useState(false);
+  const { userProfile, notifications } = useAuth();
   
-  const hasUnread = notifications.some(n => !n.read);
-
-  const handleOpenNotifications = async (open: boolean) => {
-    if (open && hasUnread && !isMarkingRead) {
-      setIsMarkingRead(true);
-      try {
-        await markAllNotificationsAsRead();
-      } catch (error) {
-        console.error("Failed to mark notifications as read", error);
-      } finally {
-        // The real-time listener will update the UI, no need to set state here.
-        setIsMarkingRead(false);
-      }
-    }
-  };
+  const unreadCount = notifications.filter(n => !n.read).length;
 
 
   return (
@@ -101,68 +84,6 @@ export default function DashboardHeader() {
       </div>
 
       <div className="relative ml-auto flex items-center gap-2">
-        <DropdownMenu onOpenChange={handleOpenNotifications}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="h-9 w-9 relative">
-              <Bell className="h-4 w-4" />
-              {hasUnread && <span className="absolute top-0.5 right-0.5 block h-2 w-2 rounded-full bg-primary ring-1 ring-background" />}
-              <span className="sr-only">Toggle notifications</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 md:w-96">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {authLoading ? (
-              <div className="p-2 space-y-3">
-                <div className="flex items-start space-x-3">
-                  <Skeleton className="h-4 w-4 rounded-full mt-1" />
-                  <div className="space-y-1.5 flex-1">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-32" />
-                  </div>
-                </div>
-                 <div className="flex items-start space-x-3">
-                  <Skeleton className="h-4 w-4 rounded-full mt-1" />
-                  <div className="space-y-1.5 flex-1">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              </div>
-            ) : notifications.length > 0 ? (
-                notifications.slice(0, 5).map((notification) => (
-                    <DropdownMenuItem key={notification.id} asChild>
-                      <Link href="/dashboard/notifications" className="group flex flex-col items-start gap-1 p-3 !text-current">
-                        <div className="flex items-center justify-between w-full">
-                            <p className="font-medium text-sm">{notification.title}</p>
-                            {!notification.read && <span className="h-2 w-2 rounded-full bg-primary" />}
-                        </div>
-                         {notification.isHtml ? (
-                            <div 
-                                className="text-xs text-muted-foreground w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap group-data-[highlighted]:text-accent-foreground/90"
-                                dangerouslySetInnerHTML={{ __html: notification.description }} 
-                            />
-                        ) : (
-                            <p className="text-xs text-muted-foreground w-full group-data-[highlighted]:text-accent-foreground/90">{notification.description}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground/80 w-full pt-1 group-data-[highlighted]:text-accent-foreground/70">
-                            {formatDistanceToNow(notification.date, { addSuffix: true })}
-                        </p>
-                      </Link>
-                    </DropdownMenuItem>
-                ))
-            ) : (
-              <p className="p-4 text-center text-sm text-muted-foreground">No new notifications</p>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center p-2" asChild>
-                <Link href="/dashboard/notifications" className="text-sm text-muted-foreground hover:text-foreground">
-                    View all notifications
-                </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -185,6 +106,19 @@ export default function DashboardHeader() {
               <Link href="/dashboard/profile">
                 <User className="mr-2 h-4 w-4" />
                 Profile
+              </Link>
+            </DropdownMenuItem>
+             <DropdownMenuItem asChild>
+              <Link href="/dashboard/notifications" className="relative flex justify-between w-full">
+                <div className='flex items-center'>
+                    <Bell className="mr-2 h-4 w-4" />
+                    Notifications
+                </div>
+                {unreadCount > 0 && 
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                        {unreadCount}
+                    </div>
+                }
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

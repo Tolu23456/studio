@@ -1,46 +1,38 @@
 'use server';
 /**
- * @fileOverview An image enhancement AI agent.
+ * @fileOverview An AI image generator flow for admins.
  *
- * - enhanceImage - A function that handles the image enhancement process.
- * - EnhanceImageInput - The input type for the enhanceImage function.
- * - EnhanceImageOutput - The return type for the enhanceImage function.
+ * - generateImageFromPrompt - A function that handles the image generation process.
+ * - GenerateImageFromPromptInput - The input type for the function.
+ * - GenerateImageFromPromptOutput - The return type for the function.
  */
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 
-export const EnhanceImageInputSchema = z.object({
-  imageDataUri: z
-    .string()
-    .describe(
-      "The image to enhance, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-  prompt: z.string().describe('A prompt describing the desired enhancement or style. e.g., "photorealistic, cinematic lighting"'),
+export const GenerateImageFromPromptInputSchema = z.object({
+  prompt: z.string().describe('A prompt describing the desired image. e.g., "photorealistic, cinematic lighting, a robot cat"'),
 });
-export type EnhanceImageInput = z.infer<typeof EnhanceImageInputSchema>;
+export type GenerateImageFromPromptInput = z.infer<typeof GenerateImageFromPromptInputSchema>;
 
-export const EnhanceImageOutputSchema = z.object({
-  enhancedImageDataUri: z.string().describe('The enhanced image as a data URI.'),
+export const GenerateImageFromPromptOutputSchema = z.object({
+  generatedImageDataUri: z.string().describe('The generated image as a data URI.'),
 });
-export type EnhanceImageOutput = z.infer<typeof EnhanceImageOutputSchema>;
+export type GenerateImageFromPromptOutput = z.infer<typeof GenerateImageFromPromptOutputSchema>;
 
-export async function enhanceImage(input: EnhanceImageInput): Promise<EnhanceImageOutput> {
-  return enhanceImageFlow(input);
+export async function generateImageFromPrompt(input: GenerateImageFromPromptInput): Promise<GenerateImageFromPromptOutput> {
+  return generateImageFromPromptFlow(input);
 }
 
-const enhanceImageFlow = ai.defineFlow(
+const generateImageFromPromptFlow = ai.defineFlow(
   {
-    name: 'enhanceImageFlow',
-    inputSchema: EnhanceImageInputSchema,
-    outputSchema: EnhanceImageOutputSchema,
+    name: 'generateImageFromPromptFlow',
+    inputSchema: GenerateImageFromPromptInputSchema,
+    outputSchema: GenerateImageFromPromptOutputSchema,
   },
-  async ({ imageDataUri, prompt }) => {
+  async ({ prompt }) => {
     const { media } = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
-      prompt: [
-        { media: { url: imageDataUri } },
-        { text: `Enhance this image. Style guidance: ${prompt}` },
-      ],
+      prompt: `Generate an image for a web application based on this concept: ${prompt}`,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
@@ -51,7 +43,7 @@ const enhanceImageFlow = ai.defineFlow(
     }
 
     return {
-      enhancedImageDataUri: media.url,
+      generatedImageDataUri: media.url,
     };
   }
 );

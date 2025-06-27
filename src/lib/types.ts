@@ -9,6 +9,7 @@ export type UserProfile = {
   cubeBalance: number;
   totalEarned: number;
   referrals: number;
+  totalReferralEarnings: number;
   loginStreak: number;
   lastClaimedDate: Date | null;
   createdAt: Date;
@@ -128,4 +129,14 @@ export type Beneficiary = {
   displayName: string;
   photoURL: string | null;
   lastTransferredAt: Date;
+};
+
+export type SentNotificationLog = {
+  id: string;
+  adminDisplayName: string;
+  title: string;
+  description: string;
+  target: string;
+  isHtml: boolean;
+  timestamp: Date;
 };

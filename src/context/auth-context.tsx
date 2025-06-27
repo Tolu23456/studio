@@ -8,7 +8,6 @@ import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
 import type { UserProfile, Notification, PlatformSettings } from '@/lib/types';
 import { doc, onSnapshot, Timestamp, updateDoc, collection, query, orderBy, limit, setDoc, getDoc } from 'firebase/firestore';
 import { generateAdsenerId } from '@/services/user-data';
-import { toast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -49,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           cubeBalance: data.cubeBalance,
           totalEarned: data.totalEarned,
           referrals: data.referrals,
+          totalReferralEarnings: data.totalReferralEarnings || 0,
           loginStreak: data.loginStreak || 0,
           lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
           createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
@@ -149,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               cubeBalance: data.cubeBalance,
               totalEarned: data.totalEarned,
               referrals: data.referrals,
+              totalReferralEarnings: data.totalReferralEarnings || 0,
               loginStreak: data.loginStreak || 0,
               lastClaimedDate: data.lastClaimedDate ? (data.lastClaimedDate as Timestamp).toDate() : null,
               createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
@@ -174,24 +175,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Set up notifications listener
         const notificationsRef = collection(db, 'users', currentUser.uid, 'notifications');
         const q = query(notificationsRef, orderBy('date', 'desc'), limit(50));
-        let isInitialQuery = true;
-
-        notificationsUnsubscribe = onSnapshot(q, (querySnapshot) => {
-            if (!isInitialQuery) {
-                querySnapshot.docChanges().forEach((change) => {
-                    if (change.type === "added") {
-                        const newNotificationData = change.doc.data();
-                        toast({
-                            title: `🔔 ${newNotificationData.title}`,
-                            description: newNotificationData.isHtml 
-                                ? <div dangerouslySetInnerHTML={{ __html: newNotificationData.description }} /> 
-                                : newNotificationData.description,
-                        });
-                    }
-                });
-            }
-            isInitialQuery = false;
         
+        notificationsUnsubscribe = onSnapshot(q, (querySnapshot) => {
             const allNotifications = querySnapshot.docs.map(doc => {
                 const data = doc.data();
                 return {

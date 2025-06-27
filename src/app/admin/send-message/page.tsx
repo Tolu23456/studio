@@ -21,7 +21,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { sendNotificationToAllUsers, fetchRecipientDisplayName } from '@/services/user-data';
+import { sendNotificationToAllUsers, fetchRecipientDisplayName, logSentNotification } from '@/services/user-data';
+import { useAuth } from '@/context/auth-context';
 import { Loader2, Send, AlertTriangle } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
@@ -46,6 +47,7 @@ const formSchema = z.object({
 
 export default function AdminSendMessagePage() {
     const { toast } = useToast();
+    const { userProfile: adminProfile } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [recipientName, setRecipientName] = useState<string | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -102,6 +104,7 @@ export default function AdminSendMessagePage() {
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         setIsSubmitting(true);
         try {
+            let messageTargetDescription = "All Users";
             if (values.target === 'all') {
                 const result = await sendNotificationToAllUsers(values.title, values.description, values.isHtml);
                 toast({
@@ -128,12 +131,20 @@ export default function AdminSendMessagePage() {
                     date: new Date(),
                     read: false,
                 });
+                
+                const recipientData = userDoc.data();
+                messageTargetDescription = `${recipientData.displayName} (${recipientData.adsenerId})`;
 
                 toast({
                     title: "Notification Sent",
-                    description: `Message sent to ${userDoc.data().displayName}.`
+                    description: `Message sent to ${recipientData.displayName}.`
                 });
             }
+            
+            if (adminProfile) {
+                await logSentNotification(values.title, values.description, messageTargetDescription, values.isHtml || false, adminProfile.displayName);
+            }
+
             form.reset({ target: 'all', userId: '', title: '', description: '', isHtml: isHtmlValue });
             setRecipientName(null);
         } catch (error) {
@@ -268,7 +279,7 @@ export default function AdminSendMessagePage() {
                                             title="HTML Preview"
                                             className="w-full h-full border-0 min-h-[338px]"
                                             style={{ backgroundColor: '#FFFFFF', color: '#000000' }}
-                                            sandbox=""
+                                            sandbox="allow-scripts"
                                         />
                                     </div>
                                 </TabsContent>

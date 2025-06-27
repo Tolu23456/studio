@@ -27,6 +27,7 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter,
+    DialogClose,
 } from '@/components/ui/dialog';
 import {
     AlertDialog,
@@ -47,10 +48,12 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Gamepad2, Upload } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Gamepad2, Upload, Sparkles } from 'lucide-react';
 import type { Game } from '@/lib/types';
 import { getGames, addGame, updateGame, deleteGame } from '@/services/user-data';
 import Image from 'next/image';
+import { generateImageFromPrompt } from '@/ai/flows/enhance-image-flow';
+
 
 const gameSchema = z.object({
     id: z.string().optional(),
@@ -76,6 +79,57 @@ const gameSchema = z.object({
 
 type GameFormData = z.infer<typeof gameSchema>;
 
+function AiGenerateDialog({ onImageGenerated, open, onOpenChange }: { onImageGenerated: (dataUri: string) => void; open: boolean; onOpenChange: (open: boolean) => void; }) {
+    const [prompt, setPrompt] = React.useState('');
+    const [isGenerating, setIsGenerating] = React.useState(false);
+    const { toast } = useToast();
+
+    const handleGenerate = async () => {
+        if (!prompt) {
+            toast({ variant: 'destructive', title: 'Prompt is empty', description: 'Please enter a prompt to generate an image.' });
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const result = await generateImageFromPrompt({ prompt });
+            onImageGenerated(result.generatedImageDataUri);
+            onOpenChange(false);
+            setPrompt('');
+        } catch (error) {
+            console.error('AI Image generation failed', error);
+            toast({ variant: 'destructive', title: 'Generation Failed', description: 'Could not generate the image. Please try again.' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Generate Image with AI</DialogTitle>
+                    <DialogDescription>Describe the image you want to create. Be descriptive for best results.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="ai-prompt">Prompt</Label>
+                        <Input id="ai-prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., A fantasy puzzle box glowing with runes" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleGenerate} disabled={isGenerating}>
+                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                        Generate
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function AdminGamesPage() {
     const { toast } = useToast();
     const [games, setGames] = React.useState<Game[]>([]);
@@ -84,6 +138,7 @@ export default function AdminGamesPage() {
     const [isSaving, setIsSaving] = React.useState(false);
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = React.useState(false);
+    const [isAiDialogOpen, setIsAiDialogOpen] = React.useState(false);
     const [selectedGame, setSelectedGame] = React.useState<Game | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -153,7 +208,7 @@ export default function AdminGamesPage() {
         const reader = new FileReader();
         reader.onload = (e) => {
           const dataUri = e.target?.result as string;
-          form.setValue('imageUrl', dataUri, { shouldDirty: true });
+          form.setValue('imageUrl', dataUri, { shouldDirty: true, shouldValidate: true });
         };
         reader.readAsDataURL(file);
     };
@@ -307,7 +362,7 @@ export default function AdminGamesPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="imageUrl">Game Image</Label>
-                            <div className="flex items-center gap-4">
+                             <div className="flex items-center gap-4">
                                 <div className="w-48 h-28 relative rounded-md border bg-muted flex items-center justify-center">
                                     {form.watch('imageUrl') ? (
                                         <Image src={form.watch('imageUrl')} alt="Game preview" layout="fill" className="object-cover rounded-md" />
@@ -315,10 +370,14 @@ export default function AdminGamesPage() {
                                         <Gamepad2 className="w-10 h-10 text-muted-foreground" />
                                     )}
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col gap-2">
                                     <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
                                         <Upload className="mr-2 h-4 w-4" />
                                         Upload Image
+                                    </Button>
+                                    <Button type="button" variant="outline" onClick={() => setIsAiDialogOpen(true)}>
+                                        <Sparkles className="mr-2 h-4 w-4" />
+                                        Generate with AI
                                     </Button>
                                 </div>
                             </div>
@@ -350,6 +409,14 @@ export default function AdminGamesPage() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+             <AiGenerateDialog
+                open={isAiDialogOpen}
+                onOpenChange={setIsAiDialogOpen}
+                onImageGenerated={(dataUri) => {
+                    form.setValue('imageUrl', dataUri, { shouldDirty: true, shouldValidate: true });
+                }}
+            />
 
              <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
                 <AlertDialogContent>

@@ -11,6 +11,7 @@ import { Zap } from "lucide-react";
 import { GlobalPopup } from "@/components/dashboard/global-popup";
 import { StatusOverlay } from "@/components/dashboard/status-overlay";
 import { ReenableWarningPopup } from "@/components/dashboard/reenable-warning-popup";
+import { NotificationPopupController } from "@/components/dashboard/notification-popup-controller";
 
 export default function DashboardLayout({
   children,
@@ -57,6 +58,7 @@ export default function DashboardLayout({
         </div>
         <GlobalPopup />
         {userProfile?.showReenableWarning && <ReenableWarningPopup />}
+        <NotificationPopupController />
       </div>
     </SidebarProvider>
   );
