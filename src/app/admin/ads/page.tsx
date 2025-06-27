@@ -60,6 +60,7 @@ const adSchema = z.object({
     duration: z.coerce.number().int().positive('Duration must be a positive number.'),
     reward: z.coerce.number().int().positive('Reward must be a positive number.'),
     imageUrl: z.string().min(1, 'Image is required.'),
+    videoUrl: z.string().url({ message: 'Please enter a valid embed URL.' }).or(z.literal("")).optional(),
     dataAiHint: z.string().optional(),
     isEnabled: z.boolean(),
 });
@@ -85,6 +86,7 @@ export default function AdminAdsPage() {
             duration: 30,
             reward: 10,
             imageUrl: '',
+            videoUrl: '',
             dataAiHint: '',
             isEnabled: true,
         },
@@ -114,7 +116,7 @@ export default function AdminAdsPage() {
             form.reset(ad);
         } else {
             form.reset({
-                title: '', description: '', duration: 30, reward: 10, imageUrl: '', dataAiHint: '', isEnabled: true
+                title: '', description: '', duration: 30, reward: 10, imageUrl: '', videoUrl: '', dataAiHint: '', isEnabled: true
             });
         }
         setIsDialogOpen(true);
@@ -218,6 +220,7 @@ export default function AdminAdsPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Title</TableHead>
+                                    <TableHead>Type</TableHead>
                                     <TableHead>Duration</TableHead>
                                     <TableHead>Reward</TableHead>
                                     <TableHead>Status</TableHead>
@@ -228,6 +231,11 @@ export default function AdminAdsPage() {
                                 {ads.map((ad) => (
                                     <TableRow key={ad.id}>
                                         <TableCell className="font-medium">{ad.title}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={ad.videoUrl ? 'outline' : 'secondary'}>
+                                                {ad.videoUrl ? 'Video' : 'Image'}
+                                            </Badge>
+                                        </TableCell>
                                         <TableCell>{ad.duration}s</TableCell>
                                         <TableCell>{ad.reward}</TableCell>
                                         <TableCell>
@@ -283,7 +291,7 @@ export default function AdminAdsPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="imageUrl">Ad Image</Label>
+                            <Label htmlFor="imageUrl">Ad Image / Thumbnail</Label>
                             <div className="flex items-center gap-4">
                                 <div className="w-48 h-28 relative rounded-md border bg-muted flex items-center justify-center">
                                     {form.watch('imageUrl') ? (
@@ -307,6 +315,12 @@ export default function AdminAdsPage() {
                                 accept="image/png, image/jpeg, image/webp"
                             />
                              {form.formState.errors.imageUrl && <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="videoUrl">Video URL (Optional)</Label>
+                            <Input id="videoUrl" placeholder="https://www.youtube.com/embed/..." {...form.register('videoUrl')} />
+                            <p className="text-xs text-muted-foreground">If provided, this ad will be a video. Use the embeddable URL from the video platform (e.g., YouTube, Vimeo). The image above will be used as a thumbnail.</p>
+                            {form.formState.errors.videoUrl && <p className="text-sm text-destructive">{form.formState.errors.videoUrl.message}</p>}
                         </div>
                         <div className="space-y-2">
                              <Label htmlFor="dataAiHint">Image Hint (Optional)</Label>

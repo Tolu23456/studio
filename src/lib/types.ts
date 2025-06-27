@@ -49,6 +49,7 @@ export type Ad = {
   duration: number; // in seconds
   reward: number;
   imageUrl: string;
+  videoUrl?: string;
   isEnabled: boolean;
   dataAiHint?: string;
 };
