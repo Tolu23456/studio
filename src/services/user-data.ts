@@ -232,59 +232,13 @@ export async function getAllUsersForAdmin(): Promise<AdminUserView[]> {
 export async function updateCurrentUserProfile(data: Partial<Pick<UserProfile, 'displayName' | 'photoURL' | 'notificationPreferences'>>): Promise<void> {
     const user = getCurrentUser();
     const userRef = doc(db, 'users', user.uid);
-    const cost = 1000;
-
     let finalData = { ...data };
 
-    // Handle image upload OUTSIDE the transaction
     if (finalData.photoURL) {
         finalData.photoURL = await uploadImageIfPresent(finalData.photoURL, `profile-pictures/${user.uid}`);
     }
     
-    await runTransaction(db, async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-            throw new Error("User profile not found.");
-        }
-        
-        const currentData = userDoc.data() as UserProfile;
-        const updateData: { [key: string]: any } = {};
-
-        // Check if display name is changing
-        if (finalData.displayName && finalData.displayName !== currentData.displayName) {
-            updateData.displayName = finalData.displayName;
-            // Only apply fee if user is NOT an admin
-            if (!currentData.isAdmin) {
-                if (currentData.cubeBalance < cost) {
-                    throw new Error(`Insufficient funds. Changing your name costs ${cost.toLocaleString()} Cubes.`);
-                }
-                updateData.cubeBalance = increment(-cost);
-                
-                const transactionRef = doc(collection(db, 'users', user.uid, 'transactions'));
-                transaction.set(transactionRef, {
-                    type: 'withdrawal',
-                    description: 'Display name change fee',
-                    amount: -cost,
-                    date: new Date(),
-                    status: 'completed',
-                });
-            }
-        }
-        
-        // Check if photo URL is changing
-        if (finalData.photoURL && finalData.photoURL !== currentData.photoURL) {
-            updateData.photoURL = finalData.photoURL;
-        }
-
-        if (finalData.notificationPreferences) {
-            updateData.notificationPreferences = finalData.notificationPreferences;
-        }
-
-        // Commit all updates if there's anything to change
-        if (Object.keys(updateData).length > 0) {
-            transaction.update(userRef, updateData);
-        }
-    });
+    await updateDoc(userRef, finalData);
 }
 
 

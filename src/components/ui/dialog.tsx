@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -39,7 +40,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed z-50 grid w-full gap-4 bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        "inset-0 h-full w-full rounded-none border-0 p-0", // Mobile: fullscreen
+        "inset-0 h-full w-full rounded-none border-0 p-6 pt-10", // Mobile: fullscreen
         "sm:inset-auto sm:h-auto sm:w-full sm:max-w-lg sm:rounded-lg sm:border sm:p-6", // Desktop: modal
         "sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]", // Desktop: centered
         "data-[state=closed]:sm:zoom-out-95 data-[state=open]:sm:zoom-in-95",
