@@ -1,0 +1,128 @@
+
+.gameContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 1rem;
+    gap: 1rem;
+    background-color: hsl(var(--background));
+    border-radius: 0.5rem;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.bg {
+    position: absolute;
+    inset: 0;
+    background-color: hsl(200 100% 90%);
+    opacity: 0.5;
+    z-index: 0;
+}
+
+.dark .bg {
+    background-color: hsl(220 70% 20%);
+}
+
+.content {
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    width: 100%;
+}
+
+.header {
+    flex-shrink: 0;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.clickArea {
+    width: 100%;
+    flex-grow: 1;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: bold;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.bubble {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 1rem;
+    transition: all 0.3s ease-in-out;
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.5), 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.waiting {
+    width: 12rem;
+    height: 12rem;
+    background: radial-gradient(circle at 30% 30%, hsl(350, 80%, 80%), hsl(350, 80%, 60%));
+    animation: pulse-slow 2s infinite ease-in-out, bubble-float 5s infinite ease-in-out;
+    transform: scale(0.9);
+}
+
+.active {
+    width: 16rem;
+    height: 16rem;
+    background: radial-gradient(circle at 30% 30%, hsl(140, 80%, 80%), hsl(140, 80%, 50%));
+    animation: ping-once 0.5s ease-out;
+}
+
+.tooSoon {
+    width: 8rem;
+    height: 8rem;
+    background: radial-gradient(circle at 30% 30%, hsl(50, 90%, 80%), hsl(50, 90%, 60%));
+    opacity: 0.7;
+}
+
+.footer {
+    height: 6rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+@keyframes pulse-slow {
+  0%, 100% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
+@keyframes ping-once {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes bubble-float {
+    0% { transform: translateY(0) scale(0.9); }
+    50% { transform: translateY(-10px) scale(1); }
+    100% { transform: translateY(0) scale(0.9); }
+}

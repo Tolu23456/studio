@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -102,11 +103,22 @@ export default {
             borderColor: 'hsl(var(--primary) / 0.8)',
           },
         },
+        'pulse-slow': {
+          '0%, 100%': { transform: 'scale(0.95)' },
+          '50%': { transform: 'scale(1.05)' },
+        },
+        'ping-once': {
+          '0%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.2)' },
+          '100%': { transform: 'scale(1)' },
+        }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'referral-glow': 'referral-glow 2.5s ease-in-out infinite',
+        'pulse-slow': 'pulse-slow 2s infinite ease-in-out',
+        'ping-once': 'ping-once 0.5s ease-out',
       },
     },
   },
