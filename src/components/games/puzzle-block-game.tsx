@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 
-const GRID_SIZE = 8;
+const GRID_SIZE = 6;
 
 const PIECE_SHAPES = {
   I: { shape: [[1, 1, 1, 1]] },
