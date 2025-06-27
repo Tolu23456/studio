@@ -77,9 +77,9 @@ export function VerifyEmailForm() {
                 <CardContent>
                     <Alert variant="destructive">
                         <Terminal className="h-4 w-4" />
-                        <AlertTitle>Feature Disabled</AlertTitle>
+                        <AlertTitle>Firebase Not Configured</AlertTitle>
                         <AlertDescription>
-                            Firebase is not configured correctly. Email verification is currently unavailable.
+                            Firebase is not configured. Add your project's API keys to the `.env` file to enable email verification.
                         </AlertDescription>
                     </Alert>
                 </CardContent>

@@ -83,9 +83,9 @@ export function RegisterForm() {
             <CardContent>
                 <Alert variant="destructive" className="mb-4">
                     <Terminal className="h-4 w-4" />
-                    <AlertTitle>Feature Disabled</AlertTitle>
+                    <AlertTitle>Firebase Not Configured</AlertTitle>
                     <AlertDescription>
-                        Firebase is not configured correctly. Please add your API keys to enable registration.
+                        Firebase is not configured. Add your project's API keys to the `.env` file to enable registration.
                     </AlertDescription>
                 </Alert>
                 <div className="space-y-4">
