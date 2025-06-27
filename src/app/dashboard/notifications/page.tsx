@@ -63,8 +63,8 @@ export default function NotificationsPage() {
                                 )}
                             </div>
                             {notification.isHtml ? (
-                               <p
-                                 className="text-sm text-muted-foreground"
+                               <div
+                                 className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground"
                                  dangerouslySetInnerHTML={{ __html: notification.description }}
                                />
                             ) : (
@@ -72,7 +72,7 @@ export default function NotificationsPage() {
                                     {notification.description}
                                 </p>
                             )}
-                            <p className="text-xs text-muted-foreground/80">
+                            <p className="text-xs text-muted-foreground/80 mt-1">
                                 {formatDistanceToNow(notification.date, { addSuffix: true })}
                             </p>
                         </div>
@@ -87,3 +87,5 @@ export default function NotificationsPage() {
     </div>
   );
 }
+
+    

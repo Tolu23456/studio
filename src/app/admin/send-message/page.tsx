@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -27,6 +28,8 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserProfile } from '@/lib/types';
+import { format } from 'date-fns';
+
 
 const formSchema = z.object({
   target: z.enum(['all', 'specific']),
@@ -99,6 +102,25 @@ export default function AdminSendMessagePage() {
 
         return () => clearTimeout(handler);
       }, [userIdValue, targetValue, form]);
+      
+    const replacePlaceholdersForPreview = (template: string): string => {
+        const now = new Date();
+        const sampleData = {
+          username: 'ExampleUser',
+          email: 'user@example.com',
+          adsenerId: 'AC-123456X',
+          cubeBalance: '5,000',
+          date: format(now, 'PPP'),
+          time: format(now, 'p'),
+        };
+        return template
+          .replace(/{{username}}/g, `<strong>${sampleData.username}</strong>`)
+          .replace(/{{email}}/g, `<strong>${sampleData.email}</strong>`)
+          .replace(/{{adsenerId}}/g, `<strong>${sampleData.adsenerId}</strong>`)
+          .replace(/{{cubeBalance}}/g, `<strong>${sampleData.cubeBalance}</strong>`)
+          .replace(/{{date}}/g, `<strong>${sampleData.date}</strong>`)
+          .replace(/{{time}}/g, `<strong>${sampleData.time}</strong>`);
+    };
 
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -271,11 +293,10 @@ export default function AdminSendMessagePage() {
                                 <TabsContent value="preview" className="mt-2">
                                     <div className="w-full min-h-[358px] rounded-md border bg-background p-4">
                                         <iframe
-                                            srcDoc={descriptionValue}
+                                            srcDoc={replacePlaceholdersForPreview(descriptionValue)}
                                             title="HTML Preview"
                                             className="w-full h-full border-0 min-h-[338px]"
-                                            style={{ backgroundColor: '#FFFFFF', color: '#000000' }}
-                                            sandbox="allow-scripts"
+                                            style={{ backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--card-foreground))' }}
                                         />
                                     </div>
                                 </TabsContent>
@@ -311,3 +332,5 @@ export default function AdminSendMessagePage() {
         </div>
     );
 }
+
+    
