@@ -82,7 +82,7 @@ export function StatusOverlay({ isMaintenance }: { isMaintenance: boolean }) {
                         Contact Support
                     </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent onInteractOutside={(e) => e.preventDefault()}>
                     <DialogHeader>
                         <DialogTitle>Contact Support</DialogTitle>
                         <DialogDescription>

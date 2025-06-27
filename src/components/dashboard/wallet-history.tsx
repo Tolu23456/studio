@@ -7,6 +7,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import {
   Table,
@@ -113,6 +114,7 @@ export function WalletHistory() {
     <>
       <Card>
         <CardHeader>
+          <CardTitle>Full History</CardTitle>
           <CardDescription>
             A complete record of your Cube earnings and spending.
           </CardDescription>
@@ -188,7 +190,7 @@ export function WalletHistory() {
       </Card>
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
         <DialogContent className="sm:max-w-xl p-0 overflow-y-auto">
-          <DialogHeader className="mb-4 p-6 pb-0">
+          <DialogHeader className="p-6 pb-0">
             <DialogTitle>Transaction Receipt</DialogTitle>
             {selectedTransaction && <DialogDescription>
               Official receipt for transaction ID: {selectedTransaction.id}

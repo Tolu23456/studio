@@ -34,15 +34,22 @@ import { BubblePopGame } from "@/components/games/bubble-pop-game";
 import { ZumaDashGame } from "@/components/games/zuma-dash-game";
 import { cn } from "@/lib/utils";
 
-const getGamePlays = () => {
-    if (typeof window === 'undefined') return {};
+const MAX_PLAYS = 5;
+const COOLDOWN_HOURS = 1;
+
+const getGameData = (gameId: string) => {
+    if (typeof window === 'undefined') return { count: 0, cooldownUntil: 0 };
     const data = localStorage.getItem('game_plays');
-    return data ? JSON.parse(data) : {};
+    const allPlays = data ? JSON.parse(data) : {};
+    return allPlays[gameId] || { count: 0, cooldownUntil: 0 };
 };
 
-const setGamePlays = (plays: any) => {
+const setGameData = (gameId: string, data: { count: number, cooldownUntil: number | null }) => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('game_plays', JSON.stringify(plays));
+    const allPlaysData = localStorage.getItem('game_plays');
+    const allPlays = allPlaysData ? JSON.parse(allPlaysData) : {};
+    allPlays[gameId] = data;
+    localStorage.setItem('game_plays', JSON.stringify(allPlays));
 };
 
 const GameComponentMap: { [key: string]: React.ElementType } = {
@@ -50,13 +57,12 @@ const GameComponentMap: { [key: string]: React.ElementType } = {
   'g2': MemoryMatchGame,
   'g3': PuzzleBoxGame,
   'g4': ReactionTimeGame,
-  'g5': CubeRunnerGame, // "Endless Runner" uses the same component
+  'g5': CubeRunnerGame,
   'g6': DotConnectGame,
   'g7': BubblePopGame,
   'g8': ZumaDashGame,
   'g9': PuzzleBlockGame,
 };
-
 
 type GameCardProps = {
   game: Game;
@@ -64,103 +70,81 @@ type GameCardProps = {
 
 export function GameCard({ game }: GameCardProps) {
   const [isGameOpen, setIsGameOpen] = useState(false);
-  const [cooldownTime, setCooldownTime] = useState(0);
-  const [playCount, setPlayCount] = useState(0);
-  const [isNewSession, setIsNewSession] = useState(true);
+  const [gameData, setGameDataState] = useState({ count: 0, cooldownUntil: 0 });
+  const [timeLeft, setTimeLeft] = useState('');
+  const [hasClaimed, setHasClaimed] = useState(false);
 
   const { toast } = useToast();
   const { user } = useAuth();
   
   const isEmbedded = !!game.gameUrl;
-  
-  const MAX_PLAYS = 5;
-  const COOLDOWN_HOURS = 1;
 
   useEffect(() => {
     if (isEmbedded) return;
-    const allPlays = getGamePlays();
-    const gameData = allPlays[game.id];
-    
-    if (gameData) {
-        setPlayCount(gameData.count || 0);
+
+    const initialData = getGameData(game.id);
+    setGameDataState(initialData);
+
+    const { cooldownUntil } = initialData;
+    const now = new Date().getTime();
+
+    if (cooldownUntil > now) {
+      const interval = setInterval(() => {
         const now = new Date().getTime();
-        if (gameData.cooldownUntil && now < gameData.cooldownUntil) {
-            setCooldownTime(gameData.cooldownUntil);
-        } else if (gameData.cooldownUntil && now >= gameData.cooldownUntil) {
-            const newPlays = { ...allPlays };
-            delete newPlays[game.id];
-            setGamePlays(newPlays);
-            setPlayCount(0);
-            setCooldownTime(0);
+        const diff = cooldownUntil - now;
+        if (diff <= 0) {
+          setTimeLeft('');
+          const allPlays = JSON.parse(localStorage.getItem('game_plays') || '{}');
+          delete allPlays[game.id];
+          localStorage.setItem('game_plays', JSON.stringify(allPlays));
+          setGameDataState({ count: 0, cooldownUntil: 0 });
+          createSimpleNotification(`Plays Refreshed!`, `You can now play '${game.title}' again.`).catch(console.error);
+          clearInterval(interval);
+        } else {
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          setTimeLeft(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
         }
-    } else {
-        setPlayCount(0);
+      }, 1000);
+      return () => clearInterval(interval);
     }
-  }, [game.id, isEmbedded]);
-  
-   useEffect(() => {
-    if (isEmbedded || cooldownTime <= 0) return;
-    
-    const interval = setInterval(async () => {
-      const now = new Date().getTime();
-      if (now >= cooldownTime) {
-        clearInterval(interval);
-        setCooldownTime(0);
-        setPlayCount(0);
-        const allPlays = getGamePlays();
-        const newPlays = { ...allPlays };
-        delete newPlays[game.id];
-        setGamePlays(newPlays);
-        
-        if (user) {
-          try {
-            await createSimpleNotification(
-              `Plays Refreshed!`, 
-              `You can now play '${game.title}' again.`
-            );
-          } catch (error) {
-              console.error("Failed to send refresh notification", error);
-          }
-        }
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [cooldownTime, game.id, user, game.title, isEmbedded]);
+  }, [game.id, isEmbedded, game.title]);
 
   const handleStartGame = () => {
-    if (isNewSession) {
-        const allPlays = getGamePlays();
-        const currentCount = (allPlays[game.id]?.count || 0) + 1;
-        
-        let newCooldownUntil = allPlays[game.id]?.cooldownUntil || null;
-        if (currentCount >= MAX_PLAYS) {
-            newCooldownUntil = new Date().getTime() + COOLDOWN_HOURS * 60 * 60 * 1000;
-            setCooldownTime(newCooldownUntil);
-            toast({
-                title: "Play limit reached",
-                description: `You can play this game again in ${COOLDOWN_HOURS} hour.`,
-            });
-        }
-        
-        setPlayCount(currentCount);
-        setGamePlays({
-            ...allPlays,
-            [game.id]: {
-                count: currentCount,
-                cooldownUntil: newCooldownUntil,
-            },
-        });
-        setIsNewSession(false);
+     if (isEmbedded) {
+        window.open(game.gameUrl, '_blank');
+        return;
     }
 
+    let currentData = getGameData(game.id);
+    const now = new Date().getTime();
+    
+    if (currentData.cooldownUntil > now) {
+        toast({ title: "Game on Cooldown", description: `You can play again in ${timeLeft}.` });
+        return;
+    }
+
+    currentData.count++;
+    
+    if (currentData.count >= MAX_PLAYS) {
+        currentData.cooldownUntil = now + COOLDOWN_HOURS * 60 * 60 * 1000;
+        toast({ title: "Play limit reached", description: `You can play this game again in ${COOLDOWN_HOURS} hour.` });
+    }
+
+    setGameData(game.id, currentData);
+    setGameDataState(currentData);
+    setHasClaimed(false);
     setIsGameOpen(true);
   };
 
   const handleGameWon = async (scorePayload: number) => {
-    if (isEmbedded || !user) {
+    if (isEmbedded || !user || hasClaimed) {
         if (!user) toast({ variant: "destructive", title: "You must be logged in to claim rewards." });
         return;
     }
+
+    setHasClaimed(true);
 
     try {
         const actualReward = await claimGameReward(game.id, scorePayload);
@@ -179,27 +163,12 @@ export function GameCard({ game }: GameCardProps) {
 
   const handleFinishGame = () => {
     setIsGameOpen(false);
-    setIsNewSession(true); // Reset session state when game is closed
   }
 
   const GameComponent = GameComponentMap[game.id];
   
-  const formatTimeLeft = () => {
-    if (cooldownTime <= 0) return '';
-    const now = new Date().getTime();
-    const diff = cooldownTime - now;
-
-    if (diff <= 0) return '';
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  };
-  
-  const onCooldown = !isEmbedded && cooldownTime > 0 && new Date().getTime() < cooldownTime;
-  const playsLeft = MAX_PLAYS - playCount;
+  const onCooldown = !isEmbedded && gameData.cooldownUntil > new Date().getTime();
+  const playsLeft = MAX_PLAYS - gameData.count;
 
   return (
     <>
@@ -244,14 +213,14 @@ export function GameCard({ game }: GameCardProps) {
           )}
           
           <Button 
-             onClick={isEmbedded ? () => window.open(game.gameUrl, '_blank') : handleStartGame}
+             onClick={handleStartGame}
              disabled={onCooldown || (!isEmbedded && playsLeft <= 0)} 
              className="flex-shrink-0"
            >
             {onCooldown ? (
                 <>
                     <Clock className="mr-2 h-4 w-4" />
-                    {formatTimeLeft()}
+                    {timeLeft}
                 </>
             ) : (
                 <>
@@ -269,6 +238,7 @@ export function GameCard({ game }: GameCardProps) {
             "p-0 max-w-none w-full h-full flex items-center justify-center bg-transparent border-0 shadow-none",
             "sm:w-[calc(100%-2rem)] sm:h-[calc(100%-2rem)] sm:max-w-7xl sm:max-h-5xl",
           )}
+           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader className="sr-only">
             <RadixDialogTitle>{game.title}</RadixDialogTitle>
