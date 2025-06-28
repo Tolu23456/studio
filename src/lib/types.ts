@@ -36,7 +36,7 @@ export type Transaction = {
 
 export type Activity = {
   id:string;
-  type: 'Ad Watch' | 'Task Completion' | 'Game Play' | 'Referral Bonus' | 'Daily Login' | 'Admin Adjustment';
+  type: 'Ad Watch' | 'Task Completion' | 'Game Play' | 'Referral Bonus' | 'Daily Login' | 'Admin Adjustment' | 'Offerwall';
   description:string;
   cubes_earned: number;
   date: Date;
@@ -154,3 +154,14 @@ export type SentNotificationLog = {
   deliveryMethod: 'popup' | 'toast';
   timestamp: Date;
 };
+
+export type OfferwallTransaction = {
+  userUid: string;
+  adsenerId: string;
+  rewardAmount: number;
+  transactionId: string;
+  offerId: string;
+  network: string;
+  ip: string;
+  processedAt: Date;
+}

@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, Task, SupportTicket, SentNotificationLog } from '@/lib/types';
+import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, Task, SupportTicket, SentNotificationLog, OfferwallTransaction } from '@/lib/types';
 import { collection, doc, getDoc, setDoc, writeBatch, Timestamp, increment, updateDoc, runTransaction, query, where, getDocs, orderBy, deleteDoc, addDoc, collectionGroup, serverTimestamp, limit } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { isYesterday, startOfDay, isToday, format } from 'date-fns';
@@ -1133,4 +1133,97 @@ export async function getTransactionsForUserAdmin(uid: string, count: number = 5
             date: (data.date as Timestamp).toDate(),
         } as Transaction;
     });
+}
+
+
+// Offerwall Postback Handling
+interface RewardArgs {
+    adsenerId: string;
+    rewardAmount: number;
+    transactionId: string;
+    offerId: string;
+    network: string;
+    ip: string;
+}
+
+export async function rewardOfferwallCompletion(args: RewardArgs): Promise<{ success: boolean; error?: string }> {
+    const { adsenerId, rewardAmount, transactionId, offerId, network } = args;
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            // 1. Check for duplicate transaction ID to ensure idempotency
+            const txLogRef = doc(db, 'offerwall_transactions', transactionId);
+            const txLogDoc = await transaction.get(txLogRef);
+            if (txLogDoc.exists()) {
+                // This transaction has already been processed.
+                throw new Error('duplicate_transaction');
+            }
+
+            // 2. Find the user by their adsenerId
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where("adsenerId", "==", adsenerId));
+            const userQuerySnapshot = await getDocs(q);
+            
+            if (userQuerySnapshot.empty) {
+                throw new Error('user_not_found');
+            }
+            const userDoc = userQuerySnapshot.docs[0];
+            const userRef = userDoc.ref;
+            
+            // 3. Apply the reward and log everything
+            const now = new Date();
+            
+            // Update user balance
+            transaction.update(userRef, {
+                cubeBalance: increment(rewardAmount),
+                totalEarned: increment(rewardAmount),
+            });
+
+            // Create activity log for the user
+            const activityRef = doc(collection(userRef, 'activities'));
+            transaction.set(activityRef, {
+                type: 'Offerwall',
+                description: `Completed offer from ${network}`,
+                cubes_earned: rewardAmount,
+                date: now,
+            });
+
+            // Create transaction log for the user
+            const userTransactionRef = doc(collection(userRef, 'transactions'));
+            transaction.set(userTransactionRef, {
+                type: 'reward',
+                description: `Reward from ${network} for offer #${offerId}`,
+                amount: rewardAmount,
+                date: now,
+                status: 'completed',
+            });
+            
+            // Create a notification for the user
+            const notificationRef = doc(collection(userRef, 'notifications'));
+            transaction.set(notificationRef, {
+                title: 'Offer Complete!',
+                description: `You earned ${rewardAmount} Cubes from a ${network} offer.`,
+                date: now,
+                read: false,
+                deliveryMethod: 'toast',
+            });
+
+            // 4. Log the processed transaction ID to prevent duplicates
+            const newTxLog: OfferwallTransaction = {
+                ...args,
+                processedAt: now,
+                userUid: userDoc.id,
+            };
+            transaction.set(txLogRef, newTxLog);
+        });
+
+        return { success: true };
+
+    } catch (error: any) {
+        if (error.message === 'duplicate_transaction' || error.message === 'user_not_found') {
+            return { success: false, error: error.message };
+        }
+        console.error(`Failed to process offerwall reward for txId ${transactionId}:`, error);
+        return { success: false, error: 'internal_error' };
+    }
 }
