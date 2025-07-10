@@ -42,7 +42,7 @@ const _replacePlaceholders = (template: string, userProfile: UserProfile): strin
         .replace(/{{time}}/g, format(now, 'p'));
 };
 
-function _createNotificationInBatch(batch: any, uid: string, title: string, description: string, isHtml: boolean = false, deliveryMethod: 'popup' | 'toast' = 'popup') {
+function _createNotificationInBatch(batch: any, uid: string, title: string, description: string, isHtml: boolean = false, deliveryMethod: 'popup' | 'toast' = 'toast') {
     const notificationRef = doc(collection(db, 'users', uid, 'notifications'));
     const newNotification: Omit<Notification, 'id'> = {
         title,
@@ -805,7 +805,7 @@ export async function updatePlatformSettings(settings: Partial<PlatformSettings>
     await updateDoc(settingsRef, settings);
 }
 
-export async function sendBroadcastNotification(titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false, deliveryMethod: 'popup' | 'toast' = 'popup'): Promise<{ successCount: number; errorCount: number }> {
+export async function sendBroadcastNotification(titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false, deliveryMethod: 'popup' | 'toast' = 'toast'): Promise<{ successCount: number; errorCount: number }> {
     const usersCollectionRef = collection(db, 'users');
     const querySnapshot = await getDocs(usersCollectionRef);
     if (querySnapshot.empty) return { successCount: 0, errorCount: 0 };
@@ -839,7 +839,7 @@ export async function sendBroadcastNotification(titleTemplate: string, descripti
     return { successCount, errorCount };
 }
 
-export async function sendPersonalizedNotification(recipientAdsenerId: string, titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false, deliveryMethod: 'popup' | 'toast' = 'popup'): Promise<{ success: boolean; message: string; recipientName?: string; }> {
+export async function sendPersonalizedNotification(recipientAdsenerId: string, titleTemplate: string, descriptionTemplate: string, isHtml: boolean = false, deliveryMethod: 'popup' | 'toast' = 'toast'): Promise<{ success: boolean; message: string; recipientName?: string; }> {
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where("adsenerId", "==", recipientAdsenerId));
 
@@ -1139,7 +1139,7 @@ export async function updateSupportTicketStatus(ticketId: string, status: 'resol
     });
     
     const ticketData = ticketSnap.data();
-    _createNotificationInBatch(batch, ticketData.userId, 'Support Ticket Resolved', 'Your recent support ticket has been reviewed and marked as resolved by our team.');
+    _createNotificationInBatch(batch, ticketData.userId, 'Support Ticket Resolved', 'Your recent support ticket has been reviewed and marked as resolved by our team.', false, 'popup');
 
     await batch.commit();
 }
