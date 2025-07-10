@@ -61,7 +61,7 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-              <svg
+              <svg 
                 width="650"
                 height="450"
                 viewBox="0 0 650 450"
@@ -70,58 +70,57 @@ export default function Home() {
                 className="mx-auto aspect-video w-full rounded-xl object-contain lg:order-last"
                 aria-labelledby="hero-illustration-title"
               >
-                <title id="hero-illustration-title">An illustration of a mobile app interface showing graphs and floating reward cubes.</title>
-                <defs>
-                  <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="hsl(var(--primary) / 0.1)" />
-                    <stop offset="100%" stopColor="hsl(var(--primary) / 0.0)" />
-                  </linearGradient>
-                  <filter id="drop-shadow">
-                    <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
-                    <feOffset dx="5" dy="5" result="offsetblur"/>
-                    <feFlood floodColor="hsl(var(--foreground) / 0.1)"/>
-                    <feComposite in2="offsetblur" operator="in"/>
-                    <feMerge>
-                      <feMergeNode/>
-                      <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                  </filter>
-                </defs>
-
-                <rect width="650" height="450" fill="url(#grad1)" />
-                <circle cx="50" cy="50" r="100" fill="hsl(var(--primary) / 0.05)" />
-                <circle cx="600" cy="400" r="120" fill="hsl(var(--accent) / 0.05)" />
-
-                <g style={{ filter: 'url(#drop-shadow)' }}>
-                  <rect x="175" y="50" width="300" height="350" rx="30" fill="hsl(var(--card))" stroke="hsl(var(--border))" strokeWidth="1" />
-                  <rect x="195" y="70" width="260" height="40" rx="10" fill="hsl(var(--muted))" />
+                  <title id="hero-illustration-title">An abstract illustration of glowing cubes and a stylized interface representing rewards and tasks.</title>
+                  <defs>
+                      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="8" result="coloredBlur" />
+                          <feMerge>
+                              <feMergeNode in="coloredBlur" />
+                              <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                      </filter>
+                      <linearGradient id="grad-bg" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary) / 0.05)" />
+                          <stop offset="100%" stopColor="hsl(var(--accent) / 0.1)" />
+                      </linearGradient>
+                       <linearGradient id="grad-cube" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" />
+                          <stop offset="100%" stopColor="hsl(var(--accent))" />
+                      </linearGradient>
+                  </defs>
+              
+                  <rect width="650" height="450" fill="url(#grad-bg)" />
+              
+                  {/* Frosted Glass UI element */}
+                  <g transform="translate(150 100)">
+                      <rect x="0" y="0" width="350" height="250" rx="20" fill="hsl(var(--card) / 0.5)" stroke="hsl(var(--card) / 0.7)" strokeWidth="2" style={{ backdropFilter: 'blur(10px)' }} />
+                      <rect x="20" y="20" width="100" height="15" rx="5" fill="hsl(var(--muted) / 0.5)" />
+                      
+                      <rect x="20" y="55" width="310" height="30" rx="8" fill="hsl(var(--muted) / 0.5)" />
+                      <rect x="20" y="100" width="310" height="30" rx="8" fill="hsl(var(--muted) / 0.5)" />
+                      <rect x="20" y="145" width="200" height="30" rx="8" fill="hsl(var(--muted) / 0.5)" />
+                      
+                      <rect x="20" y="195" width="120" height="35" rx="8" fill="hsl(var(--primary) / 0.6)" />
+                  </g>
+              
+                  {/* Floating Cubes */}
+                  <g transform="translate(80 150) rotate(-20)" style={{ filter: 'url(#glow)' }}>
+                      <rect x="0" y="0" width="80" height="80" rx="15" fill="url(#grad-cube)" />
+                      <path d="M 20 20 L 60 20 L 60 60 L 20 60 Z" fill="none" stroke="hsl(var(--primary-foreground)/0.5)" strokeWidth="3" />
+                  </g>
                   
-                  <rect x="195" y="130" width="120" height="120" rx="10" fill="hsl(var(--primary) / 0.1)"/>
-                  <path d="M220 220L245 180L270 200L295 160" stroke="hsl(var(--primary))" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <g transform="translate(500 280) rotate(30)" style={{ filter: 'url(#glow)' }}>
+                      <rect x="0" y="0" width="100" height="100" rx="20" fill="url(#grad-cube)" opacity="0.8" />
+                      <path d="M 25 25 L 75 25 L 75 75 L 25 75 Z" fill="none" stroke="hsl(var(--primary-foreground)/0.5)" strokeWidth="4" />
+                  </g>
                   
-                  <rect x="335" y="130" width="120" height="120" rx="10" fill="hsl(var(--muted))" />
+                   <g transform="translate(520 50) rotate(10)" style={{ filter: 'url(#glow)' }}>
+                      <rect x="0" y="0" width="50" height="50" rx="10" fill="url(#grad-cube)" opacity="0.7" />
+                  </g>
                   
-                  <rect x="195" y="270" width="260" height="60" rx="10" fill="hsl(var(--muted))" />
-                  <rect x="195" y="350" width="180" height="30" rx="10" fill="hsl(var(--muted))" />
-                </g>
-                
-                <g transform="translate(100, 150)" style={{ filter: 'url(#drop-shadow)' }}>
-                    <rect width="60" height="60" rx="10" fill="hsl(var(--primary))" transform="rotate(-15)"/>
-                    <text x="18" y="42" fontFamily="PT Sans, sans-serif" fontSize="32" fill="hsl(var(--primary-foreground))" fontWeight="bold">C</text>
-                </g>
-                
-                <g transform="translate(480, 250)" style={{ filter: 'url(#drop-shadow)' }}>
-                    <rect width="80" height="80" rx="15" fill="hsl(var(--accent))" transform="rotate(20)"/>
-                    <text x="25" y="55" fontFamily="PT Sans, sans-serif" fontSize="40" fill="hsl(var(--accent-foreground))" fontWeight="bold">C</text>
-                </g>
-                
-                <g transform="translate(500, 80) scale(0.8)" style={{ filter: 'url(#drop-shadow)' }}>
-                    <rect width="40" height="40" rx="8" fill="hsl(var(--primary) / 0.7)" transform="rotate(10)"/>
-                </g>
-                
-                <g transform="translate(120, 350)" style={{ filter: 'url(#drop-shadow)' }}>
-                    <rect width="50" height="50" rx="8" fill="hsl(var(--accent) / 0.6)" transform="rotate(-25)"/>
-                </g>
+                  <g transform="translate(120 380) rotate(-10)" style={{ filter: 'url(#glow)' }}>
+                      <rect x="0" y="0" width="40" height="40" rx="8" fill="url(#grad-cube)" opacity="0.9" />
+                  </g>
               </svg>
             </div>
           </div>
@@ -145,7 +144,7 @@ export default function Home() {
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:max-w-none lg:grid-cols-4 mt-12">
               {features.map((feature) => (
-                <Card key={feature.title} className="text-center hover:shadow-xl hover:-translate-y-1 transition-all duration-200">
+                <Card key={feature.title} className="text-center hover:shadow-xl hover:-translate-y-1 transition-all duration-200 glass-card">
                   <CardHeader>
                     <div className="mx-auto flex items-center justify-center bg-primary/10 rounded-full w-16 h-16 mb-4">
                       {feature.icon}

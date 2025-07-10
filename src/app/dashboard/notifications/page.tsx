@@ -53,7 +53,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
                     <div className="flex items-center justify-between">
                         <p className="font-semibold">{notification.title}</p>
                         {!notification.read && (
-                            <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                            <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
                         )}
                     </div>
                     {notification.isHtml ? (
@@ -71,7 +71,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
                     </p>
                 </div>
             </div>
-            <Separator />
+            <Separator className="last:hidden" />
         </>
     );
 }
@@ -113,9 +113,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const unreadNotifications = notifications.filter(n => !n.read);
-  const readNotifications = notifications.filter(n => n.read);
-  const hasUnread = unreadNotifications.length > 0;
+  const hasUnread = notifications.some(n => !n.read);
   
   if (loading && !userProfile) {
     return (
@@ -124,23 +122,15 @@ export default function NotificationsPage() {
                 <Skeleton className="h-9 w-48" />
                 <Skeleton className="h-10 w-32" />
             </div>
-            <div className="grid gap-8 md:grid-cols-2">
-                <Card>
-                    <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
-                    <CardContent className="space-y-4">
-                        <Skeleton className="h-16 w-full" />
-                        <Skeleton className="h-16 w-full" />
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
-                    <CardContent className="space-y-4">
-                         <Skeleton className="h-16 w-full" />
-                         <Skeleton className="h-16 w-full" />
-                         <Skeleton className="h-16 w-full" />
-                    </CardContent>
-                </Card>
-            </div>
+            <Card>
+                <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                </CardContent>
+            </Card>
         </div>
     )
   }
@@ -177,48 +167,23 @@ export default function NotificationsPage() {
         </div>
       </div>
       
-      {notifications.length === 0 ? (
-           <Card className="col-span-full">
-            <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-                <Bell className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                <h3 className="text-xl font-semibold">No Notifications Yet</h3>
-                <p className="text-muted-foreground">You have no new alerts. Check back later.</p>
+       <Card>
+            <CardHeader>
+                <CardTitle>Your Messages</CardTitle>
+                <CardDescription>A log of all your system alerts and messages.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+                {notifications.length > 0 ? (
+                    notifications.map(n => <NotificationItem key={n.id} notification={n} />)
+                ) : (
+                     <div className="p-6 text-center text-muted-foreground flex flex-col items-center justify-center min-h-[200px]">
+                        <Bell className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                        <h3 className="text-xl font-semibold">No Notifications Yet</h3>
+                        <p className="text-muted-foreground">You have no new alerts. Check back later.</p>
+                    </div>
+                )}
             </CardContent>
-          </Card>
-      ) : (
-        <div className="grid gap-8 md:grid-cols-2">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Unread</CardTitle>
-                    <CardDescription>Messages that need your attention.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                    {unreadNotifications.length > 0 ? (
-                        unreadNotifications.map(n => <NotificationItem key={n.id} notification={n} />)
-                    ) : (
-                        <div className="p-6 text-center text-muted-foreground">
-                            You're all caught up!
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Recent History</CardTitle>
-                    <CardDescription>Your previously read messages.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                     {readNotifications.length > 0 ? (
-                        readNotifications.map(n => <NotificationItem key={n.id} notification={n} />)
-                    ) : (
-                        <div className="p-6 text-center text-muted-foreground">
-                            No read messages yet.
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-      )}
+        </Card>
     </div>
   );
 }
