@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { Activity, AdminUserView, Notification, PlatformSettings, Transaction, UserProfile, Game, Ad, Task, SupportTicket, SentNotificationLog, OfferwallTransaction } from '@/lib/types';
@@ -572,10 +573,6 @@ export async function claimDailyReward(): Promise<{ success: boolean; message: s
     date: now,
     status: 'completed',
   });
-  
-  const notificationTitle = isStreakBonusDay ? "STREAK BONUS!" : "Daily Reward Claimed!";
-  const notificationDesc = `You earned ${finalReward} Cubes for your Day ${newStreak} login!`;
-  _createNotificationInBatch(batch, user.uid, notificationTitle, notificationDesc, false, 'toast');
 
   await batch.commit();
   return { success: true, message: `You earned ${finalReward} Cubes!` };
