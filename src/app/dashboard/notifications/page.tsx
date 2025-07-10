@@ -12,25 +12,75 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, Gift, Wrench, CircleDollarSign, Trash2, Award } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { useEffect } from 'react';
-import { markAllNotificationsAsRead } from '@/services/user-data';
+import { markAllNotificationsAsRead, deleteAllNotifications } from '@/services/user-data';
 import { useToast } from '@/hooks/use-toast';
+import type { Notification } from '@/lib/types';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
+
+const getNotificationIcon = (title: string): React.ReactNode => {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes('bonus') || lowerTitle.includes('daily')) return <Gift className="h-5 w-5" />;
+    if (lowerTitle.includes('reward')) return <Award className="h-5 w-5" />;
+    if (lowerTitle.includes('received') || lowerTitle.includes('sent')) return <CircleDollarSign className="h-5 w-5" />;
+    if (lowerTitle.includes('update') || lowerTitle.includes('maintenance')) return <Wrench className="h-5 w-5" />;
+    return <Bell className="h-5 w-5" />;
+};
+
+
+function NotificationItem({ notification }: { notification: Notification }) {
+    return (
+        <>
+            <div className={cn("flex items-start gap-4 p-4 rounded-lg", !notification.read && "bg-secondary/50")}>
+                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full mt-1", !notification.read ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground')}>
+                    {getNotificationIcon(notification.title)}
+                </div>
+                <div className="flex-1 grid gap-1">
+                    <div className="flex items-center justify-between">
+                        <p className="font-semibold">{notification.title}</p>
+                        {!notification.read && (
+                            <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                        )}
+                    </div>
+                    {notification.isHtml ? (
+                       <div
+                         className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground"
+                         dangerouslySetInnerHTML={{ __html: notification.description }}
+                       />
+                    ) : (
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {notification.description}
+                        </p>
+                    )}
+                    <p className="text-xs text-muted-foreground/80 mt-1">
+                        {formatDistanceToNow(notification.date, { addSuffix: true })}
+                    </p>
+                </div>
+            </div>
+            <Separator />
+        </>
+    );
+}
+
 
 export default function NotificationsPage() {
   const { notifications, loading, userProfile } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Only mark as read if there are unread notifications to avoid unnecessary writes
-    if (notifications.some(n => !n.read)) {
-      markAllNotificationsAsRead();
-    }
-  }, [notifications]);
-  
   const handleMarkAllRead = async () => {
     try {
         await markAllNotificationsAsRead();
@@ -45,84 +95,130 @@ export default function NotificationsPage() {
             description: "Could not mark notifications as read.",
         });
     }
-  }
+  };
   
-  const hasUnread = notifications.some(n => !n.read);
+  const handleDeleteAll = async () => {
+    try {
+        await deleteAllNotifications();
+        toast({
+            title: "Notifications Cleared",
+            description: "All your messages have been deleted.",
+        });
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not delete notifications.",
+        });
+    }
+  };
+
+  const unreadNotifications = notifications.filter(n => !n.read);
+  const readNotifications = notifications.filter(n => n.read);
+  const hasUnread = unreadNotifications.length > 0;
+  
+  if (loading && !userProfile) {
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <Skeleton className="h-9 w-48" />
+                <Skeleton className="h-10 w-32" />
+            </div>
+            <div className="grid gap-8 md:grid-cols-2">
+                <Card>
+                    <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
+                    <CardContent className="space-y-4">
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
+                    <CardContent className="space-y-4">
+                         <Skeleton className="h-16 w-full" />
+                         <Skeleton className="h-16 w-full" />
+                         <Skeleton className="h-16 w-full" />
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight font-headline">Notifications</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>All Messages</CardTitle>
-          <CardDescription>
-            A log of all messages and alerts sent to you.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading && !userProfile ? (
-            <div className="space-y-6">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-start space-x-4 p-4 border rounded-lg">
-                  <Skeleton className="h-8 w-8 rounded-full mt-1" />
-                  <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Bell className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h3 className="text-xl font-semibold">No Notifications Yet</h3>
-              <p className="text-muted-foreground">You have no new alerts. Check back later.</p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {notifications.map((notification, index) => (
-                <div key={notification.id}>
-                    <div className={cn("flex items-start gap-4 p-4 rounded-lg", !notification.read && "bg-secondary/50")}>
-                        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-1", !notification.read ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground')}>
-                            <Bell className="h-4 w-4" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Notifications</h1>
+        <div className="flex gap-2">
+            <Button onClick={handleMarkAllRead} variant="outline" size="sm" disabled={!hasUnread}>
+                <CheckCheck className="mr-2 h-4 w-4" />
+                Mark all as read
+            </Button>
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={notifications.length === 0}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete All
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete all of your notifications.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAll} className="bg-destructive hover:bg-destructive/90">Delete All</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+      </div>
+      
+      {notifications.length === 0 ? (
+           <Card className="col-span-full">
+            <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+                <Bell className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                <h3 className="text-xl font-semibold">No Notifications Yet</h3>
+                <p className="text-muted-foreground">You have no new alerts. Check back later.</p>
+            </CardContent>
+          </Card>
+      ) : (
+        <div className="grid gap-8 md:grid-cols-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Unread</CardTitle>
+                    <CardDescription>Messages that need your attention.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {unreadNotifications.length > 0 ? (
+                        unreadNotifications.map(n => <NotificationItem key={n.id} notification={n} />)
+                    ) : (
+                        <div className="p-6 text-center text-muted-foreground">
+                            You're all caught up!
                         </div>
-                        <div className="flex-1 grid gap-1">
-                            <div className="flex items-center justify-between">
-                                <p className="font-semibold">{notification.title}</p>
-                                {!notification.read && (
-                                    <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                                )}
-                            </div>
-                            {notification.isHtml ? (
-                               <div
-                                 className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground"
-                                 dangerouslySetInnerHTML={{ __html: notification.description }}
-                               />
-                            ) : (
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    {notification.description}
-                                </p>
-                            )}
-                            <p className="text-xs text-muted-foreground/80 mt-1">
-                                {formatDistanceToNow(notification.date, { addSuffix: true })}
-                            </p>
+                    )}
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Recent History</CardTitle>
+                    <CardDescription>Your previously read messages.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                     {readNotifications.length > 0 ? (
+                        readNotifications.map(n => <NotificationItem key={n.id} notification={n} />)
+                    ) : (
+                        <div className="p-6 text-center text-muted-foreground">
+                            No read messages yet.
                         </div>
-                    </div>
-                    {index < notifications.length - 1 && <Separator />}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-         {notifications.length > 0 && (
-            <CardFooter className="justify-end">
-                <Button onClick={handleMarkAllRead} variant="ghost" size="sm" disabled={!hasUnread}>
-                    <CheckCheck className="mr-2 h-4 w-4" />
-                    Mark all as read
-                </Button>
-            </CardFooter>
-        )}
-      </Card>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+      )}
     </div>
   );
 }

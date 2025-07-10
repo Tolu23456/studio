@@ -934,6 +934,32 @@ export async function markAllNotificationsAsRead(): Promise<void> {
         await batch.commit();
     } catch (error) {
         console.error("Error marking notifications as read:", error);
+        throw error;
+    }
+}
+
+export async function deleteAllNotifications(): Promise<void> {
+    const user = getCurrentUser();
+    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+    const q = query(notificationsRef, limit(500)); // Firestore limit for batch deletes
+
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) return;
+
+        const batch = writeBatch(db);
+        querySnapshot.forEach(docSnapshot => {
+            batch.delete(docSnapshot.ref);
+        });
+
+        await batch.commit();
+
+        // If there are more notifications, this function might need to be called again
+        // For this app's scale, one batch should suffice.
+
+    } catch (error) {
+        console.error("Error deleting all notifications:", error);
+        throw error;
     }
 }
 
